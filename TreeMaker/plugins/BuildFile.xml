@@ -1,0 +1,39 @@
+<use  name="root"/>
+<use  name="rootrflx"/>
+<use  name="clhep"/>
+<use  name="CommonTools/UtilAlgos"/>
+<use  name="DataFormats/Candidate"/>
+<use  name="DataFormats/Common"/>
+<use  name="DataFormats/GeometryCommonDetAlgo"/>
+<use  name="DataFormats/GsfTrackReco"/>
+<use  name="DataFormats/HepMCCandidate"/>
+<use  name="DataFormats/L1Trigger"/>
+<use  name="DataFormats/METReco"/>
+<use  name="DataFormats/Math"/>
+<use  name="DataFormats/MuonReco"/>
+<use  name="DataFormats/PatCandidates"/>
+<use  name="DataFormats/TrackReco"/>
+<use  name="DataFormats/VertexReco"/>
+<use  name="DisappTrks/SignalMC"/>
+<use  name="FWCore/Common"/>
+<use  name="FWCore/Framework"/>
+<use  name="FWCore/ParameterSet"/>
+<use  name="FWCore/ServiceRegistry"/>
+<use  name="FWCore/Utilities"/>
+<use  name="Geometry/CaloGeometry"/>
+<use  name="MagneticField/Engine"/>
+<use  name="MagneticField/Records"/>
+<use  name="RecoTauTag/TauTagTools"/>
+<use  name="SimDataFormats/GeneratorProducts"/>
+<use  name="SimDataFormats/Track"/>
+<use  name="SimDataFormats/Vertex"/>
+<use  name="TrackingTools/GeomPropagators"/>
+<use  name="TrackingTools/IPTools"/>
+<use  name="TrackingTools/Records"/>
+<use  name="TrackingTools/TrajectoryState"/>
+<use  name="TrackingTools/TransientTrack"/>
+<flags  CXXFLAGS="-mtune=core2 -march=core2 -O3 -pipe"/>
+<!--flags  CXXFLAGS="-gdwarf-2 -g3 -O0 -pipe"/-->
+<library  file="*.cc"  name="DisappTrksMLTreeMakerPlugins">
+  <flags  EDM_PLUGIN="1"/>
+</library>
