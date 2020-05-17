@@ -19,8 +19,8 @@ plotDir = workDir + 'images/acgan/'
 weightsDir = workDir + 'weights/acgan/'
 
 #workDir = 'c:/users/llave/Documents/CMS/'
-data_match = np.load(workDir+'images_DYJets50_GEN_RECO_match.npy')
-data_no_match = np.load(workDir+'images_DYJets50_GEN_RECO_no_match.npy')
+data_match = np.load(dataDir+'images_DYJets50_GEN_RECO_match.npy')
+data_no_match = np.load(dataDir+'images_DYJets50_GEN_RECO_no_match.npy')
 classes = np.concatenate([np.ones(len(data_match)),np.zeros(len(data_no_match))])
 data = np.concatenate([data_match,data_no_match])
 print(data_match.shape,data_no_match.shape,data.shape)
@@ -128,7 +128,7 @@ def save_imgs(generator, epoch, batch):
             axs[i, j].imshow(gen_imgs[cnt, :, :, j], cmap='gray')
             axs[i, j].axis('off')
             cnt += 1
-    fig.savefig(plotDir + ac_gan_%d_%d.png" % (epoch, batch))
+    fig.savefig(plotDir + "ac_gan_%d_%d.png" % (epoch, batch))
     plt.close()
     
 # define the combined generator and discriminator model, for updating the generator
