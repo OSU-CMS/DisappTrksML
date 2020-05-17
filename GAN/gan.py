@@ -10,8 +10,8 @@ import numpy as np
 
 dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
 workDir = '/home/llavezzo/'
-plotDir = workDir + 'images/'
-weightsDir = workDir + 'weights/'
+plotDir = workDir + 'images/gan_g_zeros/'
+weightsDir = workDir + 'weights/gan_g_zeros/'
 
 fname = 'images_DYJets50V2.npy'
 data = np.load(dataDir+fname)
@@ -185,7 +185,7 @@ for epoch in range(epochs + 1):
         d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
         # Train the generator
-        labels = np.ones((batch_size, 1))
+        labels = np.zeros((batch_size, 1))
 
         noise = np.random.normal(0, 1, (batch_size, 100))
         #testing gaussian latent space
