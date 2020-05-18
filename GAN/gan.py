@@ -8,10 +8,15 @@ from keras.optimizers import Adam
 import matplotlib.pyplot as plt
 import numpy as np
 
-dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
-workDir = '/home/llavezzo/'
-plotDir = workDir + 'images/gan_g_zeros/'
-weightsDir = workDir + 'weights/gan_g_zeros/'
+#import data
+# dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
+# workDir = '/home/llavezzo/'
+# plotDir = workDir + 'images/gan/'
+# weightsDir = workDir + 'weights/gan/'
+dataDir = 'c:/users/llave/Documents/CMS/'
+workDir = dataDir
+plotDir = workDir + 'plots/gan/'
+weightsDir = workDir + 'weights/gan/'
 
 fname = 'images_DYJets50V2.npy'
 data = np.load(dataDir+fname)
@@ -79,22 +84,22 @@ def plot_event(eventNum):
     
     plt.show()
 
-#generates and saves 5 random images
-def save_imgs(generator, epoch, batch):
-    r, c = 5, 3
-    noise = np.random.normal(0, 1, (r * c, 100))
+#generates and saves r random images
+def save_imgs(generator, epoch, batch, r):
+    noise = np.random.normal(0, 1, (r, 100))
     gen_imgs = generator.predict(noise)
 
     # Rescale images 0 - 1
     gen_imgs = 0.5 * gen_imgs + 0.5
 
-    fig, axs = plt.subplots(r, c)
-    cnt = 0
+    fig, axs = plt.subplots(r, 3)
     for i in range(r):
-        for j in range(c):
-            axs[i, j].imshow(gen_imgs[cnt, :, :, j], cmap='gray')
+        for j in range(3):
+            axs[i, j].imshow(gen_imgs[i, :, :, j], cmap='gray')
             axs[i, j].axis('off')
-            cnt += 1
+            axs[i,0].set_title("ECAL",fontsize=8)
+            axs[i,1].set_title("HCAL",fontsize=8)
+            axs[i,2].set_title("Muon",fontsize=8)
     fig.savefig(plotDir+"tracks_%d_%d.png" % (epoch, batch))
     plt.close()
 
@@ -204,7 +209,7 @@ for epoch in range(epochs + 1):
                   (epoch, batch, num_batches, d_loss[0], d_loss[1], d_loss_real[1], d_loss_fake[1],g_loss))
     
     
-    save_imgs(generator, epoch, batch)
+    save_imgs(generator, epoch, batch, 5)
     combined.save_weights(weightsDir+'G_epoch{0}.h5'.format(epoch))
     discriminator.save_weights(weightsDir+'D_epoch{0}.h5'.format(epoch))
 

@@ -13,17 +13,21 @@ from numpy.random import choice
 from numpy.random import randn
 
 #import data
-dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
-workDir = '/home/llavezzo/'
-plotDir = workDir + 'images/acgan/'
+# dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
+# workDir = '/home/llavezzo/'
+# plotDir = workDir + 'images/acgan/'
+# weightsDir = workDir + 'weights/acgan/'
+dataDir = 'c:/users/llave/Documents/CMS/'
+workDir = dataDir
+plotDir = workDir + 'plots/acgan/'
 weightsDir = workDir + 'weights/acgan/'
 
 #workDir = 'c:/users/llave/Documents/CMS/'
-data_match = np.load(dataDir+'images_DYJets50_GEN_RECO_match.npy')
-data_no_match = np.load(dataDir+'images_DYJets50_GEN_RECO_no_match.npy')
-classes = np.concatenate([np.ones(len(data_match)),np.zeros(len(data_no_match))])
-data = np.concatenate([data_match,data_no_match])
-print(data_match.shape,data_no_match.shape,data.shape)
+data_e = np.load(dataDir+'e_DYJets50_norm.npy')
+data_bkg = np.load(dataDir+'bkg_DYJets50_norm.npy')
+classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_bkg))])
+data = np.concatenate([data_e,data_bkg])
+print(data_e.shape,data_bkg.shape,data.shape)
 print(len(classes))
 
 #shuffle
@@ -97,38 +101,29 @@ def build_generator(latent_dim, n_classes=2):
     model.summary()
     return model
 
-#plots events
-def plot_event(eventNum):
-    
-    x = events[eventNum]
-    
-    fig, axs = plt.subplots(1,3)
-    for i in range(3):
-        axs[i].imshow(x[:,:,i])
-        
-    axs[0].set_title("ECAL")
-    axs[1].set_title("HCAL")
-    axs[2].set_title("Muon")
-    
-    plt.show()
-
-#generates and saves 5 random images
-def save_imgs(generator, epoch, batch):
-    r, c = 5, 3
-    noise = generate_latent_points(100,r*c)
-    fake_classes = np.random.randint(0,2,size=r*c)
+#generates and saves r random images
+def save_imgs(generator, epoch, batch, r):
+    noise = generate_latent_points(100,r)
+    fake_classes = [1,1,0,0]
     gen_imgs = generator.predict([noise,fake_classes])
 
     # Rescale images 0 - 1
     gen_imgs = 0.5 * gen_imgs + 0.5
 
-    fig, axs = plt.subplots(r, c)
-    cnt = 0
+    fig, axs = plt.subplots(r, 3)
     for i in range(r):
-        for j in range(c):
-            axs[i, j].imshow(gen_imgs[cnt, :, :, j], cmap='gray')
+        for j in range(3):
+            axs[i, j].imshow(gen_imgs[i, :, :, j], cmap='gray')
+            if(fake_classes[i]==1):
+                axs[i,0].set_title("Electron - ECAL", fontsize = 9)
+                axs[i,1].set_title("Electron - HCAL", fontsize = 9)
+                axs[i,2].set_title("Electron - Muon", fontsize = 9)
+            if(fake_classes[i]==0):
+                axs[i,0].set_title("Background - ECAL", fontsize = 9)
+                axs[i,1].set_title("Background - HCAL", fontsize = 9)
+                axs[i,2].set_title("Background - Muon", fontsize = 9)
             axs[i, j].axis('off')
-            cnt += 1
+    plt.tight_layout()
     fig.savefig(plotDir + "ac_gan_%d_%d.png" % (epoch, batch))
     plt.close()
     
@@ -234,7 +229,7 @@ for epoch in range(epochs + 1):
               (epoch, batch, d_loss_real[1],d_loss_real[1], 
                d_loss_fake[1],d_loss_fake[2], g_loss[1],g_loss[2]))
 
-    save_imgs(generator, epoch, batch)
+    save_imgs(generator, epoch, batch, 4)
 
     gan_model.save_weights(weightsDir+'G_epoch{0}.h5'.format(epoch))
     discriminator.save_weights(weightsDir+'D_epoch{0}.h5'.format(epoch))
