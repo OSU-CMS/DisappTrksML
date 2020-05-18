@@ -115,8 +115,9 @@ def plot_event(eventNum):
 #generates and saves 5 random images
 def save_imgs(generator, epoch, batch):
     r, c = 5, 3
-    noise = np.random.normal(0, 1, (r * c, 100))
-    gen_imgs = generator.predict(noise)
+    noise = generate_latent_points(100,r*c)
+    fake_classes = np.random.randint(0,2,size=r*c)
+    gen_imgs = generator.predict([noise,fake_classes])
 
     # Rescale images 0 - 1
     gen_imgs = 0.5 * gen_imgs + 0.5
@@ -233,8 +234,7 @@ for epoch in range(epochs + 1):
               (epoch, batch, d_loss_real[1],d_loss_real[1], 
                d_loss_fake[1],d_loss_fake[2], g_loss[1],g_loss[2]))
 
-    
-    
     save_imgs(generator, epoch, batch)
+
     gan_model.save_weights(weightsDir+'G_epoch{0}.h5'.format(epoch))
     discriminator.save_weights(weightsDir+'D_epoch{0}.h5'.format(epoch))
