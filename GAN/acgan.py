@@ -6,6 +6,8 @@ from keras.layers.convolutional import UpSampling2D, Conv2D, Conv2DTranspose
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.initializers import RandomNormal
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.random
@@ -13,14 +15,14 @@ from numpy.random import choice
 from numpy.random import randn
 
 #import data
-# dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
-# workDir = '/home/llavezzo/'
-# plotDir = workDir + 'images/acgan/'
-# weightsDir = workDir + 'weights/acgan/'
-dataDir = 'c:/users/llave/Documents/CMS/'
-workDir = dataDir
-plotDir = workDir + 'plots/acgan/'
+dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
+workDir = '/home/llavezzo/'
+plotDir = workDir + 'images/acgan/'
 weightsDir = workDir + 'weights/acgan/'
+# dataDir = 'c:/users/llave/Documents/CMS/'
+# workDir = dataDir
+# plotDir = workDir + 'plots/acgan/'
+# weightsDir = workDir + 'weights/acgan/'
 
 #workDir = 'c:/users/llave/Documents/CMS/'
 data_e = np.load(dataDir+'e_DYJets50_norm.npy')
@@ -104,7 +106,7 @@ def build_generator(latent_dim, n_classes=2):
 #generates and saves r random images
 def save_imgs(generator, epoch, batch, r):
     noise = generate_latent_points(100,r)
-    fake_classes = [1,1,0,0]
+    fake_classes = np.array([1,1,0,0])
     gen_imgs = generator.predict([noise,fake_classes])
 
     # Rescale images 0 - 1

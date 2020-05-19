@@ -5,20 +5,22 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D, Conv2DTranspose
 from keras.models import Model
 from keras.optimizers import Adam
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
 #import data
-# dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
-# workDir = '/home/llavezzo/'
-# plotDir = workDir + 'images/gan/'
-# weightsDir = workDir + 'weights/gan/'
-dataDir = 'c:/users/llave/Documents/CMS/'
-workDir = dataDir
-plotDir = workDir + 'plots/gan/'
+dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
+workDir = '/home/llavezzo/'
+plotDir = workDir + 'images/gan/'
 weightsDir = workDir + 'weights/gan/'
+# dataDir = 'c:/users/llave/Documents/CMS/'
+# workDir = dataDir
+# plotDir = workDir + 'plots/gan/'
+# weightsDir = workDir + 'weights/gan/'
 
-fname = 'images_DYJets50V2.npy'
+fname = 'images_DYJets50_norm.npy'
 data = np.load(dataDir+fname)
 print("Imported data from",dataDir+fname)
 
@@ -69,21 +71,6 @@ def build_generator(noise_shape=(100,)):
     model.summary()
     return model
 
-#plots events
-def plot_event(eventNum):
-    
-    x = events[eventNum]
-    
-    fig, axs = plt.subplots(1,3)
-    for i in range(3):
-        axs[i].imshow(x[:,:,i])
-        
-    axs[0].set_title("ECAL")
-    axs[1].set_title("HCAL")
-    axs[2].set_title("Muon")
-    
-    plt.show()
-
 #generates and saves r random images
 def save_imgs(generator, epoch, batch, r):
     noise = np.random.normal(0, 1, (r, 100))
@@ -97,9 +84,10 @@ def save_imgs(generator, epoch, batch, r):
         for j in range(3):
             axs[i, j].imshow(gen_imgs[i, :, :, j], cmap='gray')
             axs[i, j].axis('off')
-            axs[i,0].set_title("ECAL",fontsize=8)
-            axs[i,1].set_title("HCAL",fontsize=8)
-            axs[i,2].set_title("Muon",fontsize=8)
+            axs[i,0].set_title("ECAL",fontsize=5)
+            axs[i,1].set_title("HCAL",fontsize=5)
+            axs[i,2].set_title("Muon",fontsize=5)
+    plt.tight_layout()
     fig.savefig(plotDir+"tracks_%d_%d.png" % (epoch, batch))
     plt.close()
 
@@ -190,7 +178,7 @@ for epoch in range(epochs + 1):
         d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
         # Train the generator
-        labels = np.zeros((batch_size, 1))
+        labels = np.ones((batch_size, 1))
 
         noise = np.random.normal(0, 1, (batch_size, 100))
         #testing gaussian latent space
@@ -209,7 +197,7 @@ for epoch in range(epochs + 1):
                   (epoch, batch, num_batches, d_loss[0], d_loss[1], d_loss_real[1], d_loss_fake[1],g_loss))
     
     
-    save_imgs(generator, epoch, batch, 5)
+    save_imgs(generator, epoch, batch, 4)
     combined.save_weights(weightsDir+'G_epoch{0}.h5'.format(epoch))
     discriminator.save_weights(weightsDir+'D_epoch{0}.h5'.format(epoch))
 
