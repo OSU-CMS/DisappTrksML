@@ -20,7 +20,7 @@ weightsDir = workDir + 'weights/gan/'
 # plotDir = workDir + 'plots/gan/'
 # weightsDir = workDir + 'weights/gan/'
 
-fname = 'images_DYJets50_norm.npy'
+fname = 'DYJets50_norm_20x20.npy'
 data = np.load(dataDir+fname)
 print("Imported data from",dataDir+fname)
 
@@ -53,8 +53,8 @@ def build_discriminator(img_shape):
 
 def build_generator(noise_shape=(100,)):
     input = Input(noise_shape)
-    x = Dense(128 * 10 * 10, activation="relu")(input)
-    x = Reshape((10,10, 128))(x)
+    x = Dense(128 * 5 * 5, activation="relu")(input)
+    x = Reshape((5,5, 128))(x)
     x = BatchNormalization(momentum=0.8)(x)
     #upsampling to 20x20
     x = Conv2DTranspose(128, (4,4), strides=(2,2), padding='same')(x)
@@ -65,7 +65,7 @@ def build_generator(noise_shape=(100,)):
     x = Activation("relu")(x)
     x = BatchNormalization(momentum=0.8)(x)
     x = Conv2D(3, kernel_size=3, padding="same")(x)
-    out = Activation("tanh")(x)
+    out = Activation("relu")(x)
     model = Model(input, out)
     print("-- Generator -- ")
     model.summary()
@@ -92,7 +92,7 @@ def save_imgs(generator, epoch, batch, r):
     plt.close()
 
 #build and compile discriminator and generator
-discriminator = build_discriminator(img_shape=(40,40, 3))
+discriminator = build_discriminator(img_shape=(20,20, 3))
 discriminator.compile(loss='binary_crossentropy',
                                optimizer=Adam(lr=0.0002, beta_1=0.5),
                                metrics=['mse'])

@@ -18,15 +18,15 @@ from numpy.random import randn
 dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
 workDir = '/home/llavezzo/'
 plotDir = workDir + 'images/acgan/'
-weightsDir = workDir + 'weights/acgan/'
+weightsDir = workDir + 'weights/acgan2/'
 # dataDir = 'c:/users/llave/Documents/CMS/'
 # workDir = dataDir
 # plotDir = workDir + 'plots/acgan/'
 # weightsDir = workDir + 'weights/acgan/'
 
 #workDir = 'c:/users/llave/Documents/CMS/'
-data_e = np.load(dataDir+'e_DYJets50_norm.npy')
-data_bkg = np.load(dataDir+'bkg_DYJets50_norm.npy')
+data_e = np.load(dataDir+'e_DYJets50_norm_20x20.npy')
+data_bkg = np.load(dataDir+'bkg_DYJets50_norm_20x20.npy')
 classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_bkg))])
 data = np.concatenate([data_e,data_bkg])
 print(data_e.shape,data_bkg.shape,data.shape)
@@ -77,17 +77,17 @@ def build_generator(latent_dim, n_classes=2):
     # embedding for categorical input
     li = Embedding(n_classes, 50)(in_label)
     # linear multiplication
-    n_nodes = 10 * 10
+    n_nodes = 5 * 5
     li = Dense(n_nodes, kernel_initializer=init)(li)
     # reshape to additional channel
-    li = Reshape((10, 10, 1))(li)
+    li = Reshape((5, 5, 1))(li)
     # image generator input
     in_lat = Input(shape=(latent_dim,))
     # foundation for 10x10 image
-    n_nodes = 384 * 10 * 10
+    n_nodes = 384 * 5 * 5
     gen = Dense(n_nodes, kernel_initializer=init)(in_lat)
     gen = Activation('relu')(gen)
-    gen = Reshape((10, 10, 384))(gen)
+    gen = Reshape((5, 5, 384))(gen)
     # merge image gen and label input
     merge = Concatenate()([gen, li])
     # upsample to 20x20
@@ -96,7 +96,8 @@ def build_generator(latent_dim, n_classes=2):
     gen = Activation('relu')(gen)
     # upsample to 40x40
     gen = Conv2DTranspose(3, (5,5), strides=(2,2), padding='same', kernel_initializer=init)(gen)
-    out_layer = Activation('tanh')(gen)
+    out_layer = Activation('relu')(gen)
+    #out_layer = Activation('tanh')(gen)
     # define model
     model = Model([in_lat, in_label], out_layer)
     print("-- Generator -- ")
@@ -126,7 +127,7 @@ def save_imgs(generator, epoch, batch, r):
                 axs[i,2].set_title("Background - Muon", fontsize = 9)
             axs[i, j].axis('off')
     plt.tight_layout()
-    fig.savefig(plotDir + "ac_gan_%d_%d.png" % (epoch, batch))
+    fig.savefig(plotDir + "acgan2_%d_%d.png" % (epoch, batch))
     plt.close()
     
 # define the combined generator and discriminator model, for updating the generator
@@ -146,7 +147,7 @@ def build_gan(g_model, d_model):
 # size of the latent space
 latent_dim = 100
 # create the discriminator
-discriminator = build_discriminator(img_shape=(40,40, 3),n_classes=2)
+discriminator = build_discriminator(img_shape=(20,20, 3),n_classes=2)
 # create the generator
 generator = build_generator(latent_dim)
 # create the gan
@@ -178,7 +179,7 @@ def smooth_negative_labels(y):
 X_train = data
 y_train = classes
 
-epochs=100
+epochs=300
 batch_size=16
 save_interval=1
 
@@ -192,6 +193,9 @@ half_batch = int(batch_size / 2)
 
 d_loss_array = []
 g_loss_array = []
+
+# gan_model.load_weights(weightsDir+'G_epoch{0}.h5'.format(100))
+# discriminator.load_weights(weightsDir+'D_epoch{0}.h5'.format(100))
 
 for epoch in range(epochs + 1):
     for batch in range(num_batches):
