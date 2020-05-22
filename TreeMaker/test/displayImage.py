@@ -1,3 +1,4 @@
+import math
 from ROOT import TFile, TTree, TH2D, TCanvas, gROOT
 
 gROOT.SetBatch() # I am Groot.
@@ -24,6 +25,9 @@ for event in tree:
             if event.recHits_detType[iHit] != 1 and event.recHits_detType[iHit] != 2: continue
             dEta = event.track_eta[iTrack] - event.recHits_eta[iHit]
             dPhi = event.track_phi[iTrack] - event.recHits_phi[iHit]
+            # branch cut [-pi, pi)
+            if abs(dPhi) > math.pi:
+                dPhi -= round(dPhi / (2. * math.pi)) * 2. * math.pi
             h.Fill(dEta, dPhi, event.recHits_energy[iHit])
 
         break

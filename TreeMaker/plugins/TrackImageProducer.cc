@@ -169,9 +169,9 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
     track_deltaRToClosestTauHad.push_back(deltaRToClosestTauHad);
 
     getImage(track, *EBRecHits, *EERecHits, *HBHERecHits);
-
-    tree_->Fill();
   }
+
+  tree_->Fill();
 
 }
 
