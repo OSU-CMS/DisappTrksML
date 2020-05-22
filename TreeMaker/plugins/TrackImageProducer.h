@@ -40,7 +40,7 @@
 
 using namespace std;
 
-enum DetType { None, ECAL, HCAL, Muon };
+enum DetType { None, EB, EE, HCAL, Muon };
 
 class TrackImageProducer : public edm::EDAnalyzer {
    public:
@@ -54,6 +54,25 @@ class TrackImageProducer : public edm::EDAnalyzer {
       void getImage(const reco::Track &, const EBRecHitCollection &, const EERecHitCollection &, const HBHERecHitCollection &);
       const math::XYZVector getPosition(const DetId &) const;
 
+      // clear/reset all branches for a new event
+      void clearVectors() {
+            recHits_eta.clear();
+            recHits_phi.clear();
+            recHits_energy.clear();
+            recHits_detType.clear();
+
+            track_genMatchedID.clear();
+            track_genMatchedDR.clear();
+            track_genMatchedPt.clear();
+            track_deltaRToClosestElectron.clear();
+            track_deltaRToClosestMuon.clear();
+            track_deltaRToClosestTauHad.clear();
+            track_eta.clear();
+            track_phi.clear();
+            track_pt.clear();
+            track_trackIso.clear();
+      }
+
       edm::InputTag tracks_;
       edm::InputTag genParticles_;
       edm::InputTag electrons_, muons_, taus_;
@@ -66,9 +85,6 @@ class TrackImageProducer : public edm::EDAnalyzer {
       const double minGenParticlePt_;
       const double minTrackPt_;
       const double maxRelTrackIso_;
-
-      const double maxDEtaTrackRecHit_;
-      const double maxDPhiTrackRecHit_;
 
       edm::EDGetTokenT<vector<reco::Track> >       tracksToken_;
       edm::EDGetTokenT<vector<reco::GenParticle> > genParticlesToken_;
@@ -86,13 +102,15 @@ class TrackImageProducer : public edm::EDAnalyzer {
       edm::Service<TFileService> fs_;
       TTree * tree_;
 
-      vector<double> recHits_dEta, recHits_dPhi, recHits_energy;
-      vector<int> recHits_detType;
+      // column-aligned for all hits
+      vector<double> recHits_eta, recHits_phi, recHits_energy;
+      vector<int>    recHits_detType;
 
-      int genMatchedID;
-      double genMatchedDR;
-      double deltaRToClosestElectron, deltaRToClosestMuon, deltaRToClosestTauHad;
-      double trackEta, trackPhi, trackPt, trackIso;
+      // column-aligned for all tracks
+      vector<int>    track_genMatchedID;
+      vector<double> track_genMatchedDR, track_genMatchedPt;
+      vector<double> track_deltaRToClosestElectron, track_deltaRToClosestMuon, track_deltaRToClosestTauHad;
+      vector<double> track_eta, track_phi, track_pt, track_trackIso;
       // dedx
       // t&p info...
 

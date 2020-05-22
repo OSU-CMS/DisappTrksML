@@ -9,12 +9,25 @@ can = TCanvas('can', 'can', 10, 10, 800, 600)
 
 h = TH2D('h', 'h', 50, -0.5, 0.5, 50, -0.5, 0.5)
 
-for iTrack, track in enumerate(tree):
-        if abs(track.genMatchedDR) >= 0.05 or abs(track.genMatchedID) != 11: continue
-        for i in range(len(track.recHits_dEta)):
-                if track.recHits_detType != 1:
-                        h.Fill(track.recHits_dEta[i], track.recHits_dPhi[i], track.recHits_energy[i])
+goodTrack = False
 
-        h.Draw('colz')
-        can.SaveAs('ecal.png')
+for event in tree:
+
+    for iTrack in range(len(event.track_eta)):
+        if abs(event.track_genMatchedDR[iTrack]) >= 0.05: continue
+        if abs(event.track_genMatchedID[iTrack]) != 11: continue
+        if event.track_genMatchedPt[iTrack] < 35: continue
+
+        goodTrack = True
+
+        for iHit in range(len(event.recHits_eta)):
+            if event.recHits_detType[iHit] != 1 and event.recHits_detType[iHit] != 2: continue
+            dEta = event.track_eta[iTrack] - event.recHits_eta[iHit]
+            dPhi = event.track_phi[iTrack] - event.recHits_phi[iHit]
+            h.Fill(dEta, dPhi, event.recHits_energy[iHit])
+
         break
+    if goodTrack: break
+
+h.Draw('colz')
+can.SaveAs('ecal.png')

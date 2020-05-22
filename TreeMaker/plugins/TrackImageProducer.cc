@@ -23,9 +23,7 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
 
   minGenParticlePt_   (cfg.getParameter<double> ("minGenParticlePt")),
   minTrackPt_         (cfg.getParameter<double> ("minTrackPt")),
-  maxRelTrackIso_     (cfg.getParameter<double> ("maxRelTrackIso")),
-  maxDEtaTrackRecHit_ (cfg.getParameter<double> ("maxDEtaTrackRecHit")),
-  maxDPhiTrackRecHit_ (cfg.getParameter<double> ("maxDPhiTrackRecHit"))
+  maxRelTrackIso_     (cfg.getParameter<double> ("maxRelTrackIso"))
 {
   tracksToken_       = consumes<vector<reco::Track> >       (tracks_);
   genParticlesToken_ = consumes<vector<reco::GenParticle> > (genParticles_);
@@ -41,27 +39,24 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
   tauElectronDiscriminatorToken_ = consumes<reco::PFTauDiscriminator> (tauElectronDiscriminator_);
   tauMuonDiscriminatorToken_     = consumes<reco::PFTauDiscriminator> (tauMuonDiscriminator_);
 
-  recHits_dEta.clear();
-  recHits_dPhi.clear();
-  recHits_energy.clear();
-  recHits_detType.clear();
+  clearVectors();
 
   tree_ = fs_->make<TTree>("tree", "tree");
-  tree_->Branch("recHits_dEta", &recHits_dEta);
-  tree_->Branch("recHits_dPhi", &recHits_dPhi);
+  tree_->Branch("recHits_eta", &recHits_eta);
+  tree_->Branch("recHits_phi", &recHits_phi);
   tree_->Branch("recHits_energy", &recHits_energy);
   tree_->Branch("recHits_detType", &recHits_detType);
 
-  tree_->Branch("genMatchedID", &genMatchedID);
-  tree_->Branch("genMatchedDR", &genMatchedDR);
-  tree_->Branch("deltaRToClosestElectron", &deltaRToClosestElectron);
-  tree_->Branch("deltaRToClosestMuon", &deltaRToClosestMuon);
-  tree_->Branch("deltaRToClosestTauHad", &deltaRToClosestTauHad);
-  tree_->Branch("eta", &trackEta);
-  tree_->Branch("phi", &trackPhi);
-  tree_->Branch("pt", &trackPt);
-  tree_->Branch("trackIso", &trackIso);
-
+  tree_->Branch("track_genMatchedID", &track_genMatchedID);
+  tree_->Branch("track_genMatchedDR", &track_genMatchedDR);
+  tree_->Branch("track_genMatchedPt", &track_genMatchedPt);
+  tree_->Branch("track_deltaRToClosestElectron", &track_deltaRToClosestElectron);
+  tree_->Branch("track_deltaRToClosestMuon", &track_deltaRToClosestMuon);
+  tree_->Branch("track_deltaRToClosestTauHad", &track_deltaRToClosestTauHad);
+  tree_->Branch("track_eta", &track_eta);
+  tree_->Branch("track_phi", &track_phi);
+  tree_->Branch("track_pt", &track_pt);
+  tree_->Branch("track_trackIso", &track_trackIso);
 }
 
 TrackImageProducer::~TrackImageProducer()
@@ -111,14 +106,18 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
   if (!caloGeometry_.isValid())
     throw cms::Exception("FatalError") << "Unable to find CaloGeometryRecord in event!\n";
 
+  clearVectors();
+
   for(const auto &track : *tracks) {
 
     if(minTrackPt_ > 0 && track.pt() < minTrackPt_) continue;
-    trackIso = getTrackIsolation(track, *tracks);
+    double trackIso = getTrackIsolation(track, *tracks);
     if(maxRelTrackIso_ > 0 && trackIso / track.pt() >= maxRelTrackIso_) continue;
 
-    genMatchedID = 0;
-    genMatchedDR = -1;
+    track_trackIso.push_back(trackIso);
+
+    int genMatchedID = 0;
+    double genMatchedDR = -1, genMatchedPt = -1;
     if(genParticles.isValid()) {
       for(const auto &genParticle : *genParticles) {
         if(genParticle.pt() < minGenParticlePt_) continue;
@@ -128,17 +127,21 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
         if(genMatchedDR < 0 || thisDR < genMatchedDR) {
           genMatchedDR = thisDR;
           genMatchedID = genParticle.pdgId();
+          genMatchedPt = genParticle.pt();
         }
       }
     }
+    track_genMatchedID.push_back(genMatchedID);
+    track_genMatchedDR.push_back(genMatchedDR);
+    track_genMatchedPt.push_back(genMatchedPt);
 
-    trackEta = track.eta();
-    trackPhi = track.phi();
-    trackPt = track.pt();
+    track_eta.push_back(track.eta());
+    track_phi.push_back(track.phi());
+    track_pt.push_back(track.pt());
 
-    deltaRToClosestElectron = -1;
-    deltaRToClosestMuon = -1;
-    deltaRToClosestTauHad = -1;
+    double deltaRToClosestElectron = -1;
+    double deltaRToClosestMuon = -1;
+    double deltaRToClosestTauHad = -1;
 
     for(const auto &electron : *electrons) {
       double thisDR = deltaR(electron, track);
@@ -160,6 +163,10 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
       double thisDR = deltaR(*tauRef, track);
       if(deltaRToClosestTauHad < 0 || thisDR < deltaRToClosestTauHad) deltaRToClosestTauHad = thisDR;
     }
+
+    track_deltaRToClosestElectron.push_back(deltaRToClosestElectron);
+    track_deltaRToClosestMuon.push_back(deltaRToClosestMuon);
+    track_deltaRToClosestTauHad.push_back(deltaRToClosestTauHad);
 
     getImage(track, *EBRecHits, *EERecHits, *HBHERecHits);
 
@@ -190,43 +197,29 @@ TrackImageProducer::getImage(
   const HBHERecHitCollection &HBHERecHits)
 {
 
-  recHits_dEta.clear();
-  recHits_dPhi.clear();
-  recHits_energy.clear();
-  recHits_detType.clear();
-
   for(const auto &hit : EBRecHits) {
     math::XYZVector pos = getPosition(hit.detid());
 
-    if(maxDEtaTrackRecHit_ > 0 && fabs(track.eta() - pos.eta()) > maxDEtaTrackRecHit_) continue;
-    if(maxDPhiTrackRecHit_ > 0 && fabs(deltaPhi(track, pos)) > maxDPhiTrackRecHit_) continue;
-
-    recHits_dEta.push_back(track.eta() - pos.eta());
-    recHits_dPhi.push_back(deltaPhi(track, pos));
+    recHits_eta.push_back(pos.eta());
+    recHits_phi.push_back(pos.phi());
     recHits_energy.push_back(hit.energy());
-    recHits_detType.push_back(DetType::ECAL);
+    recHits_detType.push_back(DetType::EB);
   }
 
   for(const auto &hit : EERecHits) {
     math::XYZVector pos = getPosition(hit.detid());
 
-    if(maxDEtaTrackRecHit_ > 0 && fabs(track.eta() - pos.eta()) > maxDEtaTrackRecHit_) continue;
-    if(maxDPhiTrackRecHit_ > 0 && deltaPhi(track, pos) > maxDPhiTrackRecHit_) continue;
-
-    recHits_dEta.push_back(track.eta() - pos.eta());
-    recHits_dPhi.push_back(deltaPhi(track, pos));
+    recHits_eta.push_back(pos.eta());
+    recHits_phi.push_back(pos.phi());
     recHits_energy.push_back(hit.energy());
-    recHits_detType.push_back(DetType::ECAL);
+    recHits_detType.push_back(DetType::EE);
   }
 
   for(const auto &hit : HBHERecHits) {
     math::XYZVector pos = getPosition(hit.detid());
 
-    if(maxDEtaTrackRecHit_ > 0 && fabs(track.eta() - pos.eta()) > maxDEtaTrackRecHit_) continue;
-    if(maxDPhiTrackRecHit_ > 0 && deltaPhi(track, pos) > maxDPhiTrackRecHit_) continue;
-
-    recHits_dEta.push_back(track.eta() - pos.eta());
-    recHits_dPhi.push_back(deltaPhi(track, pos));
+    recHits_eta.push_back(pos.eta());
+    recHits_phi.push_back(pos.phi());
     recHits_energy.push_back(hit.energy());
     recHits_detType.push_back(DetType::HCAL);
   }

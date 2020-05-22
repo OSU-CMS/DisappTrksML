@@ -37,7 +37,7 @@ process.TFileService = cms.Service ('TFileService',
 ##### Set up the producer and the end path            #####
 ###########################################################
 
-process.trackImageAnalyzer = cms.EDAnalyzer ("TrackImageProducer",
+process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducer",
     tracks       = cms.InputTag   ("generalTracks"),
     genParticles = cms.InputTag   ("genParticles", ""),
     electrons    = cms.InputTag   ("gedGsfElectrons", ""),
@@ -55,9 +55,6 @@ process.trackImageAnalyzer = cms.EDAnalyzer ("TrackImageProducer",
     minGenParticlePt = cms.double (10.0),
     minTrackPt       = cms.double (35.0),
     maxRelTrackIso   = cms.double (0.05),
-
-    maxDEtaTrackRecHit = cms.double (0.5),
-    maxDPhiTrackRecHit = cms.double (0.5),
 )
 
-process.myPath = cms.Path (process.trackImageAnalyzer)
+process.myPath = cms.Path (process.trackImageProducer)
