@@ -10,6 +10,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from imblearn.over_sampling import SMOTE
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.pipeline import Pipeline
 from collections import Counter
 import utils
 import random
@@ -23,11 +25,12 @@ weightsDir = workDir + 'weights/cnn/'
 #config parameters
 batch_size = 64
 num_classes = 2
-epochs = 10
+epochs = 100
 
 # input image dimensions
 img_rows, img_cols = 20, 20
-input_shape = (img_rows,img_cols,5)
+channels = 4
+input_shape = (img_rows,img_cols,channels)
 
 # the data, split between train and test sets
 data_e = np.load(dataDir+'e_DYJets50V3_norm_20x20.npy')
@@ -42,26 +45,36 @@ data = np.concatenate([data_e,data_bkg])
 
 x_train, x_test, y_train, y_test = train_test_split(data, classes, test_size=0.30, random_state=42)
 
-#SMOTE
-counter = Counter(y_train)
-print("Before",counter)
-x_train = np.reshape(x_train,[x_train.shape[0],20*20*5])
-oversample = SMOTE()
-x_train,y_train = oversample.fit_resample(x_train,y_train)
-counter = Counter(y_train)
-print("After",counter)
-x_train = np.reshape(x_train,[x_train.shape[0],20,20,5])
+#SMOTE and under sampling
+# counter = Counter(y_train)
+# print("Before",counter)
+# x_train = np.reshape(x_train,[x_train.shape[0],20*20*4])
+# oversample = SMOTE(sampling_strategy=0.5)
+# undersample = RandomUnderSampler(sampling_strategy=0.8)
+# steps = [('o', oversample), ('u', undersample)]
+# pipeline = Pipeline(steps=steps)
+# x_train, y_train = pipeline.fit_resample(x_train, y_train)
+# counter = Counter(y_train)
+# print("After",counter)
+# x_train = np.reshape(x_train,[x_train.shape[0],20,20,4])
 
 x_train = x_train.astype('float32')
 x_test = x_test.astype('float32')
+y_train = y_train.astype('int64')
+y_test = y_test.astype('int64')
 print('x_train shape:', x_train.shape)
 print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
+
+print(y_train)
+neg, pos = np.bincount(y_train)
 
 # convert class vectors to binary class matrices
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
+output_bias = np.log(pos/neg)
+output_bias = keras.initializers.Constant(output_bias)
 model = Sequential()
 model.add(Conv2D(32, kernel_size=(3, 3),
                  activation='relu',
@@ -72,17 +85,23 @@ model.add(Dropout(0.25))
 model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
-model.add(Dense(num_classes, activation='softmax'))
+model.add(Dense(num_classes, activation='softmax',bias_initializer=output_bias))
 
 model.compile(loss=keras.losses.categorical_crossentropy,
               optimizer=keras.optimizers.Adadelta(),
               metrics=['accuracy'])
 
+weight_for_0 = (1/neg)*(neg+pos)/2.0
+weight_for_1 = (1/pos)*(neg+pos)/2.0
+class_weight = {0: weight_for_0, 1: weight_for_1}
+
+
 history = model.fit(x_train, y_train,
           batch_size=batch_size,
           epochs=epochs,
           verbose=1,
-          validation_data=(x_test, y_test))
+          validation_data=(x_test, y_test),
+          class_weight = class_weight)
 
 plt.plot(history.history['accuracy'],label='train')
 plt.plot(history.history['val_accuracy'],label='test')
