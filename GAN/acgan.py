@@ -17,7 +17,7 @@ from numpy.random import randn
 #import data
 dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
 workDir = '/home/llavezzo/'
-plotDir = workDir + 'images/acgan/'
+plotDir = workDir + 'plots/images/acgan2/'
 weightsDir = workDir + 'weights/acgan2/'
 # dataDir = 'c:/users/llave/Documents/CMS/'
 # workDir = dataDir
@@ -84,22 +84,27 @@ def build_generator(latent_dim, n_classes=2):
     # image generator input
     in_lat = Input(shape=(latent_dim,))
     # foundation for 10x10 image
-    n_nodes = 384 * 5 * 5
-    gen = Dense(n_nodes, kernel_initializer=init)(in_lat)
-    gen = Activation('relu')(gen)
-    gen = Reshape((5, 5, 384))(gen)
+    n_nodes = 128 * 5 * 5
+    gen = Dense(n_nodes, activation='relu',kernel_initializer=init)(in_lat)
+    gen = Reshape((5, 5, 128))(gen)
+    gen = BatchNormalization(momentum=0.8)(gen)
     # merge image gen and label input
     merge = Concatenate()([gen, li])
-    # upsample to 20x20
-    gen = Conv2DTranspose(192, (5,5), strides=(2,2), padding='same', kernel_initializer=init)(merge)
-    gen = BatchNormalization()(gen)
-    gen = Activation('relu')(gen)
-    # upsample to 40x40
-    gen = Conv2DTranspose(3, (5,5), strides=(2,2), padding='same', kernel_initializer=init)(gen)
-    out_layer = Activation('relu')(gen)
+
+    #upsampling to 20x20
+    x = Conv2DTranspose(128, (4,4), strides=(2,2), padding='same')(merge)
+    x = Activation("relu")(x)
+    x = BatchNormalization(momentum=0.8)(x)
+    #upsampling to 40x40
+    x = Conv2DTranspose(64, (4,4),strides=(2,2), padding='same')(x)
+    x = Activation("relu")(x)
+    x = BatchNormalization(momentum=0.8)(x)
+    x = Conv2D(3, kernel_size=3, padding="same")(x)
+    out = Activation("relu")(x)
+
     #out_layer = Activation('tanh')(gen)
     # define model
-    model = Model([in_lat, in_label], out_layer)
+    model = Model([in_lat, in_label], out)
     print("-- Generator -- ")
     model.summary()
     return model
@@ -212,10 +217,10 @@ for epoch in range(epochs + 1):
         real_classes = y_train[idx]
         real_labels = np.ones((half_batch, 1))
         
-        #noisy labels
-        real_labels = noisy_labels(real_labels,0.05)
-        real_labels = smooth_positive_labels(real_labels)
-        fake_labels = smooth_negative_labels(fake_labels)
+        #smooth and noisy labels
+        #real_labels = noisy_labels(real_labels,0.05)
+        #real_labels = smooth_positive_labels(real_labels)
+        #fake_labels = smooth_negative_labels(fake_labels)
 
         # Train the discriminator (real classified as 1 and generated as 0)
         d_loss_real = discriminator.train_on_batch(real_images, [real_classes,real_labels])

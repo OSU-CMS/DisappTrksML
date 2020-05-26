@@ -9,6 +9,11 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+from imblearn.over_sampling import SMOTE
+from collections import Counter
+import utils
+import random
+from sklearn.metrics import roc_auc_score
 
 dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
 workDir = '/home/llavezzo/'
@@ -18,7 +23,7 @@ weightsDir = workDir + 'weights/cnn/'
 #config parameters
 batch_size = 64
 num_classes = 2
-epochs = 100
+epochs = 10
 
 # input image dimensions
 img_rows, img_cols = 20, 20
@@ -30,7 +35,22 @@ data_bkg = np.load(dataDir+'bkg_DYJets50V3_norm_20x20.npy')
 classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_bkg))])
 data = np.concatenate([data_e,data_bkg])
 
+
+# for i in range(10):
+#     ind = random.randint(0,data.shape[0])
+#     utils.save_event(data[ind,:],plotDir,'test_'+str(i))
+
 x_train, x_test, y_train, y_test = train_test_split(data, classes, test_size=0.30, random_state=42)
+
+#SMOTE
+counter = Counter(y_train)
+print("Before",counter)
+x_train = np.reshape(x_train,[x_train.shape[0],20*20*5])
+oversample = SMOTE()
+x_train,y_train = oversample.fit_resample(x_train,y_train)
+counter = Counter(y_train)
+print("After",counter)
+x_train = np.reshape(x_train,[x_train.shape[0],20,20,5])
 
 x_train = x_train.astype('float32')
 x_test = x_test.astype('float32')
@@ -122,4 +142,8 @@ precision = TP / (TP + FP)
 recall = TP / (TP + FN)
 print("Precision = TP/(TP+FP) = fraction of predicted true actually true ",precision)
 print("Recall = TP/(TP+FN) = fraction of true class predicted to be true ",recall)
+print()
+
+auc = roc_auc_score(y_test,predictions)
+print("AUC Score:",auc)
 print()

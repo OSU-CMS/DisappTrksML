@@ -13,16 +13,22 @@ import numpy as np
 #import data
 dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
 workDir = '/home/llavezzo/'
-plotDir = workDir + 'images/gan/'
-weightsDir = workDir + 'weights/gan/'
+plotDir = workDir + 'plots/images/gan_electrons/'
+weightsDir = workDir + 'weights/gan_electrons/'
 # dataDir = 'c:/users/llave/Documents/CMS/'
 # workDir = dataDir
 # plotDir = workDir + 'plots/gan/'
 # weightsDir = workDir + 'weights/gan/'
 
-fname = 'DYJets50_norm_20x20.npy'
-data = np.load(dataDir+fname)
-print("Imported data from",dataDir+fname)
+# fname = 'DYJets50_norm_20x20.npy'
+# data = np.load(dataDir+fname)
+data_e = np.load(dataDir+'e_DYJets50_norm_20x20.npy')
+data_bkg = np.load(dataDir+'bkg_DYJets50_norm_20x20.npy')
+classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_bkg))])
+data = np.concatenate([data_e,data_bkg])
+indices = np.arange(data.shape[0])
+np.random.shuffle(indices)
+data = data[indices]
 
 def build_discriminator(img_shape):
     input = Input(img_shape)
@@ -88,7 +94,7 @@ def save_imgs(generator, epoch, batch, r):
             axs[i,1].set_title("HCAL",fontsize=5)
             axs[i,2].set_title("Muon",fontsize=5)
     plt.tight_layout()
-    fig.savefig(plotDir+"tracks_%d_%d.png" % (epoch, batch))
+    fig.savefig(plotDir+"gan_%d_%d.png" % (epoch, batch))
     plt.close()
 
 #build and compile discriminator and generator
