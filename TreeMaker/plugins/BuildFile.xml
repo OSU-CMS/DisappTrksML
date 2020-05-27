@@ -14,13 +14,16 @@
 <use  name="DataFormats/PatCandidates"/>
 <use  name="DataFormats/TrackReco"/>
 <use  name="DataFormats/VertexReco"/>
-<use  name="DisappTrks/SignalMC"/>
+<use  name="DisappTrksML/TreeMaker"/>
 <use  name="FWCore/Common"/>
 <use  name="FWCore/Framework"/>
 <use  name="FWCore/ParameterSet"/>
 <use  name="FWCore/ServiceRegistry"/>
 <use  name="FWCore/Utilities"/>
 <use  name="Geometry/CaloGeometry"/>
+<use  name="Geometry/CSCGeometry"/>
+<use  name="Geometry/DTGeometry"/>
+<use  name="Geometry/RPCGeometry"/>
 <use  name="MagneticField/Engine"/>
 <use  name="MagneticField/Records"/>
 <use  name="RecoTauTag/TauTagTools"/>

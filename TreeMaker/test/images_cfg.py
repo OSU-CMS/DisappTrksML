@@ -11,7 +11,7 @@ from Configuration.StandardSequences.MagneticField_38T_cff import *
 
 process = cms.Process ('IMAGES')
 process.load ('FWCore.MessageService.MessageLogger_cfi')
-process.MessageLogger.cerr.FwkReport.reportEvery = 1
+process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
 process.load('Configuration.StandardSequences.GeometryRecoDB_cff')
 process.load('Configuration.StandardSequences.MagneticField_AutoFromDBCurrent_cff')
@@ -44,9 +44,14 @@ process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducer",
     muons        = cms.InputTag   ("muons", ""),
     taus         = cms.InputTag   ("hpsPFTauProducer", ""),
     pfCandidates = cms.InputTag   ("particleFlow", ""),
-    EBRecHits    =  cms.InputTag  ("reducedEcalRecHitsEB"),
-    EERecHits    =  cms.InputTag  ("reducedEcalRecHitsEE"),
-    HBHERecHits  =  cms.InputTag  ("reducedHcalRecHits", "hbhereco"),
+
+    EBRecHits     =  cms.InputTag  ("reducedEcalRecHitsEB"),
+    EERecHits     =  cms.InputTag  ("reducedEcalRecHitsEE"),
+    ESRecHits     =  cms.InputTag  ("reducedEcalRecHitsES"),
+    HBHERecHits   =  cms.InputTag  ("reducedHcalRecHits", "hbhereco"),
+    CSCSegments   =  cms.InputTag  ("cscSegments"),
+    DTRecSegments =  cms.InputTag  ("dt4DSegments"),
+    RPCRecHits    =  cms.InputTag  ("rpcRecHits"),
 
     tauDecayModeFinding      = cms.InputTag ("hpsPFTauDiscriminationByDecayModeFinding"),
     tauElectronDiscriminator = cms.InputTag ("hpsPFTauDiscriminationByMVA6LooseElectronRejection"),

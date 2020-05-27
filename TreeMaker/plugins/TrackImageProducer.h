@@ -26,8 +26,37 @@
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "Geometry/CaloGeometry/interface/CaloGeometry.h"
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
+
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
+
+//include Cscs
+#include "DataFormats/CSCRecHit/interface/CSCSegment.h"
+#include "DataFormats/CSCRecHit/interface/CSCSegmentCollection.h"
+#include "Geometry/Records/interface/MuonGeometryRecord.h"
+#include "Geometry/CSCGeometry/interface/CSCGeometry.h"
+#include "Geometry/CSCGeometry/interface/CSCChamber.h"
+#include "Geometry/CSCGeometry/interface/CSCLayer.h"
+#include "Geometry/CSCGeometry/interface/CSCLayerGeometry.h"
+//include Dts
+#include "DataFormats/DTRecHit/interface/DTRecHit1D.h"
+#include "DataFormats/DTRecHit/interface/DTRecSegment4D.h"
+#include "DataFormats/DTRecHit/interface/DTRecSegment2D.h"
+#include "DataFormats/DTRecHit/interface/DTRecHitCollection.h"
+#include "DataFormats/DTRecHit/interface/DTRecSegment2DCollection.h"
+#include "DataFormats/DTRecHit/interface/DTRecSegment4DCollection.h"
+#include "Geometry/DTGeometry/interface/DTChamber.h"
+#include "Geometry/DTGeometry/interface/DTLayer.h"
+#include "Geometry/DTGeometry/interface/DTGeometry.h"
+#include "DataFormats/MuonDetId/interface/DTLayerId.h"
+#include "DataFormats/MuonDetId/interface/DTWireId.h"
+//jets
+#include "DataFormats/JetReco/interface/CaloJetCollection.h"
+// RPC hits
+#include "DataFormats/RPCRecHit/interface/RPCRecHit.h"
+#include "DataFormats/RPCRecHit/interface/RPCRecHitCollection.h"
+#include "Geometry/RPCGeometry/interface/RPCGeometry.h"
+#include "Geometry/RPCGeometry/interface/RPCChamber.h"
 
 #include "DataFormats/Math/interface/deltaPhi.h"
 
@@ -40,7 +69,7 @@
 
 using namespace std;
 
-enum DetType { None, EB, EE, HCAL, Muon };
+enum DetType { None, EB, EE, ES, HCAL, CSC, DT, RPC };
 
 class TrackImageProducer : public edm::EDAnalyzer {
    public:
@@ -50,9 +79,14 @@ class TrackImageProducer : public edm::EDAnalyzer {
    private:
       void analyze(const edm::Event &, const edm::EventSetup &);
 
+      void getGeometries(const edm::EventSetup &);
       const double getTrackIsolation(const reco::Track &, const vector<reco::Track> &) const;
-      void getImage(const reco::Track &, const EBRecHitCollection &, const EERecHitCollection &, const HBHERecHitCollection &);
+      void getImage(const edm::Event &, const reco::Track &);
+
       const math::XYZVector getPosition(const DetId &) const;
+      const math::XYZVector getPosition(const CSCSegment&) const;
+      const math::XYZVector getPosition(const DTRecSegment4D&) const;
+      const math::XYZVector getPosition(const RPCRecHit&) const;
 
       // clear/reset all branches for a new event
       void clearVectors() {
@@ -77,9 +111,9 @@ class TrackImageProducer : public edm::EDAnalyzer {
       edm::InputTag genParticles_;
       edm::InputTag electrons_, muons_, taus_;
       edm::InputTag pfCandidates_;
-      edm::InputTag EBRecHits_;
-      edm::InputTag EERecHits_;
+      edm::InputTag EBRecHits_, EERecHits_, ESRecHits_;
       edm::InputTag HBHERecHits_;
+      edm::InputTag cscSegments_, dtRecSegments_, rpcRecHits_;
       edm::InputTag tauDecayModeFinding_, tauElectronDiscriminator_, tauMuonDiscriminator_;
 
       const double minGenParticlePt_;
@@ -95,9 +129,16 @@ class TrackImageProducer : public edm::EDAnalyzer {
       edm::EDGetTokenT<vector<reco::PFCandidate> > pfCandidatesToken_;
       edm::EDGetTokenT<EBRecHitCollection>         EBRecHitsToken_;
       edm::EDGetTokenT<EERecHitCollection>         EERecHitsToken_;
+      edm::EDGetTokenT<ESRecHitCollection>         ESRecHitsToken_;
       edm::EDGetTokenT<HBHERecHitCollection>       HBHERecHitsToken_;
+      edm::EDGetTokenT<CSCSegmentCollection>       CSCSegmentsToken_;
+      edm::EDGetTokenT<DTRecSegment4DCollection>   DTRecSegmentsToken_;
+      edm::EDGetTokenT<RPCRecHitCollection>        RPCRecHitsToken_;
 
       edm::ESHandle<CaloGeometry> caloGeometry_;
+      edm::ESHandle<CSCGeometry>  cscGeometry_;
+      edm::ESHandle<DTGeometry>   dtGeometry_;
+      edm::ESHandle<RPCGeometry>  rpcGeometry_;
 
       edm::Service<TFileService> fs_;
       TTree * tree_;

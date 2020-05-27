@@ -13,9 +13,13 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
   taus_         (cfg.getParameter<edm::InputTag> ("taus")),
   pfCandidates_ (cfg.getParameter<edm::InputTag> ("pfCandidates")),
 
-  EBRecHits_    (cfg.getParameter<edm::InputTag> ("EBRecHits")),
-  EERecHits_    (cfg.getParameter<edm::InputTag> ("EERecHits")),
-  HBHERecHits_  (cfg.getParameter<edm::InputTag> ("HBHERecHits")),
+  EBRecHits_     (cfg.getParameter<edm::InputTag> ("EBRecHits")),
+  EERecHits_     (cfg.getParameter<edm::InputTag> ("EERecHits")),
+  ESRecHits_     (cfg.getParameter<edm::InputTag> ("ESRecHits")),
+  HBHERecHits_   (cfg.getParameter<edm::InputTag> ("HBHERecHits")),
+  cscSegments_   (cfg.getParameter<edm::InputTag> ("CSCSegments")),
+  dtRecSegments_ (cfg.getParameter<edm::InputTag> ("DTRecSegments")),
+  rpcRecHits_    (cfg.getParameter<edm::InputTag> ("RPCRecHits")),
 
   tauDecayModeFinding_      (cfg.getParameter<edm::InputTag> ("tauDecayModeFinding")),
   tauElectronDiscriminator_ (cfg.getParameter<edm::InputTag> ("tauElectronDiscriminator")),
@@ -31,9 +35,14 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
   muonsToken_        = consumes<vector<reco::Muon> >        (muons_);
   tausToken_         = consumes<vector<reco::PFTau> >       (taus_);
   pfCandidatesToken_ = consumes<vector<reco::PFCandidate> > (pfCandidates_);
-  EBRecHitsToken_    = consumes<EBRecHitCollection>         (EBRecHits_);
-  EERecHitsToken_    = consumes<EERecHitCollection>         (EERecHits_);
-  HBHERecHitsToken_  = consumes<HBHERecHitCollection>       (HBHERecHits_);
+
+  EBRecHitsToken_     = consumes<EBRecHitCollection>       (EBRecHits_);
+  EERecHitsToken_     = consumes<EERecHitCollection>       (EERecHits_);
+  ESRecHitsToken_     = consumes<ESRecHitCollection>       (ESRecHits_);
+  HBHERecHitsToken_   = consumes<HBHERecHitCollection>     (HBHERecHits_);
+  CSCSegmentsToken_   = consumes<CSCSegmentCollection>     (cscSegments_);
+  DTRecSegmentsToken_ = consumes<DTRecSegment4DCollection> (dtRecSegments_);
+  RPCRecHitsToken_    = consumes<RPCRecHitCollection>      (rpcRecHits_);
 
   tauDecayModeFindingToken_      = consumes<reco::PFTauDiscriminator> (tauDecayModeFinding_);
   tauElectronDiscriminatorToken_ = consumes<reco::PFTauDiscriminator> (tauElectronDiscriminator_);
@@ -66,6 +75,8 @@ TrackImageProducer::~TrackImageProducer()
 void
 TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setup)
 {
+  // get reco objects
+
   edm::Handle<vector<reco::Track> > tracks;
   event.getByToken(tracksToken_, tracks);
 
@@ -84,15 +95,6 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
   edm::Handle<vector<reco::PFCandidate> > pfCandidates;
   event.getByToken(pfCandidatesToken_, pfCandidates);
 
-  edm::Handle<EBRecHitCollection> EBRecHits;
-  event.getByToken(EBRecHitsToken_, EBRecHits);
-  
-  edm::Handle<EERecHitCollection> EERecHits;
-  event.getByToken(EERecHitsToken_, EERecHits);
-  
-  edm::Handle<HBHERecHitCollection> HBHERecHits;
-  event.getByToken(HBHERecHitsToken_, HBHERecHits);
-
   edm::Handle<reco::PFTauDiscriminator> tauDecayModeFinding;
   event.getByToken(tauDecayModeFindingToken_, tauDecayModeFinding);
 
@@ -102,9 +104,7 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
   edm::Handle<reco::PFTauDiscriminator> tauMuonDiscriminator;
   event.getByToken(tauMuonDiscriminatorToken_, tauMuonDiscriminator);
 
-  setup.get<CaloGeometryRecord>().get(caloGeometry_);
-  if (!caloGeometry_.isValid())
-    throw cms::Exception("FatalError") << "Unable to find CaloGeometryRecord in event!\n";
+  getGeometries(setup);
 
   clearVectors();
 
@@ -168,11 +168,29 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
     track_deltaRToClosestMuon.push_back(deltaRToClosestMuon);
     track_deltaRToClosestTauHad.push_back(deltaRToClosestTauHad);
 
-    getImage(track, *EBRecHits, *EERecHits, *HBHERecHits);
+    getImage(event, track);
   }
 
   tree_->Fill();
 
+}
+
+void TrackImageProducer::getGeometries(const edm::EventSetup &setup) {
+  setup.get<CaloGeometryRecord>().get(caloGeometry_);
+  if(!caloGeometry_.isValid())
+    throw cms::Exception("FatalError") << "Unable to find CaloGeometryRecord in event!\n";
+
+  setup.get<MuonGeometryRecord>().get(cscGeometry_);
+  if(!cscGeometry_.isValid())
+    throw cms::Exception("FatalError") << "Unable to find MuonGeometryRecord (CSC) in event!\n";
+
+  setup.get<MuonGeometryRecord>().get(dtGeometry_);
+  if(!dtGeometry_.isValid())
+    throw cms::Exception("FatalError") << "Unable to find MuonGeometryRecord (DT) in event!\n";
+
+  setup.get<MuonGeometryRecord>().get(rpcGeometry_);
+  if(!rpcGeometry_.isValid())
+    throw cms::Exception("FatalError") << "Unable to find MuonGeometryRecord (RPC) in event!\n";
 }
 
 const double
@@ -191,37 +209,78 @@ TrackImageProducer::getTrackIsolation(const reco::Track &track, const vector<rec
 
 void 
 TrackImageProducer::getImage(
-  const reco::Track &track,
-  const EBRecHitCollection &EBRecHits,
-  const EERecHitCollection &EERecHits,
-  const HBHERecHitCollection &HBHERecHits)
+  const edm::Event &event,
+  const reco::Track &track)
 {
 
-  for(const auto &hit : EBRecHits) {
+  edm::Handle<EBRecHitCollection> EBRecHits;
+  event.getByToken(EBRecHitsToken_, EBRecHits);
+  for(const auto &hit : *EBRecHits) {
     math::XYZVector pos = getPosition(hit.detid());
-
     recHits_eta.push_back(pos.eta());
     recHits_phi.push_back(pos.phi());
     recHits_energy.push_back(hit.energy());
     recHits_detType.push_back(DetType::EB);
   }
 
-  for(const auto &hit : EERecHits) {
+  edm::Handle<EERecHitCollection> EERecHits;
+  event.getByToken(EERecHitsToken_, EERecHits);
+  for(const auto &hit : *EERecHits) {
     math::XYZVector pos = getPosition(hit.detid());
-
     recHits_eta.push_back(pos.eta());
     recHits_phi.push_back(pos.phi());
     recHits_energy.push_back(hit.energy());
     recHits_detType.push_back(DetType::EE);
   }
 
-  for(const auto &hit : HBHERecHits) {
+  edm::Handle<ESRecHitCollection> ESRecHits;
+  event.getByToken(ESRecHitsToken_, ESRecHits);
+  for(const auto &hit : *ESRecHits) {
     math::XYZVector pos = getPosition(hit.detid());
+    recHits_eta.push_back(pos.eta());
+    recHits_phi.push_back(pos.phi());
+    recHits_energy.push_back(hit.energy());
+    recHits_detType.push_back(DetType::ES);
+  }
 
+  edm::Handle<HBHERecHitCollection> HBHERecHits;
+  event.getByToken(HBHERecHitsToken_, HBHERecHits);
+  for(const auto &hit : *HBHERecHits) {
+    math::XYZVector pos = getPosition(hit.detid());
     recHits_eta.push_back(pos.eta());
     recHits_phi.push_back(pos.phi());
     recHits_energy.push_back(hit.energy());
     recHits_detType.push_back(DetType::HCAL);
+  }
+
+  edm::Handle<CSCSegmentCollection> CSCSegments;
+  event.getByToken(CSCSegmentsToken_, CSCSegments);
+  for(const auto &seg : *CSCSegments) {
+    math::XYZVector pos = getPosition(seg);
+    recHits_eta.push_back(pos.eta());
+    recHits_phi.push_back(pos.phi());
+    recHits_energy.push_back(-1);
+    recHits_detType.push_back(DetType::CSC);
+  }
+
+  edm::Handle<DTRecSegment4DCollection> DTRecSegments;
+  event.getByToken(DTRecSegmentsToken_, DTRecSegments);
+  for(const auto &seg : *DTRecSegments) {
+    math::XYZVector pos = getPosition(seg);
+    recHits_eta.push_back(pos.eta());
+    recHits_phi.push_back(pos.phi());
+    recHits_energy.push_back(-1);
+    recHits_detType.push_back(DetType::DT);
+  }
+
+  edm::Handle<RPCRecHitCollection> RPCRecHits;
+  event.getByToken(RPCRecHitsToken_, RPCRecHits);
+  for(const auto &hit : *RPCRecHits) {
+    math::XYZVector pos = getPosition(hit);
+    recHits_eta.push_back(pos.eta());
+    recHits_phi.push_back(pos.phi());
+    recHits_energy.push_back(-1);
+    recHits_detType.push_back(DetType::CSC);
   }
 
 }
@@ -229,15 +288,43 @@ TrackImageProducer::getImage(
 const math::XYZVector 
 TrackImageProducer::getPosition(const DetId& id) const
 {
-   if ( ! caloGeometry_.isValid() ||
-        ! caloGeometry_->getSubdetectorGeometry(id) ||
-        ! caloGeometry_->getSubdetectorGeometry(id)->getGeometry(id) ) {
+   if(!caloGeometry_->getSubdetectorGeometry(id) || !caloGeometry_->getSubdetectorGeometry(id)->getGeometry(id) ) {
       throw cms::Exception("FatalError") << "Failed to access geometry for DetId: " << id.rawId();
       return math::XYZVector(0,0,0);
    }
    const GlobalPoint idPosition = caloGeometry_->getSubdetectorGeometry(id)->getGeometry(id)->getPosition();
    math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
    return idPositionRoot;
+}
+
+const math::XYZVector
+TrackImageProducer::getPosition(const CSCSegment& seg) const
+{
+  const LocalPoint localPos = seg.localPosition();
+  const CSCDetId id = seg.cscDetId();
+
+  const GlobalPoint idPosition = cscGeometry_->chamber(id)->toGlobal(localPos);
+  math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
+  return idPositionRoot;
+}
+
+const math::XYZVector
+TrackImageProducer::getPosition(const DTRecSegment4D& seg) const
+{
+  const LocalPoint segmentLocal = seg.localPosition();
+  const GlobalPoint idPosition = dtGeometry_->idToDet(seg.geographicalId())->surface().toGlobal(segmentLocal);
+  math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
+  return idPositionRoot;
+}
+
+const math::XYZVector
+TrackImageProducer::getPosition(const RPCRecHit& seg) const
+{
+  const RPCDetId detId = static_cast<const RPCDetId>(seg.rpcId());
+  const RPCRoll * roll = dynamic_cast<const RPCRoll*>(rpcGeometry_->roll(detId));
+  const GlobalPoint idPosition = roll->toGlobal(seg.localPosition());
+  math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
+  return idPositionRoot;
 }
 
 DEFINE_FWK_MODULE(TrackImageProducer);
