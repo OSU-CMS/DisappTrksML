@@ -6,53 +6,43 @@ from keras.layers.convolutional import UpSampling2D, Conv2D, Conv2DTranspose
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.initializers import RandomNormal
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.random
 from numpy.random import choice
 from numpy.random import randn
+from sklearn.model_selection import train_test_split
 
 #import data
-dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
-workDir = '/home/llavezzo/'
-plotDir = workDir + 'plots/images/acgan2/'
+dataDir = 'C:/Users/llave/Documents/CMS/data/'
+workDir = 'C:/Users/llave/Documents/CMS/'
+plotDir = workDir + 'plots/acgan2/'
 weightsDir = workDir + 'weights/acgan2/'
-# dataDir = 'c:/users/llave/Documents/CMS/'
-# workDir = dataDir
-# plotDir = workDir + 'plots/acgan/'
-# weightsDir = workDir + 'weights/acgan/'
 
-#workDir = 'c:/users/llave/Documents/CMS/'
-data_e = np.load(dataDir+'e_DYJets50_norm_20x20.npy')
-data_bkg = np.load(dataDir+'bkg_DYJets50_norm_20x20.npy')
+data_e = np.load(dataDir+'e_DYJets50V3_norm_40x40.npy')
+data_bkg = np.load(dataDir+'bkg_DYJets50V3_norm_40x40.npy')
 classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_bkg))])
 data = np.concatenate([data_e,data_bkg])
 print(data_e.shape,data_bkg.shape,data.shape)
 print(len(classes))
 
-#shuffle
-indices = np.arange(data.shape[0])
-np.random.shuffle(indices)
-data = data[indices]
-classes = classes[indices]
+x_train, x_test, y_train, y_test = train_test_split(data, classes, test_size=0.30, random_state=42)
 
 def build_discriminator(img_shape,n_classes=2):
     input = Input(img_shape)
-    x = Conv2D(32*3, kernel_size=(4,4), strides=(2,2), padding="same")(input)
+    x = Conv2D(32*5, kernel_size=(4,4), strides=(2,2), padding="same")(input)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
-    x = Conv2D(64*3, kernel_size=(4,4), strides=(2,2), padding="same")(x)
+    x = Conv2D(64*5, kernel_size=(4,4), strides=(2,2), padding="same")(x)
     x = ZeroPadding2D(padding=((0, 1), (0, 1)))(x)
     x = (LeakyReLU(alpha=0.2))(x)
     x = Dropout(0.25)(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(128*3, kernel_size=(4,4), strides=(2,2), padding="same")(x)
+    x = Conv2D(128*5, kernel_size=(4,4), strides=(2,2), padding="same")(x)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(256*3, kernel_size=(4,4), strides=(1,1), padding="same")(x)
+    x = Conv2D(256*5, kernel_size=(4,4), strides=(1,1), padding="same")(x)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
     x = Flatten()(x)
@@ -77,16 +67,16 @@ def build_generator(latent_dim, n_classes=2):
     # embedding for categorical input
     li = Embedding(n_classes, 50)(in_label)
     # linear multiplication
-    n_nodes = 5 * 5
+    n_nodes = 10 * 10
     li = Dense(n_nodes, kernel_initializer=init)(li)
     # reshape to additional channel
-    li = Reshape((5, 5, 1))(li)
+    li = Reshape((10, 10, 1))(li)
     # image generator input
     in_lat = Input(shape=(latent_dim,))
     # foundation for 10x10 image
-    n_nodes = 128 * 5 * 5
+    n_nodes = 128 * 10 * 10
     gen = Dense(n_nodes, activation='relu',kernel_initializer=init)(in_lat)
-    gen = Reshape((5, 5, 128))(gen)
+    gen = Reshape((10, 10, 128))(gen)
     gen = BatchNormalization(momentum=0.8)(gen)
     # merge image gen and label input
     merge = Concatenate()([gen, li])
@@ -99,7 +89,7 @@ def build_generator(latent_dim, n_classes=2):
     x = Conv2DTranspose(64, (4,4),strides=(2,2), padding='same')(x)
     x = Activation("relu")(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(3, kernel_size=3, padding="same")(x)
+    x = Conv2D(5, kernel_size=3, padding="same")(x)
     out = Activation("relu")(x)
 
     #out_layer = Activation('tanh')(gen)
@@ -112,24 +102,29 @@ def build_generator(latent_dim, n_classes=2):
 #generates and saves r random images
 def save_imgs(generator, epoch, batch, r):
     noise = generate_latent_points(100,r)
-    fake_classes = np.array([1,1,0,0])
+    nclasses = 2
+    fake_classes = np.concatenate([np.ones(int(round(len(nclasses)/2))),np.zeros(1-int(round(len(nclasses)/2)))])
     gen_imgs = generator.predict([noise,fake_classes])
 
     # Rescale images 0 - 1
-    gen_imgs = 0.5 * gen_imgs + 0.5
+    # gen_imgs = 0.5 * gen_imgs + 0.5
 
-    fig, axs = plt.subplots(r, 3)
+    fig, axs = plt.subplots(r, 5)
     for i in range(r):
-        for j in range(3):
+        for j in range(5):
             axs[i, j].imshow(gen_imgs[i, :, :, j], cmap='gray')
             if(fake_classes[i]==1):
-                axs[i,0].set_title("Electron - ECAL", fontsize = 9)
-                axs[i,1].set_title("Electron - HCAL", fontsize = 9)
-                axs[i,2].set_title("Electron - Muon", fontsize = 9)
+                axs[i,0].set_title("Electron - None", fontsize = 9)
+                axs[i,1].set_title("Electron - EE,EB", fontsize = 9)
+                axs[i,2].set_title("Electron - ES", fontsize = 9)
+                axs[i,3].set_title("Electron - HCAL", fontsize = 9)
+                axs[i,4].set_title("Electron - CSC,DT,RPC", fontsize = 9)
             if(fake_classes[i]==0):
-                axs[i,0].set_title("Background - ECAL", fontsize = 9)
-                axs[i,1].set_title("Background - HCAL", fontsize = 9)
-                axs[i,2].set_title("Background - Muon", fontsize = 9)
+                axs[i,0].set_title("Background - None", fontsize = 9)
+                axs[i,1].set_title("Background - EE,EB", fontsize = 9)
+                axs[i,2].set_title("Background - ES", fontsize = 9)
+                axs[i,3].set_title("Background - HCAL", fontsize = 9)
+                axs[i,4].set_title("Background - CSC,DT,RPC", fontsize = 9)
             axs[i, j].axis('off')
     plt.tight_layout()
     fig.savefig(plotDir + "acgan2_%d_%d.png" % (epoch, batch))
@@ -152,7 +147,7 @@ def build_gan(g_model, d_model):
 # size of the latent space
 latent_dim = 100
 # create the discriminator
-discriminator = build_discriminator(img_shape=(20,20, 3),n_classes=2)
+discriminator = build_discriminator(img_shape=(40,40,5),n_classes=2)
 # create the generator
 generator = build_generator(latent_dim)
 # create the gan
