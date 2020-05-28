@@ -25,16 +25,16 @@ weightsDir = workDir + 'weights/cnn/'
 #config parameters
 batch_size = 64
 num_classes = 2
-epochs = 100
+epochs = 50
 
 # input image dimensions
-img_rows, img_cols = 20, 20
-channels = 4
+img_rows, img_cols = 40, 40
+channels = 5
 input_shape = (img_rows,img_cols,channels)
 
 # the data, split between train and test sets
-data_e = np.load(dataDir+'e_DYJets50V3_norm_20x20.npy')
-data_bkg = np.load(dataDir+'bkg_DYJets50V3_norm_20x20.npy')
+data_e = np.load(dataDir+'e_DYJets50V3_norm_40x40.npy')
+data_bkg = np.load(dataDir+'bkg_DYJets50V3_norm_40x40.npy')
 classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_bkg))])
 data = np.concatenate([data_e,data_bkg])
 
@@ -46,17 +46,17 @@ data = np.concatenate([data_e,data_bkg])
 x_train, x_test, y_train, y_test = train_test_split(data, classes, test_size=0.30, random_state=42)
 
 #SMOTE and under sampling
-# counter = Counter(y_train)
-# print("Before",counter)
-# x_train = np.reshape(x_train,[x_train.shape[0],20*20*4])
-# oversample = SMOTE(sampling_strategy=0.5)
-# undersample = RandomUnderSampler(sampling_strategy=0.8)
-# steps = [('o', oversample), ('u', undersample)]
-# pipeline = Pipeline(steps=steps)
-# x_train, y_train = pipeline.fit_resample(x_train, y_train)
-# counter = Counter(y_train)
-# print("After",counter)
-# x_train = np.reshape(x_train,[x_train.shape[0],20,20,4])
+counter = Counter(y_train)
+print("Before",counter)
+x_train = np.reshape(x_train,[x_train.shape[0],40*40*5])
+oversample = SMOTE(sampling_strategy=0.5)
+undersample = RandomUnderSampler(sampling_strategy=0.8)
+steps = [('o', oversample), ('u', undersample)]
+pipeline = Pipeline(steps=steps)
+x_train, y_train = pipeline.fit_resample(x_train, y_train)
+counter = Counter(y_train)
+print("After",counter)
+x_train = np.reshape(x_train,[x_train.shape[0],40,40,5])
 
 x_train = x_train.astype('float32')
 x_test = x_test.astype('float32')
@@ -85,7 +85,8 @@ model.add(Dropout(0.25))
 model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
-model.add(Dense(num_classes, activation='softmax',bias_initializer=output_bias))
+#model.add(Dense(num_classes, activation='softmax',bias_initializer=output_bias))
+model.add(Dense(num_classes, activation='softmax'))
 
 model.compile(loss=keras.losses.categorical_crossentropy,
               optimizer=keras.optimizers.Adadelta(),
@@ -100,8 +101,8 @@ history = model.fit(x_train, y_train,
           batch_size=batch_size,
           epochs=epochs,
           verbose=1,
-          validation_data=(x_test, y_test),
-          class_weight = class_weight)
+          validation_data=(x_test, y_test))
+          #class_weight = class_weight)
 
 plt.plot(history.history['accuracy'],label='train')
 plt.plot(history.history['val_accuracy'],label='test')

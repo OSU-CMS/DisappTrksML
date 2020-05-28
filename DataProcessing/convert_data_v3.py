@@ -3,16 +3,16 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-dataDir = '/mnt/c/users/llave/Documents/CMS/data/'
-fname = 'orig/images_v3_DYJets50.root'
+dataDir = '/data/disappearingTracks/tracks/'
+fname = 'images_v3_DYJets50.root'
 fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
 
 import math
 
 e_events,bkg_events = [],[]
-res_eta = 20
-res_phi = 20
+res_eta = 40
+res_phi = 40
 
 #eta and phi upper and lower bounds
 eta_ub,eta_lb = 3,-3
@@ -72,5 +72,5 @@ for event in tree:
         else: bkg_events.append(matrix)
             
 print(len(e_events),len(bkg_events))
-np.save(dataDir+'e_DYJets50V3_norm_20x20', e_events)
-np.save(dataDir+'bkg_DYJets50V3_norm_20x20', bkg_events)
+np.save(dataDir+'e_DYJets50V3_norm_40x40', e_events)
+np.save(dataDir+'bkg_DYJets50V3_norm_40x40', bkg_events)
