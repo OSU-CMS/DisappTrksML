@@ -168,8 +168,8 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
     track_deltaRToClosestMuon.push_back(deltaRToClosestMuon);
     track_deltaRToClosestTauHad.push_back(deltaRToClosestTauHad);
 
-    getImage(event, track);
   }
+  getImage(event);
 
   tree_->Fill();
 
@@ -209,8 +209,7 @@ TrackImageProducer::getTrackIsolation(const reco::Track &track, const vector<rec
 
 void 
 TrackImageProducer::getImage(
-  const edm::Event &event,
-  const reco::Track &track)
+  const edm::Event &event)
 {
 
   edm::Handle<EBRecHitCollection> EBRecHits;

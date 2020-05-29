@@ -81,7 +81,7 @@ class TrackImageProducer : public edm::EDAnalyzer {
 
       void getGeometries(const edm::EventSetup &);
       const double getTrackIsolation(const reco::Track &, const vector<reco::Track> &) const;
-      void getImage(const edm::Event &, const reco::Track &);
+      void getImage(const edm::Event &);
 
       const math::XYZVector getPosition(const DetId &) const;
       const math::XYZVector getPosition(const CSCSegment&) const;
