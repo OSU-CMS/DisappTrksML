@@ -47,8 +47,6 @@ for i,event in enumerate(tree):
 
             matrix = np.zeros([res_eta,res_phi,5])
 
-            scale = max(event.recHits_energy)
-
             for iHit in range(len(event.recHits_eta)):
 
                 dEta = event.track_eta[iTrack] - event.recHits_eta[iHit]
@@ -64,8 +62,11 @@ for i,event in enumerate(tree):
                 dPhi = convert_phi(dPhi)
                 channel = type_to_channel(event.recHits_detType[iHit])
 
-                matrix[dEta,dPhi,channel] = event.recHits_energy[iHit]/scale
+                matrix[dEta,dPhi,channel] += event.recHits_energy[iHit]
                 
+            scale = matrix.max()
+            matrix = matrix*1/scale
+
             #truth electrons
             if(abs(event.track_genMatchedID[iTrack])==11 and abs(event.track_genMatchedDR[iTrack]) < 0.1):
                 e_events.append(matrix)
