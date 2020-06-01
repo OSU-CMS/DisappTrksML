@@ -20,7 +20,7 @@ from sklearn.metrics import roc_auc_score
 # workDir = 'c:/users/llave/Documents/CMS/'
 dataDir = '/data/disappearingTracks/tracks/'
 workDir = '/home/llavezzo/'
-plotDir = workDir + 'plots/'
+plotDir = workDir + 'plots/cnn_smote/'
 weightsDir = workDir + 'weights/cnn/'
 
 #config parameters
@@ -45,17 +45,17 @@ reco_results = np.concatenate([e_reco_results,bkg_reco_results])
 x_train, x_test, y_train, y_test, reco_train, reco_test = train_test_split(data, classes, reco_results, test_size=0.30, random_state=42)
 
 #SMOTE and under sampling
-# counter = Counter(y_train)
-# print("Before",counter)
-# x_train = np.reshape(x_train,[x_train.shape[0],40*40*5])
-# oversample = SMOTE(sampling_strategy=0.5)
-# undersample = RandomUnderSampler(sampling_strategy=0.8)
-# steps = [('o', oversample), ('u', undersample)]
-# pipeline = Pipeline(steps=steps)
-# x_train, y_train = pipeline.fit_resample(x_train, y_train)
-# counter = Counter(y_train)
-# print("After",counter)
-# x_train = np.reshape(x_train,[x_train.shape[0],40,40,5])
+counter = Counter(y_train)
+print("Before",counter)
+x_train = np.reshape(x_train,[x_train.shape[0],40*40*5])
+oversample = SMOTE(sampling_strategy=0.5)
+undersample = RandomUnderSampler(sampling_strategy=0.75)
+steps = [('o', oversample), ('u', undersample)]
+pipeline = Pipeline(steps=steps)
+x_train, y_train = pipeline.fit_resample(x_train, y_train)
+counter = Counter(y_train)
+print("After",counter)
+x_train = np.reshape(x_train,[x_train.shape[0],40,40,5])
 
 x_train = x_train.astype('float32')
 x_test = x_test.astype('float32')
@@ -65,10 +65,15 @@ print('x_train shape:', x_train.shape)
 print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
 
-# class weights
+# initialize output bias
 neg, pos = np.bincount(y_train)
 output_bias = np.log(pos/neg)
-output_bias = keras.initializers.Constant(output_bias)
+#output_bias = keras.initializers.Constant(output_bias)
+
+# output weights
+weight_for_0 = (1/neg)*(neg+pos)/2.0
+weight_for_1 = (1/pos)*(neg+pos)/2.0
+class_weight = {0: weight_for_0, 1: weight_for_1}
 
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
@@ -89,10 +94,6 @@ model.add(Dense(num_classes, activation='softmax'))
 model.compile(loss=keras.losses.categorical_crossentropy,
               optimizer=keras.optimizers.Adadelta(),
               metrics=['accuracy'])
-
-weight_for_0 = (1/neg)*(neg+pos)/2.0
-weight_for_1 = (1/pos)*(neg+pos)/2.0
-class_weight = {0: weight_for_0, 1: weight_for_1}
 
 callbacks = [
     callbacks.EarlyStopping(patience=10),
