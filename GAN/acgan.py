@@ -1,4 +1,5 @@
 import numpy as np
+import keras
 from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Embedding, Concatenate
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
@@ -14,10 +15,10 @@ from numpy.random import randn
 from sklearn.model_selection import train_test_split
 
 #import data
-dataDir = 'C:/Users/llave/Documents/CMS/data/'
-workDir = 'C:/Users/llave/Documents/CMS/'
-plotDir = workDir + 'plots/acgan2/'
-weightsDir = workDir + 'weights/acgan2/'
+dataDir = '/data/disappearingTracks/tracks/'
+workDir = '/home/llavezzo/'
+plotDir = workDir + 'plots/acgan/'
+weightsDir = workDir + 'weights/acgan/'
 
 data_e = np.load(dataDir+'e_DYJets50V3_norm_40x40.npy')
 data_bkg = np.load(dataDir+'bkg_DYJets50V3_norm_40x40.npy')
@@ -90,9 +91,11 @@ def build_generator(latent_dim, n_classes=2):
     x = Activation("relu")(x)
     x = BatchNormalization(momentum=0.8)(x)
     x = Conv2D(5, kernel_size=3, padding="same")(x)
+    
+    # TESTING
     out = Activation("relu")(x)
+    #out = Activation('tanh')(x)
 
-    #out_layer = Activation('tanh')(gen)
     # define model
     model = Model([in_lat, in_label], out)
     print("-- Generator -- ")
@@ -102,12 +105,9 @@ def build_generator(latent_dim, n_classes=2):
 #generates and saves r random images
 def save_imgs(generator, epoch, batch, r):
     noise = generate_latent_points(100,r)
-    nclasses = 2
-    fake_classes = np.concatenate([np.ones(int(round(len(nclasses)/2))),np.zeros(1-int(round(len(nclasses)/2)))])
+    fake_classes = np.concatenate([np.ones(int(round(r/2))),np.zeros(r-int(round(r/2)))])
+    assert len(fake_classes) == r, "length of fake classes must be equal to r"
     gen_imgs = generator.predict([noise,fake_classes])
-
-    # Rescale images 0 - 1
-    # gen_imgs = 0.5 * gen_imgs + 0.5
 
     fig, axs = plt.subplots(r, 5)
     for i in range(r):
@@ -127,7 +127,7 @@ def save_imgs(generator, epoch, batch, r):
                 axs[i,4].set_title("Background - CSC,DT,RPC", fontsize = 9)
             axs[i, j].axis('off')
     plt.tight_layout()
-    fig.savefig(plotDir + "acgan2_%d_%d.png" % (epoch, batch))
+    fig.savefig(plotDir + "acgan_%d_%d.png" % (epoch, batch))
     plt.close()
     
 # define the combined generator and discriminator model, for updating the generator
@@ -179,8 +179,8 @@ def smooth_negative_labels(y):
 X_train = data
 y_train = classes
 
-epochs=300
-batch_size=16
+epochs=10
+batch_size=64
 save_interval=1
 
 num_examples = X_train.shape[0]
@@ -213,9 +213,9 @@ for epoch in range(epochs + 1):
         real_labels = np.ones((half_batch, 1))
         
         #smooth and noisy labels
-        #real_labels = noisy_labels(real_labels,0.05)
-        #real_labels = smooth_positive_labels(real_labels)
-        #fake_labels = smooth_negative_labels(fake_labels)
+        real_labels = noisy_labels(real_labels,0.05)
+        real_labels = smooth_positive_labels(real_labels)
+        fake_labels = smooth_negative_labels(fake_labels)
 
         # Train the discriminator (real classified as 1 and generated as 0)
         d_loss_real = discriminator.train_on_batch(real_images, [real_classes,real_labels])
@@ -232,10 +232,10 @@ for epoch in range(epochs + 1):
         # Track the progress
         if(batch % 50 == 0): 
             print('epoch %d batch %d, dr[%.3f,%.3f], df[%.3f,%.3f], g[%.3f,%.3f]' % 
-              (epoch, batch, d_loss_real[1],d_loss_real[1], 
+              (epoch, batch, d_loss_real[1],d_loss_real[2], 
                d_loss_fake[1],d_loss_fake[2], g_loss[1],g_loss[2]))
 
-    save_imgs(generator, epoch, batch, 4)
+            save_imgs(generator, epoch, batch, 4)
 
     gan_model.save_weights(weightsDir+'G_epoch{0}.h5'.format(epoch))
     discriminator.save_weights(weightsDir+'D_epoch{0}.h5'.format(epoch))
