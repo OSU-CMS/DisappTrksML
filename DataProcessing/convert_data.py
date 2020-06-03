@@ -4,15 +4,14 @@ import os
 import matplotlib.pyplot as plt
 import math
 
-dataDir = '/mnt/c/users/llave/Documents/CMS/data/'
-fname = 'orig/images_v3_DYJets50.root'
+dataDir = '/data/disappearingTracks/tracks/'
+fname = 'images_v4_DYJets50.root'
 fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
 
 e,bkg = 0,0
 e_events,bkg_events = [],[]
 e_reco_results,bkg_reco_results = [],[]
-reco_results = []
 res_eta = 40
 res_phi = 40
 
@@ -63,10 +62,12 @@ for i,event in enumerate(tree):
                 dPhi = convert_phi(dPhi)
                 channel = type_to_channel(event.recHits_detType[iHit])
 
-                matrix[dEta,dPhi,channel] += event.recHits_energy[iHit]
+                matrix[dEta,dPhi,channel] += event.recHits_energy[iHit] if channel != 4 else 1
                 
-            scale = matrix.max()
-            matrix = matrix*1/scale
+            scale = matrix[:,:,:4].max()
+            scale_muons = matrix[:,:,4].max()
+            if scale > 0: matrix[:,:,:4] = matrix[:,:,:4]*1.0/scale
+            if scale_muons > 0: matrix[:,:,4] = matrix[:,:,4]*1.0/scale_muons
 
             #truth electrons
             if(abs(event.track_genMatchedID[iTrack])==11 and abs(event.track_genMatchedDR[iTrack]) < 0.1):
@@ -81,8 +82,8 @@ for i,event in enumerate(tree):
                 else: bkg_reco_results.append(0)
 
             
-print(len(e_events),len(bkg_events),len(reco_results))
-np.save(dataDir+'e_DYJets50V3_norm_40x40', e_events)
-np.save(dataDir+'bkg_DYJets50V3_norm_40x40', bkg_events)
-np.save(dataDir+'e_reco_DYJets50V3_norm_40x40',e_reco_results)
-np.save(dataDir+'bkg_reco_DYJets50V3_norm_40x40',bkg_reco_results)
+print(len(e_events),len(bkg_events),len(e_reco_results),len(bkg_reco_results))
+np.save(dataDir+'e_DYJets50_v4_norm_40x40', e_events)
+np.save(dataDir+'bkg_DYJets50_v4_norm_40x40', bkg_events)
+np.save(dataDir+'e_reco_DYJets50_v4_norm_40x40',e_reco_results)
+np.save(dataDir+'bkg_reco_DYJets50_v4_norm_40x40',bkg_reco_results)
