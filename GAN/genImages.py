@@ -11,27 +11,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 workDir = '/home/llavezzo/'
-plotDir = workDir + 'images/gan/'
-weightsDir = workDir + 'weights/gan/'
+saveDir = workDir + 'gan_gen/'
+weightsDir = workDir + 'weights/gan_electrons/'
 
-numImages = 4
-epoch = 20
+numImages = 5000
+load_epoch = 199
 
 def build_discriminator(img_shape):
     input = Input(img_shape)
-    x = Conv2D(32*3, kernel_size=(4,4), strides=(2,2), padding="same")(input)
+    x = Conv2D(32*4, kernel_size=(4,4), strides=(2,2), padding="same")(input)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
-    x = Conv2D(64*3, kernel_size=(4,4), strides=(2,2), padding="same")(x)
+    x = Conv2D(64*4, kernel_size=(4,4), strides=(2,2), padding="same")(x)
     x = ZeroPadding2D(padding=((0, 1), (0, 1)))(x)
     x = (LeakyReLU(alpha=0.2))(x)
     x = Dropout(0.25)(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(128*3, kernel_size=(4,4), strides=(2,2), padding="same")(x)
+    x = Conv2D(128*4, kernel_size=(4,4), strides=(2,2), padding="same")(x)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(256*3, kernel_size=(4,4), strides=(1,1), padding="same")(x)
+    x = Conv2D(256*4, kernel_size=(4,4), strides=(1,1), padding="same")(x)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
     x = Flatten()(x)
@@ -46,8 +46,8 @@ def build_discriminator(img_shape):
 
 def build_generator(noise_shape=(100,)):
     input = Input(noise_shape)
-    x = Dense(128 * 5 * 5, activation="relu")(input)
-    x = Reshape((5,5, 128))(x)
+    x = Dense(128 * 10 * 10, activation="relu")(input)
+    x = Reshape((10,10, 128))(x)
     x = BatchNormalization(momentum=0.8)(x)
     #upsampling to 20x20
     x = Conv2DTranspose(128, (4,4), strides=(2,2), padding='same')(x)
@@ -57,35 +57,14 @@ def build_generator(noise_shape=(100,)):
     x = Conv2DTranspose(64, (4,4),strides=(2,2), padding='same')(x)
     x = Activation("relu")(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(3, kernel_size=3, padding="same")(x)
+    x = Conv2D(4, kernel_size=3, padding="same")(x)
     out = Activation("relu")(x)
     model = Model(input, out)
     print("-- Generator -- ")
-    model.summary()
     return model
 
-#generates and saves r random images
-def save_imgs(generator, epoch, r):
-    noise = np.random.normal(0, 1, (r, 100))
-    gen_imgs = generator.predict(noise)
-
-    # Rescale images 0 - 1
-    gen_imgs = 0.5 * gen_imgs + 0.5
-
-    fig, axs = plt.subplots(r, 3,figsize=(10,10))
-    for i in range(r):
-        for j in range(3):
-            axs[i, j].imshow(gen_imgs[i, :, :, j], cmap='gray')
-            axs[i, j].axis('off')
-            axs[i,0].set_title("ECAL",fontsize=5)
-            axs[i,1].set_title("HCAL",fontsize=5)
-            axs[i,2].set_title("Muon",fontsize=5)
-    plt.tight_layout()
-    fig.savefig(plotDir+"gen_%d.png" % (epoch))
-    plt.close()
-
 #build and compile discriminator and generator
-discriminator = build_discriminator(img_shape=(20,20, 3))
+discriminator = build_discriminator(img_shape=(40,40, 4))
 discriminator.compile(loss='binary_crossentropy',
                                optimizer=Adam(lr=0.0002, beta_1=0.5),
                                metrics=['mse'])
@@ -109,8 +88,11 @@ def generate_latent_points(latent_dim, n_samples):
     x_input = x_input.reshape((n_samples, latent_dim))
     return x_input
 
+combined.load_weights(weightsDir+'G_epoch{0}.h5'.format(load_epoch))
 
-combined.load_weights(weightsDir+'G_epoch{0}.h5'.format(epoch))
-save_imgs(generator, epoch, numImages)
-            
+noise = np.random.normal(0, 1, (numImages, 100))
+gen_images = generator.predict(noise)
+assert len(gen_images) == numImages
 
+print("Saving",numImages,"generated images in",saveDir)
+np.save(saveDir + 'genImages',gen_images)
