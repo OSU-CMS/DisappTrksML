@@ -1,3 +1,4 @@
+import os
 import keras
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
@@ -20,26 +21,31 @@ from sklearn.metrics import roc_auc_score
 # workDir = 'c:/users/llave/Documents/CMS/'
 dataDir = '/data/disappearingTracks/tracks/'
 workDir = '/home/llavezzo/'
-plotDir = workDir + 'plots/'
+plotDir = workDir + 'plots/cnn/'
 weightsDir = workDir + 'weights/cnn/'
 
+os.system('mkdir '+str(plotDir))
+os.system('mkdir '+str(weightsDir))
+
+
 #config parameters
-batch_size = 64
+batch_size = 128
 num_classes = 2
 epochs = 100
 
 # input image dimensions
 img_rows, img_cols = 40, 40
-channels = 5
+channels = 3
 input_shape = (img_rows,img_cols,channels)
 
 # the data, split between train and test sets
-data_e = np.load(dataDir+'e_DYJets50V3_norm_40x40.npy')
-data_bkg = np.load(dataDir+'bkg_DYJets50V3_norm_40x40.npy')
-e_reco_results = np.load(dataDir + 'e_reco_DYJets50V3_norm_40x40.npy')
-bkg_reco_results = np.load(dataDir + 'bkg_reco_DYJets50V3_norm_40x40.npy')
+data_e = np.load(dataDir+'e_DYJets50_v4_norm_40x40.npy')
+data_bkg = np.load(dataDir+'bkg_DYJets50_v4_norm_40x40.npy')
+e_reco_results = np.load(dataDir + 'e_reco_DYJets50_v4_norm_40x40.npy')
+bkg_reco_results = np.load(dataDir + 'bkg_reco_DYJets50_v4_norm_40x40.npy')
 classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_bkg))])
 data = np.concatenate([data_e,data_bkg])
+data = data[:,:,:,[1,3,4]]
 reco_results = np.concatenate([e_reco_results,bkg_reco_results])
 
 x_train, x_test, y_train, y_test, reco_train, reco_test = train_test_split(data, classes, reco_results, test_size=0.30, random_state=42)
@@ -49,7 +55,7 @@ x_train, x_test, y_train, y_test, reco_train, reco_test = train_test_split(data,
 # print("Before",counter)
 # x_train = np.reshape(x_train,[x_train.shape[0],40*40*5])
 # oversample = SMOTE(sampling_strategy=0.5)
-# undersample = RandomUnderSampler(sampling_strategy=0.8)
+# undersample = RandomUnderSampler(sampling_strategy=0.75)
 # steps = [('o', oversample), ('u', undersample)]
 # pipeline = Pipeline(steps=steps)
 # x_train, y_train = pipeline.fit_resample(x_train, y_train)
@@ -65,10 +71,15 @@ print('x_train shape:', x_train.shape)
 print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
 
-# class weights
+# initialize output bias
 neg, pos = np.bincount(y_train)
 output_bias = np.log(pos/neg)
 output_bias = keras.initializers.Constant(output_bias)
+
+# output weights
+weight_for_0 = (1/neg)*(neg+pos)/2.0
+weight_for_1 = (1/pos)*(neg+pos)/2.0
+class_weight = {0: weight_for_0, 1: weight_for_1}
 
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
@@ -83,16 +94,11 @@ model.add(Dropout(0.25))
 model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
-#model.add(Dense(num_classes, activation='softmax',bias_initializer=output_bias))
-model.add(Dense(num_classes, activation='softmax'))
+model.add(Dense(num_classes, activation='softmax',bias_initializer=output_bias))
 
 model.compile(loss=keras.losses.categorical_crossentropy,
               optimizer=keras.optimizers.Adadelta(),
               metrics=['accuracy'])
-
-weight_for_0 = (1/neg)*(neg+pos)/2.0
-weight_for_1 = (1/pos)*(neg+pos)/2.0
-class_weight = {0: weight_for_0, 1: weight_for_1}
 
 callbacks = [
     callbacks.EarlyStopping(patience=10),
@@ -104,8 +110,8 @@ history = model.fit(x_train, y_train,
           epochs=epochs,
           verbose=2,
           validation_data=(x_test, y_test),
-          callbacks=callbacks)
-          #class_weight = class_weight)
+          callbacks=callbacks,
+          class_weight = class_weight)
 
 model.save_weights(weightsDir + 'first_model.h5')
 

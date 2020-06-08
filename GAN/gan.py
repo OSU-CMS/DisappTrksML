@@ -13,38 +13,28 @@ import numpy as np
 #import data
 dataDir = '/home/MilliQan/data/disappearingTracks/tracks/'
 workDir = '/home/llavezzo/'
-plotDir = workDir + 'plots/images/gan_electrons/'
+plotDir = workDir + 'plots/images/gan_electrons2/'
+loadWeightsDir = workDir + 'weights/gan_electrons/'
 weightsDir = workDir + 'weights/gan_electrons/'
-# dataDir = 'c:/users/llave/Documents/CMS/'
-# workDir = dataDir
-# plotDir = workDir + 'plots/gan/'
-# weightsDir = workDir + 'weights/gan/'
 
-# fname = 'DYJets50_norm_20x20.npy'
-# data = np.load(dataDir+fname)
-data_e = np.load(dataDir+'e_DYJets50_norm_20x20.npy')
-data_bkg = np.load(dataDir+'bkg_DYJets50_norm_20x20.npy')
-classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_bkg))])
-data = np.concatenate([data_e,data_bkg])
-indices = np.arange(data.shape[0])
-np.random.shuffle(indices)
-data = data[indices]
+data_e = np.load(dataDir+'e_DYJets50_v4_norm_40x40.npy')
+data_e = data_e[:,:,:,1:]
 
 def build_discriminator(img_shape):
     input = Input(img_shape)
-    x = Conv2D(32*3, kernel_size=(4,4), strides=(2,2), padding="same")(input)
+    x = Conv2D(32*4, kernel_size=(4,4), strides=(2,2), padding="same")(input)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
-    x = Conv2D(64*3, kernel_size=(4,4), strides=(2,2), padding="same")(x)
+    x = Conv2D(64*4, kernel_size=(4,4), strides=(2,2), padding="same")(x)
     x = ZeroPadding2D(padding=((0, 1), (0, 1)))(x)
     x = (LeakyReLU(alpha=0.2))(x)
     x = Dropout(0.25)(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(128*3, kernel_size=(4,4), strides=(2,2), padding="same")(x)
+    x = Conv2D(128*4, kernel_size=(4,4), strides=(2,2), padding="same")(x)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(256*3, kernel_size=(4,4), strides=(1,1), padding="same")(x)
+    x = Conv2D(256*4, kernel_size=(4,4), strides=(1,1), padding="same")(x)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
     x = Flatten()(x)
@@ -59,8 +49,8 @@ def build_discriminator(img_shape):
 
 def build_generator(noise_shape=(100,)):
     input = Input(noise_shape)
-    x = Dense(128 * 5 * 5, activation="relu")(input)
-    x = Reshape((5,5, 128))(x)
+    x = Dense(128 * 10 * 10, activation="relu")(input)
+    x = Reshape((10,10, 128))(x)
     x = BatchNormalization(momentum=0.8)(x)
     #upsampling to 20x20
     x = Conv2DTranspose(128, (4,4), strides=(2,2), padding='same')(x)
@@ -70,11 +60,10 @@ def build_generator(noise_shape=(100,)):
     x = Conv2DTranspose(64, (4,4),strides=(2,2), padding='same')(x)
     x = Activation("relu")(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(3, kernel_size=3, padding="same")(x)
+    x = Conv2D(4, kernel_size=3, padding="same")(x)
     out = Activation("relu")(x)
     model = Model(input, out)
     print("-- Generator -- ")
-    model.summary()
     return model
 
 #generates and saves r random images
@@ -82,23 +71,22 @@ def save_imgs(generator, epoch, batch, r):
     noise = np.random.normal(0, 1, (r, 100))
     gen_imgs = generator.predict(noise)
 
-    # Rescale images 0 - 1
-    gen_imgs = 0.5 * gen_imgs + 0.5
-
-    fig, axs = plt.subplots(r, 3)
+    fig, axs = plt.subplots(r, 4)
     for i in range(r):
-        for j in range(3):
+        for j in range(4):
             axs[i, j].imshow(gen_imgs[i, :, :, j], cmap='gray')
             axs[i, j].axis('off')
-            axs[i,0].set_title("ECAL",fontsize=5)
-            axs[i,1].set_title("HCAL",fontsize=5)
-            axs[i,2].set_title("Muon",fontsize=5)
+        #axs[i,0].set_title("e - None", fontsize = 9)
+        axs[i,0].set_title("e - EE,EB", fontsize = 9)
+        axs[i,1].set_title("e - ES", fontsize = 9)
+        axs[i,2].set_title("e - HCAL", fontsize = 9)
+        axs[i,3].set_title("e - CSC,DT,RPC", fontsize = 9)
     plt.tight_layout()
     fig.savefig(plotDir+"gan_%d_%d.png" % (epoch, batch))
     plt.close()
 
 #build and compile discriminator and generator
-discriminator = build_discriminator(img_shape=(20,20, 3))
+discriminator = build_discriminator(img_shape=(40,40, 4))
 discriminator.compile(loss='binary_crossentropy',
                                optimizer=Adam(lr=0.0002, beta_1=0.5),
                                metrics=['mse'])
@@ -141,9 +129,10 @@ def smooth_positive_labels(y):
 def smooth_negative_labels(y):
     return y + np.random.random(y.shape) * 0.3
 
-X_train = data
+X_train = data_e
 
-epochs=100
+start_epoch = 100
+epochs=200
 batch_size=16
 save_interval=1
 
@@ -160,7 +149,10 @@ g_loss = 10
 d_loss_array = []
 g_loss_array = []
 
-for epoch in range(epochs + 1):
+combined.load_weights(loadWeightsDir+'G_epoch{0}.h5'.format(start_epoch))
+discriminator.load_weights(loadWeightsDir+'D_epoch{0}.h5'.format(start_epoch))
+
+for epoch in range(start_epoch, epochs + 1):
     for batch in range(num_batches):
 
         # noise images for the batch
@@ -199,11 +191,10 @@ for epoch in range(epochs + 1):
         if(batch % 50 == 0):
             #print("Epoch %d Batch %d/%d [D loss: %.2f, acc avg: %.2f%%] [D acc real: %.2f D acc fake: %.2f], [G loss: %.2f]" %
             #      (epoch, batch, num_batches, d_loss[0], 100 * d_loss[1], d_loss_real[1], d_loss_fake[1],g_loss))
-             print("Epoch %d Batch %d/%d [D loss: %.2f, mse avg: %.2f] [D mse real: %.2f D mse fake: %.2f], [G loss: %.2f]" %
-                  (epoch, batch, num_batches, d_loss[0], d_loss[1], d_loss_real[1], d_loss_fake[1],g_loss))
-    
-    
+            print("Epoch %d Batch %d [D loss: %.2f, mse avg: %.2f] [D mse real: %.2f D mse fake: %.2f], [G loss: %.2f]" % (epoch, batch, d_loss[0], d_loss[1], d_loss_real[1], d_loss_fake[1], g_loss))
+                  
     save_imgs(generator, epoch, batch, 4)
+
     combined.save_weights(weightsDir+'G_epoch{0}.h5'.format(epoch))
     discriminator.save_weights(weightsDir+'D_epoch{0}.h5'.format(epoch))
 

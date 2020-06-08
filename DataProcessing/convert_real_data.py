@@ -5,19 +5,20 @@ import matplotlib.pyplot as plt
 import math
 
 dataDir = '/data/disappearingTracks/tracks/'
-fname = 'images_v4_DYJets50.root'
+fname = 'images_v3_SingleElectron2017.root'
 fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
 
 e,bkg = 0,0
-e_events,bkg_events = [],[]
-e_reco_results,bkg_reco_results = [],[]
+events,reco_results = [],[]
 res_eta = 40
 res_phi = 40
 
 #eta and phi upper and lower bounds
 eta_ub,eta_lb = 3,-3
 phi_ub,phi_lb = math.pi,-math.pi
+
+cnt = 0
 
 def convert_eta(eta):
     return int(round(((res_eta-1)/(eta_ub-eta_lb))*(eta-eta_lb)))
@@ -43,6 +44,10 @@ for i,event in enumerate(tree):
     if(i%1000==0): 
         print(i)
 
+    if(len(event.track_eta) != 2):
+        cnt+=1
+        print(len(event.track_eta))
+
     for iTrack in range(len(event.track_eta)):
 
             matrix = np.zeros([res_eta,res_phi,5])
@@ -64,26 +69,19 @@ for i,event in enumerate(tree):
 
                 matrix[dEta,dPhi,channel] += event.recHits_energy[iHit] if channel != 4 else 1
                 
-            scale = matrix[:,:,:4].max()
-            scale_muons = matrix[:,:,4].max()
+            # scale = matrix[:,:,:4].max()
+            # scale_muons = matrix[:,:,4].max()
+            scale = 1
+            scale_muons = 1
             if scale > 0: matrix[:,:,:4] = matrix[:,:,:4]*1.0/scale
             if scale_muons > 0: matrix[:,:,4] = matrix[:,:,4]*1.0/scale_muons
 
-            #truth electrons
-            if(abs(event.track_genMatchedID[iTrack])==11 and abs(event.track_genMatchedDR[iTrack]) < 0.1):
-                e_events.append(matrix)
-                if(abs(event.track_deltaRToClosestElectron[iTrack])<0.15): e_reco_results.append(1)
-                else: e_reco_results.append(0)
+            events.append(matrix)
+            if(abs(event.track_deltaRToClosestElectron[iTrack])<0.15): reco_results.append(1)
+            else: reco_results.append(0)
 
-            #everything else
-            else:
-                bkg_events.append(matrix)
-                if(abs(event.track_deltaRToClosestElectron[iTrack])<0.15): bkg_reco_results.append(1)
-                else: bkg_reco_results.append(0)
+print("count",cnt)
 
-            
-print(len(e_events),len(bkg_events),len(e_reco_results),len(bkg_reco_results))
-np.save(dataDir+'e_DYJets50_v4_norm_40x40', e_events)
-np.save(dataDir+'bkg_DYJets50_v4_norm_40x40', bkg_events)
-np.save(dataDir+'e_reco_DYJets50_v4_norm_40x40',e_reco_results)
-np.save(dataDir+'bkg_reco_DYJets50_v4_norm_40x40',bkg_reco_results)
+print(len(events),len(reco_results))
+np.save(dataDir+'singleElectron2017_v4_40x40', events)
+np.save(dataDir+'singleElectron2017_reco_v4_40x40',reco_results)
