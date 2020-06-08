@@ -65,10 +65,8 @@ for i,event in enumerate(tree):
 
                 matrix[dEta,dPhi,channel] += event.recHits_energy[iHit] if channel != 4 else 1
                 
-            # scale = matrix[:,:,:4].max()
-            # scale_muons = matrix[:,:,4].max()
-            scale = 1
-            scale_muons = 1
+            scale = matrix[:,:,:4].max()
+            scale_muons = matrix[:,:,4].max()
             if scale > 0: matrix[:,:,:4] = matrix[:,:,:4]*1.0/scale
             if scale_muons > 0: matrix[:,:,4] = matrix[:,:,4]*1.0/scale_muons
 
@@ -77,5 +75,5 @@ for i,event in enumerate(tree):
             else: reco_results.append(0)
 
 print(len(events),len(reco_results))
-np.save(dataDir+'singleElectron2017_v4_40x40', events)
-np.save(dataDir+'singleElectron2017_reco_v4_40x40',reco_results)
+np.save(dataDir+'singleElectron2017_v4_norm_40x40', events)
+np.save(dataDir+'singleElectron2017_reco_v4_norm_40x40',reco_results)
