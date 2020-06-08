@@ -20,7 +20,6 @@ from sklearn.metrics import roc_auc_score
 # workDir = 'c:/users/llave/Documents/CMS/'
 dataDir = '/data/disappearingTracks/tracks/'
 workDir = '/home/llavezzo/'
-plotDir = workDir + 'plots/cnn_smote/'
 weightsDir = workDir + 'weights/cnn/'
 
 #config parameters
@@ -32,9 +31,9 @@ channels = 3
 input_shape = (img_rows,img_cols,channels)
 
 # the data, split between train and test sets
-data = np.load(dataDir+'singleElectron2017_v4_norm_40x40.npy')
+data = np.load(dataDir+'singleElectron2017_v4_40x40.npy')
 test_data = data[:,:,:,[1,3,4]]
-reco_results = np.load(dataDir+'singleElectron2017_reco_v4_norm_40x40.npy')
+reco_results = np.load(dataDir+'singleElectron2017_reco_v4_40x40.npy')
 
 model = Sequential()
 model.add(Conv2D(32, kernel_size=(3, 3),
@@ -56,14 +55,7 @@ model.load_weights(weightsDir + 'first_model.h5')
 predictions = model.predict(test_data)
 
 for pred, true in zip(predictions, reco_results):
-    if(true == False):
-        print(pred)
-    if pred[0] > 0.9:
-        pred = 0
-    else:
-        pred = 1
-    if(true == False):
-        print(pred)
+    print(pred, true)
 
 
 # print()

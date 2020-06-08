@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import math
 
 dataDir = '/data/disappearingTracks/tracks/'
-fname = 'images_v4_DYJets50.root'
+fname = 'images_v3_SingleElectron2017.root'
 fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
 
@@ -84,6 +84,5 @@ for i,event in enumerate(tree):
             
 print(len(e_events),len(bkg_events),len(e_reco_results),len(bkg_reco_results))
 np.save(dataDir+'e_DYJets50_v4_norm_40x40', e_events)
-np.save(dataDir+'bkg_DYJets50_v4_norm_40x40', bkg_events)
 np.save(dataDir+'e_reco_DYJets50_v4_norm_40x40',e_reco_results)
 np.save(dataDir+'bkg_reco_DYJets50_v4_norm_40x40',bkg_reco_results)

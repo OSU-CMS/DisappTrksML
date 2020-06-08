@@ -18,8 +18,6 @@ res_phi = 40
 eta_ub,eta_lb = 3,-3
 phi_ub,phi_lb = math.pi,-math.pi
 
-cnt = 0
-
 def convert_eta(eta):
     return int(round(((res_eta-1)/(eta_ub-eta_lb))*(eta-eta_lb)))
 
@@ -44,9 +42,7 @@ for i,event in enumerate(tree):
     if(i%1000==0): 
         print(i)
 
-    if(len(event.track_eta) != 2):
-        cnt+=1
-        print(len(event.track_eta))
+    if(len(event.track_eta) != 2): continue
 
     for iTrack in range(len(event.track_eta)):
 
@@ -79,8 +75,6 @@ for i,event in enumerate(tree):
             events.append(matrix)
             if(abs(event.track_deltaRToClosestElectron[iTrack])<0.15): reco_results.append(1)
             else: reco_results.append(0)
-
-print("count",cnt)
 
 print(len(events),len(reco_results))
 np.save(dataDir+'singleElectron2017_v4_40x40', events)
