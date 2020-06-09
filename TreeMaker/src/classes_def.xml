@@ -1,0 +1,7 @@
+<lcgdict>
+  <class name="TrackInfo"/>
+  <class name="std::vector<TrackInfo>"/>
+
+  <class name="RecHitInfo"/>
+  <class name="std::vector<RecHitInfo>"/>
+</lcgdict>

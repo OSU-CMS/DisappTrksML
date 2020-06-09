@@ -2,6 +2,10 @@
 
 #define TRACK_IMAGE_ANALYZER
 
+#define M_PI_2 1.57079632679489661923
+
+#include "DisappTrksML/TreeMaker/interface/Infos.h"
+
 #include <map>
 #include <string>
 
@@ -20,6 +24,8 @@
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/TauReco/interface/PFTau.h"
 #include "DataFormats/TrackReco/interface/Track.h"
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/JetReco/interface/PFJet.h"
 
 #include "DataFormats/TauReco/interface/PFTauDiscriminator.h"
 
@@ -80,37 +86,21 @@ class TrackImageProducer : public edm::EDAnalyzer {
       void analyze(const edm::Event &, const edm::EventSetup &);
 
       void getGeometries(const edm::EventSetup &);
-      const double getTrackIsolation(const reco::Track &, const vector<reco::Track> &) const;
-      void getImage(const edm::Event &);
+
+      const TrackInfo getTrackInfo(const reco::Track &, const vector<reco::Track> &, const reco::Vertex &, const vector<reco::PFJet> &) const;
+      void getRecHits(const edm::Event &);
 
       const math::XYZVector getPosition(const DetId &) const;
       const math::XYZVector getPosition(const CSCSegment&) const;
       const math::XYZVector getPosition(const DTRecSegment4D&) const;
       const math::XYZVector getPosition(const RPCRecHit&) const;
 
-      // clear/reset all branches for a new event
-      void clearVectors() {
-            recHits_eta.clear();
-            recHits_phi.clear();
-            recHits_energy.clear();
-            recHits_detType.clear();
-
-            track_genMatchedID.clear();
-            track_genMatchedDR.clear();
-            track_genMatchedPt.clear();
-            track_deltaRToClosestElectron.clear();
-            track_deltaRToClosestMuon.clear();
-            track_deltaRToClosestTauHad.clear();
-            track_eta.clear();
-            track_phi.clear();
-            track_pt.clear();
-            track_trackIso.clear();
-      }
-
       edm::InputTag tracks_;
       edm::InputTag genParticles_;
       edm::InputTag electrons_, muons_, taus_;
       edm::InputTag pfCandidates_;
+      edm::InputTag vertices_;
+      edm::InputTag jets_;
       edm::InputTag EBRecHits_, EERecHits_, ESRecHits_;
       edm::InputTag HBHERecHits_;
       edm::InputTag cscSegments_, dtRecSegments_, rpcRecHits_;
@@ -127,6 +117,8 @@ class TrackImageProducer : public edm::EDAnalyzer {
       edm::EDGetTokenT<vector<reco::PFTau> >       tausToken_;
       edm::EDGetTokenT<reco::PFTauDiscriminator>   tauDecayModeFindingToken_, tauElectronDiscriminatorToken_, tauMuonDiscriminatorToken_;
       edm::EDGetTokenT<vector<reco::PFCandidate> > pfCandidatesToken_;
+      edm::EDGetTokenT<vector<reco::Vertex> >      verticesToken_;
+      edm::EDGetTokenT<vector<reco::PFJet> >       jetsToken_;
       edm::EDGetTokenT<EBRecHitCollection>         EBRecHitsToken_;
       edm::EDGetTokenT<EERecHitCollection>         EERecHitsToken_;
       edm::EDGetTokenT<ESRecHitCollection>         ESRecHitsToken_;
@@ -143,18 +135,8 @@ class TrackImageProducer : public edm::EDAnalyzer {
       edm::Service<TFileService> fs_;
       TTree * tree_;
 
-      // column-aligned for all hits
-      vector<double> recHits_eta, recHits_phi, recHits_energy;
-      vector<int>    recHits_detType;
-
-      // column-aligned for all tracks
-      vector<int>    track_genMatchedID;
-      vector<double> track_genMatchedDR, track_genMatchedPt;
-      vector<double> track_deltaRToClosestElectron, track_deltaRToClosestMuon, track_deltaRToClosestTauHad;
-      vector<double> track_eta, track_phi, track_pt, track_trackIso;
-      // dedx
-      // t&p info...
-
+      vector<TrackInfo> trackInfos_;
+      vector<RecHitInfo> recHitInfos_;
 };
 
 #endif

@@ -1,4 +1,4 @@
-#include "DisappTrksML/TreeMaker/plugins/TrackImageProducer.h"
+#include "DisappTrksML/TreeMaker/interface/TrackImageProducer.h"
 
 #include "MagneticField/Engine/interface/MagneticField.h"
 #include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
@@ -12,6 +12,8 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
   muons_        (cfg.getParameter<edm::InputTag> ("muons")),
   taus_         (cfg.getParameter<edm::InputTag> ("taus")),
   pfCandidates_ (cfg.getParameter<edm::InputTag> ("pfCandidates")),
+  vertices_     (cfg.getParameter<edm::InputTag> ("vertices")),
+  jets_         (cfg.getParameter<edm::InputTag> ("jets")),
 
   EBRecHits_     (cfg.getParameter<edm::InputTag> ("EBRecHits")),
   EERecHits_     (cfg.getParameter<edm::InputTag> ("EERecHits")),
@@ -35,6 +37,8 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
   muonsToken_        = consumes<vector<reco::Muon> >        (muons_);
   tausToken_         = consumes<vector<reco::PFTau> >       (taus_);
   pfCandidatesToken_ = consumes<vector<reco::PFCandidate> > (pfCandidates_);
+  verticesToken_     = consumes<vector<reco::Vertex> >      (vertices_);
+  jetsToken_         = consumes<vector<reco::PFJet> >       (jets_);
 
   EBRecHitsToken_     = consumes<EBRecHitCollection>       (EBRecHits_);
   EERecHitsToken_     = consumes<EERecHitCollection>       (EERecHits_);
@@ -48,24 +52,12 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
   tauElectronDiscriminatorToken_ = consumes<reco::PFTauDiscriminator> (tauElectronDiscriminator_);
   tauMuonDiscriminatorToken_     = consumes<reco::PFTauDiscriminator> (tauMuonDiscriminator_);
 
-  clearVectors();
+  trackInfos_.clear();
+  recHitInfos_.clear();
 
   tree_ = fs_->make<TTree>("tree", "tree");
-  tree_->Branch("recHits_eta", &recHits_eta);
-  tree_->Branch("recHits_phi", &recHits_phi);
-  tree_->Branch("recHits_energy", &recHits_energy);
-  tree_->Branch("recHits_detType", &recHits_detType);
-
-  tree_->Branch("track_genMatchedID", &track_genMatchedID);
-  tree_->Branch("track_genMatchedDR", &track_genMatchedDR);
-  tree_->Branch("track_genMatchedPt", &track_genMatchedPt);
-  tree_->Branch("track_deltaRToClosestElectron", &track_deltaRToClosestElectron);
-  tree_->Branch("track_deltaRToClosestMuon", &track_deltaRToClosestMuon);
-  tree_->Branch("track_deltaRToClosestTauHad", &track_deltaRToClosestTauHad);
-  tree_->Branch("track_eta", &track_eta);
-  tree_->Branch("track_phi", &track_phi);
-  tree_->Branch("track_pt", &track_pt);
-  tree_->Branch("track_trackIso", &track_trackIso);
+  tree_->Branch("tracks", &trackInfos_);
+  tree_->Branch("recHits", &recHitInfos_);
 }
 
 TrackImageProducer::~TrackImageProducer()
@@ -104,53 +96,53 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
   edm::Handle<reco::PFTauDiscriminator> tauMuonDiscriminator;
   event.getByToken(tauMuonDiscriminatorToken_, tauMuonDiscriminator);
 
+  edm::Handle<vector<reco::Vertex> > vertices;
+  event.getByToken(verticesToken_, vertices);
+  const reco::Vertex &pv = vertices->at(0);
+
+  edm::Handle<vector<reco::PFJet> > jets;
+  event.getByToken(jetsToken_, jets);
+
   getGeometries(setup);
 
-  clearVectors();
+  trackInfos_.clear();
 
   for(const auto &track : *tracks) {
 
+    TrackInfo info = getTrackInfo(track, *tracks, pv, *jets);
+
     if(minTrackPt_ > 0 && track.pt() < minTrackPt_) continue;
-    double trackIso = getTrackIsolation(track, *tracks);
-    if(maxRelTrackIso_ > 0 && trackIso / track.pt() >= maxRelTrackIso_) continue;
+    if(maxRelTrackIso_ > 0 && info.trackIso / track.pt() >= maxRelTrackIso_) continue;
 
-    track_trackIso.push_back(trackIso);
-
-    int genMatchedID = 0;
-    double genMatchedDR = -1, genMatchedPt = -1;
+    info.genMatchedID = 0;
+    info.genMatchedDR = -1;
+    info.genMatchedPt = -1;
     if(genParticles.isValid()) {
       for(const auto &genParticle : *genParticles) {
         if(genParticle.pt() < minGenParticlePt_) continue;
         if(!genParticle.isPromptFinalState() && !genParticle.isDirectPromptTauDecayProductFinalState()) continue;
 
         double thisDR = deltaR(genParticle, track);
-        if(genMatchedDR < 0 || thisDR < genMatchedDR) {
-          genMatchedDR = thisDR;
-          genMatchedID = genParticle.pdgId();
-          genMatchedPt = genParticle.pt();
+        if(info.genMatchedDR < 0 || thisDR < info.genMatchedDR) {
+          info.genMatchedDR = thisDR;
+          info.genMatchedID = genParticle.pdgId();
+          info.genMatchedPt = genParticle.pt();
         }
       }
     }
-    track_genMatchedID.push_back(genMatchedID);
-    track_genMatchedDR.push_back(genMatchedDR);
-    track_genMatchedPt.push_back(genMatchedPt);
 
-    track_eta.push_back(track.eta());
-    track_phi.push_back(track.phi());
-    track_pt.push_back(track.pt());
-
-    double deltaRToClosestElectron = -1;
-    double deltaRToClosestMuon = -1;
-    double deltaRToClosestTauHad = -1;
+    info.deltaRToClosestElectron = -1;
+    info.deltaRToClosestMuon = -1;
+    info.deltaRToClosestTauHad = -1;
 
     for(const auto &electron : *electrons) {
       double thisDR = deltaR(electron, track);
-      if(deltaRToClosestElectron < 0 || thisDR < deltaRToClosestElectron) deltaRToClosestElectron = thisDR;
+      if(info.deltaRToClosestElectron < 0 || thisDR < info.deltaRToClosestElectron) info.deltaRToClosestElectron = thisDR;
     }
 
     for(const auto &muon : *muons) {
       double thisDR = deltaR(muon, track);
-      if(deltaRToClosestMuon < 0 || thisDR < deltaRToClosestMuon) deltaRToClosestMuon = thisDR;
+      if(info.deltaRToClosestMuon < 0 || thisDR < info.deltaRToClosestMuon) info.deltaRToClosestMuon = thisDR;
     }
 
     for(unsigned int i = 0; i < taus->size(); i++) {
@@ -161,15 +153,14 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
       if((*tauMuonDiscriminator)[tauRef] <= 0.5) continue;
 
       double thisDR = deltaR(*tauRef, track);
-      if(deltaRToClosestTauHad < 0 || thisDR < deltaRToClosestTauHad) deltaRToClosestTauHad = thisDR;
+      if(info.deltaRToClosestTauHad < 0 || thisDR < info.deltaRToClosestTauHad) info.deltaRToClosestTauHad = thisDR;
     }
 
-    track_deltaRToClosestElectron.push_back(deltaRToClosestElectron);
-    track_deltaRToClosestMuon.push_back(deltaRToClosestMuon);
-    track_deltaRToClosestTauHad.push_back(deltaRToClosestTauHad);
-
+    trackInfos_.push_back(info);
   }
-  getImage(event);
+
+  recHitInfos_.clear();
+  getRecHits(event);
 
   tree_->Fill();
 
@@ -193,93 +184,107 @@ void TrackImageProducer::getGeometries(const edm::EventSetup &setup) {
     throw cms::Exception("FatalError") << "Unable to find MuonGeometryRecord (RPC) in event!\n";
 }
 
-const double
-TrackImageProducer::getTrackIsolation(const reco::Track &track, const vector<reco::Track> &tracks) const
+const TrackInfo
+TrackImageProducer::getTrackInfo(const reco::Track &track, const vector<reco::Track> &tracks, const reco::Vertex &pv, const vector<reco::PFJet> &jets) const
 {
-  double sumPt = 0.0;
 
+  TrackInfo info;
+
+  info.px = track.px();
+  info.py = track.py();
+  info.pz = track.pz();
+
+  info.dRMinJet = -1;
+  for(const auto &jet : jets) {
+    if(jet.pt() > 30 &&
+       fabs(jet.eta()) < 4.5 &&
+       (((jet.neutralHadronEnergyFraction()<0.90 && jet.neutralEmEnergyFraction()<0.90 && (jet.chargedMultiplicity() + jet.neutralMultiplicity())>1 && jet.muonEnergyFraction()<0.8) && ((fabs(jet.eta())<=2.4 && jet.chargedHadronEnergyFraction()>0 && jet.chargedMultiplicity()>0 && jet.chargedEmEnergyFraction()<0.90) || fabs(jet.eta())>2.4) && fabs(jet.eta())<=3.0)
+          || (jet.neutralEmEnergyFraction()<0.90 && jet.neutralMultiplicity()>10 && fabs(jet.eta())>3.0))) {
+      double dR = deltaR(track, jet);
+      if(info.dRMinJet < 0 || dR < info.dRMinJet) info.dRMinJet = dR;
+    }
+  }
+
+  bool inTOBCrack = (fabs(track.dz()) < 0.5 && fabs(M_PI_2 - track.theta()) < 1.0e-3);
+  bool inECALCrack = (fabs(track.eta()) >= 1.42 && fabs(track.eta()) <= 1.65);
+  bool inDTWheelGap = (fabs(track.eta()) >= 0.15 && fabs(track.eta()) <= 0.35);
+  bool inCSCTransitionRegion = (fabs(track.eta()) >= 1.55 && fabs(track.eta()) <= 1.85);
+  info.inGap = (inTOBCrack || inECALCrack || inDTWheelGap || inCSCTransitionRegion);
+
+  info.trackIso = 0.0;
   for(const auto &t : tracks) {
     if(fabs(track.dz(t.vertex())) > 3.0 * hypot(track.dzError(), t.dzError())) continue;
     double dR = deltaR(track, t);
-    if(dR < 0.3 && dR > 1.0e-12) sumPt += t.pt();
+    if(dR < 0.3 && dR > 1.0e-12) info.trackIso += t.pt();
   }
 
-  return sumPt;
+  info.nValidPixelHits = track.hitPattern().numberOfValidPixelHits();
+  info.nValidHits = track.hitPattern().numberOfValidHits();
+  info.missingInnerHits = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_INNER_HITS);
+  info.missingMiddleHits = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::TRACK_HITS);
+  info.missingOuterHits = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_OUTER_HITS);
+  info.nLayersWithMeasurement = track.hitPattern().trackerLayersWithMeasurement();
+
+  // d0 wrt pv (2d) = (vertex - pv) cross p / |p|
+  info.d0 = ((track.vx() - pv.x()) * track.py() - (track.vy() - pv.y()) * track.px()) / track.pt(); 
+  
+  // dz wrt pv (2d) = (v_z - pv_z) - p_z * [(vertex - pv) dot p / |p|^2]
+  info.dz = track.vz() - pv.z() -
+    ((track.vx() - pv.x()) * track.px() + (track.vy() - pv.y()) * track.py()) * track.pz() / track.pt() / track.pt();
+
+  return info;
 }
 
 void 
-TrackImageProducer::getImage(
-  const edm::Event &event)
+TrackImageProducer::getRecHits(const edm::Event &event)
 {
-
   edm::Handle<EBRecHitCollection> EBRecHits;
   event.getByToken(EBRecHitsToken_, EBRecHits);
   for(const auto &hit : *EBRecHits) {
     math::XYZVector pos = getPosition(hit.detid());
-    recHits_eta.push_back(pos.eta());
-    recHits_phi.push_back(pos.phi());
-    recHits_energy.push_back(hit.energy());
-    recHits_detType.push_back(DetType::EB);
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), DetType::EB));
   }
 
   edm::Handle<EERecHitCollection> EERecHits;
   event.getByToken(EERecHitsToken_, EERecHits);
   for(const auto &hit : *EERecHits) {
     math::XYZVector pos = getPosition(hit.detid());
-    recHits_eta.push_back(pos.eta());
-    recHits_phi.push_back(pos.phi());
-    recHits_energy.push_back(hit.energy());
-    recHits_detType.push_back(DetType::EE);
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), DetType::EE));
   }
 
   edm::Handle<ESRecHitCollection> ESRecHits;
   event.getByToken(ESRecHitsToken_, ESRecHits);
   for(const auto &hit : *ESRecHits) {
     math::XYZVector pos = getPosition(hit.detid());
-    recHits_eta.push_back(pos.eta());
-    recHits_phi.push_back(pos.phi());
-    recHits_energy.push_back(hit.energy());
-    recHits_detType.push_back(DetType::ES);
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), DetType::ES));
   }
 
   edm::Handle<HBHERecHitCollection> HBHERecHits;
   event.getByToken(HBHERecHitsToken_, HBHERecHits);
   for(const auto &hit : *HBHERecHits) {
     math::XYZVector pos = getPosition(hit.detid());
-    recHits_eta.push_back(pos.eta());
-    recHits_phi.push_back(pos.phi());
-    recHits_energy.push_back(hit.energy());
-    recHits_detType.push_back(DetType::HCAL);
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), DetType::HCAL));
   }
 
   edm::Handle<CSCSegmentCollection> CSCSegments;
   event.getByToken(CSCSegmentsToken_, CSCSegments);
   for(const auto &seg : *CSCSegments) {
     math::XYZVector pos = getPosition(seg);
-    recHits_eta.push_back(pos.eta());
-    recHits_phi.push_back(pos.phi());
-    recHits_energy.push_back(-1);
-    recHits_detType.push_back(DetType::CSC);
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, DetType::CSC));
   }
 
   edm::Handle<DTRecSegment4DCollection> DTRecSegments;
   event.getByToken(DTRecSegmentsToken_, DTRecSegments);
   for(const auto &seg : *DTRecSegments) {
     math::XYZVector pos = getPosition(seg);
-    recHits_eta.push_back(pos.eta());
-    recHits_phi.push_back(pos.phi());
-    recHits_energy.push_back(-1);
-    recHits_detType.push_back(DetType::DT);
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, DetType::DT));
   }
 
   edm::Handle<RPCRecHitCollection> RPCRecHits;
   event.getByToken(RPCRecHitsToken_, RPCRecHits);
   for(const auto &hit : *RPCRecHits) {
     math::XYZVector pos = getPosition(hit);
-    recHits_eta.push_back(pos.eta());
-    recHits_phi.push_back(pos.phi());
-    recHits_energy.push_back(-1);
-    recHits_detType.push_back(DetType::CSC);
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, DetType::RPC));
   }
 
 }
