@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import math
 
 dataDir = '/Users/czkaiweb/Research/DisappTrkMLData/'
-fname = 'origin/images_v3_DYJets50.root'
+fname = 'origin/images_v4_DYJets50.root'
 fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
 
