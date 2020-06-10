@@ -6,8 +6,11 @@ import os
 import matplotlib.pyplot as plt
 import math
 
-dataDir = '/data/disappearingTracks/tracks/'
-fname = 'images_SingleElectron2017.root'
+gROOT.ProcessLine('.L /home/llavezzo/DisappTrksML/TreeMaker/interface/Infos.h+')
+gROOT.SetBatch()
+
+dataDir = '/data/disappearingTracks/'
+fname = 'original/images_DYJets50.root'
 tag = '_DYJets50_norm_40x40'
 
 ##### config params #####
@@ -16,11 +19,10 @@ res_eta = 40
 res_phi = 40
 #########################
 
-gROOT.SetBatch()
-
 #import data
 fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
+print("Added",tree.GetEntries(),"from",fname)
 
 #export electrons, muons, and everything else
 #image of hit and reco results
@@ -55,9 +57,7 @@ for iEvent,event in enumerate(tree):
     if(iEvent%1000==0): print(iEvent)
     
     for iTrack,track in enumerate(event.tracks):
-  
-            print('reached')
-            
+              
             matrix = np.zeros([res_eta,res_phi,4])
 
             momentum = XYZVector(track.px,track.py,track.pz)
@@ -78,10 +78,10 @@ for iEvent,event in enumerate(tree):
                 dEta = convert_eta(dEta)
                 dPhi = convert_phi(dPhi)
 
-                channel = type_to_channel(event.recHits_detType[iHit])
+                channel = type_to_channel(hit.detType)
                 if(channel == -1): continue
 
-                matrix[dEta,dPhi,channel] += event.recHits_energy[iHit] if channel != 3 else 1
+                matrix[dEta,dPhi,channel] += hit.energy if channel != 3 else 1
 
             if(scaling):
                 scale = matrix[:,:,:3].max()
@@ -90,17 +90,17 @@ for iEvent,event in enumerate(tree):
                 if scale_muons > 0: matrix[:,:,3] = matrix[:,:,3]*1.0/scale_muons
 
             #truth electrons
-            if(abs(event.track_genMatchedID[iTrack])==11 and abs(event.track_genMatchedDR[iTrack]) < 0.1):
+            if(abs(track.genMatchedID)==11 and abs(track.genMatchedDR) < 0.1):
                 e_events.append(matrix)
-                e_reco.append(event.track_deltaRToClosestElectron[iTrack])
+                e_reco.append([track.deltaRToClosestElectron,track.deltaRToClosestMuon,track.deltaRToClosestTauHad])
             #truth muons
-            elif(abs(event.track_genMatchedID[iTrack])==13 and abs(event.track_genMatchedDR[iTrack]) < 0.1):
+            elif(abs(track.genMatchedID)==13 and abs(track.genMatchedDR) < 0.1):
                 m_events.append(matrix)
-                m_reco.append(event.track_deltaRToClosestMuon[iTrack])
+                m_reco.append([track.deltaRToClosestElectron,track.deltaRToClosestMuon,track.deltaRToClosestTauHad])
             #everything else
             else:
                 bkg_events.append(matrix)
-                bkg_reco.append([event.track_deltaRToClosestElectron[iTrack],event.track_deltaRToClosestElectron[iTrack],event.track_deltaRToClosestTauHad[iTrack]])
+                bkg_reco.append([track.deltaRToClosestElectron,track.deltaRToClosestMuon,track.deltaRToClosestTauHad])
 
             
 print("Saving to",dataDir)
@@ -108,6 +108,6 @@ print(len(e_events),"electron events,",len(m_events),"muon events, and",len(bkg_
 np.save(dataDir+'e'+tag, e_events)
 np.save(dataDir+'muon'+tag, m_events)
 np.save(dataDir+'bkg'+tag, bkg_events)
-np.save(dataDir+'e_reco_'+tag, e_reco)
-np.save(dataDir+'muon_reco_'+tag, m_reco)
-np.save(dataDir+'bkg_reco_'+tag, bkg_reco)
+np.save(dataDir+'e_reco'+tag, e_reco)
+np.save(dataDir+'muon_reco'+tag, m_reco)
+np.save(dataDir+'bkg_reco'+tag, bkg_reco)

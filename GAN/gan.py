@@ -131,9 +131,9 @@ def smooth_negative_labels(y):
 
 X_train = data_e
 
-start_epoch = 100
-epochs=200
-batch_size=16
+start_epoch = 200
+epochs=300
+batch_size=32
 save_interval=1
 
 num_examples = X_train.shape[0]

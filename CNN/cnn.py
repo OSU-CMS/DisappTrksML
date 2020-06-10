@@ -3,6 +3,7 @@ import keras
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 from keras import callbacks
+from keras.metrics import FalseNegatives
 from keras import backend as K
 import numpy as np
 import matplotlib
@@ -17,38 +18,50 @@ from utils import *
 import random
 from sklearn.metrics import roc_auc_score
 
-# dataDir = 'c:/users/llave/Documents/CMS/data/'
-# workDir = 'c:/users/llave/Documents/CMS/'
-dataDir = '/data/disappearingTracks/tracks/'
+dataDir = '/data/disappearingTracks/'
 workDir = '/home/llavezzo/'
-plotDir = workDir + 'plots/cnn/'
-weightsDir = workDir + 'weights/cnn/'
+plotDir = workDir + 'plots/cnn_weights/'
+weightsDir = workDir + 'weights/cnn_weights/'
 
 os.system('mkdir '+str(plotDir))
 os.system('mkdir '+str(weightsDir))
-
 
 #config parameters
 batch_size = 128
 num_classes = 2
 epochs = 100
-
-# input image dimensions
+patience_count = 20
 img_rows, img_cols = 40, 40
 channels = 3
 input_shape = (img_rows,img_cols,channels)
 
-# the data, split between train and test sets
-data_e = np.load(dataDir+'e_DYJets50_v4_norm_40x40.npy')
-data_bkg = np.load(dataDir+'bkg_DYJets50_v4_norm_40x40.npy')
-e_reco_results = np.load(dataDir + 'e_reco_DYJets50_v4_norm_40x40.npy')
-bkg_reco_results = np.load(dataDir + 'bkg_reco_DYJets50_v4_norm_40x40.npy')
-classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_bkg))])
-data = np.concatenate([data_e,data_bkg])
-data = data[:,:,:,[1,3,4]]
-reco_results = np.concatenate([e_reco_results,bkg_reco_results])
+# data, classes, and reco results
+tag = '_DYJets50_norm_40x40'
+data_e = np.load(dataDir+'e'+tag+'.npy')
+data_m = np.load(dataDir+'muon'+tag+'.npy')
+data_bkg = np.load(dataDir+'bkg'+tag+'.npy')
+e_reco_results = np.load(dataDir + 'e_reco'+tag+'.npy')
+m_reco_results = np.load(dataDir + 'muon_reco'+tag+'.npy')
+bkg_reco_results = np.load(dataDir + 'bkg_reco'+tag+'.npy')
 
-x_train, x_test, y_train, y_test, reco_train, reco_test = train_test_split(data, classes, reco_results, test_size=0.30, random_state=42)
+data = np.concatenate([data_e,data_m,data_bkg])
+data = data[:,:,:,[0,2,3]]
+classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_m)),np.zeros(len(data_bkg))])
+reco_results = np.concatenate([e_reco_results,m_reco_results,bkg_reco_results])
+
+# select out events where the electron RECO failed
+indices = [i for i,reco in enumerate(reco_results) if reco[0] > 0.15]
+x = data[indices]
+y = classes[indices]
+
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.30, random_state=42)
+
+x_train = x_train.astype('float32')
+x_test = x_test.astype('float32')
+y_train = y_train.astype('int64')
+y_test = y_test.astype('int64')
+print(x_train.shape[0], 'train samples')
+print(x_test.shape[0], 'test samples')
 
 #SMOTE and under sampling
 # counter = Counter(y_train)
@@ -63,18 +76,12 @@ x_train, x_test, y_train, y_test, reco_train, reco_test = train_test_split(data,
 # print("After",counter)
 # x_train = np.reshape(x_train,[x_train.shape[0],40,40,5])
 
-x_train = x_train.astype('float32')
-x_test = x_test.astype('float32')
-y_train = y_train.astype('int64')
-y_test = y_test.astype('int64')
-print('x_train shape:', x_train.shape)
-print(x_train.shape[0], 'train samples')
-print(x_test.shape[0], 'test samples')
-
 # initialize output bias
 neg, pos = np.bincount(y_train)
 output_bias = np.log(pos/neg)
 output_bias = keras.initializers.Constant(output_bias)
+print("Positive Class Counter:",pos)
+print("Negative Class Counter:",neg)
 
 # output weights
 weight_for_0 = (1/neg)*(neg+pos)/2.0
@@ -90,7 +97,13 @@ model.add(Conv2D(32, kernel_size=(3, 3),
                  input_shape=input_shape))
 model.add(Conv2D(64, (3, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.25))
+model.add(Dropout(0.2))
+model.add(Conv2D(64, (3, 3), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.2))
+model.add(Conv2D(64, (3, 3), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.2))
 model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
@@ -101,7 +114,7 @@ model.compile(loss=keras.losses.categorical_crossentropy,
               metrics=['accuracy'])
 
 callbacks = [
-    callbacks.EarlyStopping(patience=10),
+    callbacks.EarlyStopping(patience=patience_count),
     callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch:02d}.h5'),
 ]
 
@@ -120,12 +133,12 @@ plt.plot(history.history['val_accuracy'],label='test')
 plt.legend()
 plt.savefig(plotDir+'accuracy_history.png')
 plt.clf()
+
 plt.plot(history.history['loss'],label='train')
 plt.plot(history.history['val_loss'],label='test')
 plt.legend()
 plt.savefig(plotDir+'loss_history.png')
 plt.clf()
-
 
 predictions = model.predict(x_test)
 
@@ -144,19 +157,4 @@ print("Precision = TP/(TP+FP) = fraction of predicted true actually true ",preci
 print("Recall = TP/(TP+FN) = fraction of true class predicted to be true ",recall)
 auc = roc_auc_score(y_test,predictions)
 print("AUC Score:",auc)
-print()
-
-m = np.zeros([2,2,2])
-for true,pred,reco in zip(y_test, predictions, reco_test):
-    t = np.argmax(true)
-    p = np.argmax(pred)
-    m[t][p][reco] += 1
-    
-label = ['bkg','e']
-print("Pred:\t\t\t bkg\t\t\t e")
-for i in range(2):
-    print("True: ",label[i],end="")
-    for j in range(2):
-        print("\t\t",int(m[i][j][0]),"\t",int(m[i][j][1]),end="")
-    print()
 print()

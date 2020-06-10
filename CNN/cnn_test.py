@@ -31,9 +31,9 @@ channels = 3
 input_shape = (img_rows,img_cols,channels)
 
 # the data, split between train and test sets
-data = np.load(dataDir+'singleElectron2017_v4_40x40.npy')
+data = np.load(dataDir+'singleElectron2017_v4_norm_40x40.npy')
 test_data = data[:,:,:,[1,3,4]]
-reco_results = np.load(dataDir+'singleElectron2017_reco_v4_40x40.npy')
+reco_results = np.load(dataDir+'singleElectron2017_reco_v4_norm_40x40.npy')
 
 model = Sequential()
 model.add(Conv2D(32, kernel_size=(3, 3),
