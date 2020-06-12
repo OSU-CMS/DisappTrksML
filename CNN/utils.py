@@ -8,31 +8,27 @@ import numpy as np
 
 def save_event(x, dir, fname):
     
-    fig, axs = plt.subplots(1,5,figsize=(10,10))
+    fig, axs = plt.subplots(1,3,figsize=(10,10))
     
-    for i in range(5):
+    for i in range(3):
         axs[i].imshow(x[:,:,i],cmap='gray')
     
-    axs[0].set_title("None")
-    axs[1].set_title("EB")
-    axs[2].set_title("EE")
-    axs[3].set_title("HCAL")
-    axs[4].set_title("Muon")
+    axs[0].set_title("ECAL")
+    axs[1].set_title("HCAL")
+    axs[2].set_title("Muon")
     
     plt.savefig(dir+fname)
 
 def plot_event(x):
     
-    fig, axs = plt.subplots(1,5,figsize=(10,10))
+    fig, axs = plt.subplots(1,3,figsize=(10,10))
     
-    for i in range(5):
+    for i in range(4):
         axs[i].imshow(x[:,:,i],cmap='gray')
     
-    axs[0].set_title("None")
-    axs[1].set_title("EB")
-    axs[2].set_title("EE")
-    axs[3].set_title("HCAL")
-    axs[4].set_title("Muon")
+    axs[0].set_title("ECAL")
+    axs[1].set_title("HCAL")
+    axs[2].set_title("Muon")
     
     plt.show()
 
@@ -60,8 +56,9 @@ def plot_certainty(y_test,predictions,f):
         else:
             notcorrect_certainty.append(pred[np.argmax(pred)])
     
-    plt.hist(correct_certainty,alpha=0.5,label='correct certainty',density=True)
-    plt.hist(notcorrect_certainty,alpha=0.5,label='not correct certainty',density=True)
+    plt.hist(correct_certainty,alpha=0.5,label='Predicted Successfully',density=True)
+    plt.hist(notcorrect_certainty,alpha=0.5,label='Predicted Unsuccessfully',density=True)
+    plt.title("Certainty")
     plt.legend()
     plt.savefig(f)
     plt.clf()
