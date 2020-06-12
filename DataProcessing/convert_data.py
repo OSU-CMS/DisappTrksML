@@ -3,6 +3,8 @@ from ROOT import gROOT
 from ROOT.Math import XYZVector
 import numpy as np
 import os
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import math
 import pandas as pd
@@ -27,7 +29,6 @@ fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
 print("Added",tree.GetEntries(),"from",fname)
 
-
 def convert_eta(eta):
     return int(round(((res_eta-1)*1.0/(eta_ub-eta_lb))*(eta-eta_lb)))
 
@@ -36,11 +37,11 @@ def convert_phi(phi):
 
 def type_to_channel(hittype):
     #none
-    if(hittype == 0 ): return -1
+    if(hittype == 0): return -1
     #ECAL (EE,EB)
     if(hittype == 1 or hittype == 2): return 0
     #ES
-    if(hittype == 3): return 1
+    if(hittype == 3): return 1 
     #HCAL
     if(hittype == 4): return 2
     #Muon (CSC,DT,RPC)
@@ -97,7 +98,8 @@ for iEvent,event in enumerate(tree):
             channel = type_to_channel(hit.detType)
             if(channel == -1): continue
 
-            matrix[dEta,dPhi,channel] += hit.energy if channel != 3 else 1
+            if channel != 3: matrix[dEta,dPhi,channel] += hit.energy
+            else: matrix[dEta][dPhi][channel] += 1
 
         if(scaling):
             scale = matrix[:,:,:3].max()
@@ -111,21 +113,7 @@ for iEvent,event in enumerate(tree):
             track.deltaRToClosestMuon,
             track.deltaRToClosestTauHad])
 
-        rows.append(np.concatenate([info,matrix]))
-        
-        # #truth electrons
-        # if(abs(track.genMatchedID)==11 and abs(track.genMatchedDR) < 0.1):
-        #     e_events.append(matrix)
-        #     e_reco.append([track.deltaRToClosestElectron,track.deltaRToClosestMuon,track.deltaRToClosestTauHad])
-        # #truth muons
-        # elif(abs(track.genMatchedID)==13 and abs(track.genMatchedDR) < 0.1):
-        #     m_events.append(matrix)
-        #     m_reco.append([track.deltaRToClosestElectron,track.deltaRToClosestMuon,track.deltaRToClosestTauHad])
-        # #everything else
-        # else:
-        #     bkg_events.append(matrix)
-        #     bkg_reco.append([track.deltaRToClosestElectron,track.deltaRToClosestMuon,track.deltaRToClosestTauHad])
-
+        rows.append(np.concatenate([info,matrix])) 
             
 print("Saving to",dataDir)
 
@@ -133,11 +121,3 @@ columns = ['type','deltaRToClosestElectron','deltaRToClosestMuon','deltaRToClose
 pixels = [i for i in range(res_eta*res_phi*4)]
 df = pd.DataFrame(rows, columns=np.concatenate([columns,pixels]))
 df.to_pickle(dataDir+fOut)
-
-# print(len(e_events),"electron events,",len(m_events),"muon events, and",len(bkg_events),"background events")
-# np.save(dataDir+'e'+tag, e_events)
-# np.save(dataDir+'muon'+tag, m_events)
-# np.save(dataDir+'bkg'+tag, bkg_events)
-# np.save(dataDir+'e_reco'+tag, e_reco)
-# np.save(dataDir+'muon_reco'+tag, m_reco)
-# np.save(dataDir+'bkg_reco'+tag, bkg_reco)
