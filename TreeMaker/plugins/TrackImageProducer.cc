@@ -161,7 +161,7 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
     trackInfos_.push_back(info);
   }
 
-  if(trackInfos_.size() == 0) continue; // only fill tree with passing tracks
+  if(trackInfos_.size() == 0) return; // only fill tree with passing tracks
 
   recHitInfos_.clear();
   getRecHits(event);
