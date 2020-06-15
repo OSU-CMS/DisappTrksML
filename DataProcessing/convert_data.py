@@ -14,10 +14,11 @@ gROOT.SetBatch()
 
 dataDir = '/data/disappearingTracks/'
 fname = 'original/images_DYJets50.root'
-fOut = 'images_DYJets50_norm_40x40.pkl'
+fOut = 'images_DYJets50_tanh_0p5.pkl'
 
 ##### config params #####
 scaling = False
+tanh_scaling = True
 res_eta = 40
 res_phi = 40
 eta_ub,eta_lb = 0.5,-0.5
@@ -59,9 +60,7 @@ def passesSelection(track):
     pt = math.sqrt(momentum.Perp2())
 
     if not abs(eta) < 2.4: return False
-    # if not pt > 30: return False
     if track.inGap: return False
-    # if not track.trackIso / pt < 0.05: return False
     if not abs(track.dRMinJet) > 0.5: return False
     return True
 
@@ -106,6 +105,8 @@ for iEvent,event in enumerate(tree):
             scale_muons = matrix[:,:,3].max()
             if scale > 0: matrix[:,:,:3] = matrix[:,:,:3]*1.0/scale
             if scale_muons > 0: matrix[:,:,3] = matrix[:,:,3]*1.0/scale_muons
+        if(tanh_scaling):
+            matrix = np.tanh(matrix)
 
         matrix = matrix.flatten().reshape([matrix.shape[0]*matrix.shape[1]*matrix.shape[2],])  
         info = np.array([check_track(track),

@@ -105,3 +105,35 @@ def calc_binary_metrics(confusion_matrix):
     recall = TP / (TP + FN)
 
     return precision, recall
+
+def plot_grid(gs, x_label, y_label, x_target_names, y_target_names, title = 'Grid Search', f='gs.png', cmap=plt.get_cmap('Blues')):
+ 
+    #convert to array of floats
+    grid = np.zeros([len(y_target_names),len(x_target_names)])
+    for i in range(len(y_target_names)):
+        for j in range(len(x_target_names)):
+            grid[i][j] = round(gs[i][j],3)
+    grid = grid.astype(float)
+
+    plt.imshow(grid, interpolation='nearest',cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks_x = np.arange(len(x_target_names))
+    tick_marks_y = np.arange(len(y_target_names))
+    plt.xticks(tick_marks_x, x_target_names)
+    plt.yticks(tick_marks_y, y_target_names)
+    
+    plt.tight_layout()
+
+    width, height = grid.shape
+
+    for x in range(width):
+        for y in range(height):
+            plt.annotate(str(grid[x][y]), xy=(y, x), 
+                        horizontalalignment='center',
+                        verticalalignment='center')
+
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.savefig(f, bbox_inches='tight')
+    plt.clf()
