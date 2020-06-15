@@ -14,13 +14,13 @@ gROOT.ProcessLine('.L /home/llavezzo/DisappTrksML/TreeMaker/interface/Infos.h+')
 gROOT.SetBatch()
 
 # script arguments
-index = int(sys.argv[0])
-first_event = int(sys.argv[1])
-last_event = int(sys.argv[2])
+index = int(sys.argv[1])
+first_event = int(sys.argv[2])
+last_event = int(sys.argv[3])
 
-dataDir = '/data/disappearingTracks/'
-fname = 'updatedData/images_DYJetsM50.root'
-fOut = 'images_0p25_'+str(index)'.pkl'
+dataDir = '/store/user/mcarrigan/'
+fname = 'images_DYJetsM50.root'
+fOut = 'images_0p25_'+str(index)+'.pkl'
 
 ##### config params #####
 scaling = False
@@ -76,8 +76,8 @@ nEvents = tree.GetEntries()
 for iEvent,event in enumerate(tree):
     
     if(iEvent < first_event): continue
-    if(iEvent >= last_event): continue
-    if(iEvent > nEvents): continue
+    if(iEvent >= last_event): break
+    if(iEvent > nEvents): break
 
     if(iEvent%10000==0): print(iEvent)
     
@@ -127,9 +127,10 @@ for iEvent,event in enumerate(tree):
 
         rows.append(np.concatenate([info,matrix])) 
             
-print("Saving to",dataDir)
+if(len(rows)==0): exit()
 
+print("Saving to",fOut)
 columns = ['type','deltaRToClosestElectron','deltaRToClosestMuon','deltaRToClosestTau']
 pixels = [i for i in range(res_eta*res_phi*4)]
 df = pd.DataFrame(rows, columns=np.concatenate([columns,pixels]))
-df.to_pickle(dataDir+fOut)
+df.to_pickle(fOut)
