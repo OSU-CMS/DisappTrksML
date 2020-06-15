@@ -8,21 +8,27 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import math
 import pandas as pd
+import sys
 
 gROOT.ProcessLine('.L /home/llavezzo/DisappTrksML/TreeMaker/interface/Infos.h+')
 gROOT.SetBatch()
 
+# script arguments
+index = int(sys.argv[0])
+first_event = int(sys.argv[1])
+last_event = int(sys.argv[2])
+
 dataDir = '/data/disappearingTracks/'
-fname = 'original/images_DYJets50.root'
-fOut = 'images_DYJets50_tanh_0p5.pkl'
+fname = 'updatedData/images_DYJetsM50.root'
+fOut = 'images_0p25_'+str(index)'.pkl'
 
 ##### config params #####
 scaling = False
 tanh_scaling = True
 res_eta = 40
 res_phi = 40
-eta_ub,eta_lb = 0.5,-0.5
-phi_ub,phi_lb = 0.5,-0.5
+eta_ub,eta_lb = 0.25,-0.25
+phi_ub,phi_lb = 0.25,-0.25
 #########################
 
 #import data
@@ -65,10 +71,15 @@ def passesSelection(track):
     return True
 
 rows = []
+nEvents = tree.GetEntries()
 
 for iEvent,event in enumerate(tree):
     
-    if(iEvent%1000==0): print(iEvent)
+    if(iEvent < first_event): continue
+    if(iEvent >= last_event): continue
+    if(iEvent > nEvents): continue
+
+    if(iEvent%10000==0): print(iEvent)
     
     for iTrack,track in enumerate(event.tracks):
 
