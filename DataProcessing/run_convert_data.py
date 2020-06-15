@@ -24,7 +24,7 @@ def submitOneJob(index, lower_i, upper_i):
     error                   = /data/users/llavezzo/Logs/convert_data/error_{0}_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = /home/llavezzo/DisappTrksML/DataProcessing/run_wrapper.sh, /home/llavezzo/DisappTrksML/DataProcessing/convert_data.py
+    transfer_input_files = /home/llavezzo/DisappTrksML/DataProcessing/run_wrapper.sh, /home/llavezzo/DisappTrksML/DataProcessing/convert_data.py, /home/llavezzo/DisappTrksML/TreeMaker/interface/Infos.h
     getenv = true
     queue 1
 

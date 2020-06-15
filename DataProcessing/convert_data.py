@@ -10,7 +10,7 @@ import math
 import pandas as pd
 import sys
 
-gROOT.ProcessLine('.L /home/llavezzo/DisappTrksML/TreeMaker/interface/Infos.h+')
+gROOT.ProcessLine('.L Infos.h+')
 gROOT.SetBatch()
 
 # script arguments
