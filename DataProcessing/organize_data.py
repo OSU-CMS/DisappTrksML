@@ -17,6 +17,7 @@ batch_size = 1000
 
 batchNum = 0
 partition_labels = {}
+nEvents = 0
 
 for filename in os.listdir(dataDirIn):	
 	if(not filename.endswith('.pkl')): continue
@@ -29,29 +30,34 @@ for filename in os.listdir(dataDirIn):
 
 	# select only electron RECO failed events
 	dftemp = dftemp.loc[dftemp['deltaRToClosestElectron']>0.15]
+	nEvents += dftemp.shape[0]
 	dftemp_e = dftemp.loc[dftemp['type'] == 1]
 	dftemp_bkg = dftemp.loc[dftemp['type'] != 1]
 	
-	if(batchNum != 0): this_group_e = pd.concatenate([dftemp_e,previous_batch_e])
+	if(batchNum != 0): this_group_e = pd.concat([dftemp_e,previous_batch_e])
 	else: this_group_e = dftemp_e
 
-	if(batchNum != 0): this_group_bkg = pd.concatenate([dftemp_bkg,previous_batch_bkg])
+	if(batchNum != 0): this_group_bkg = pd.concat([dftemp_bkg,previous_batch_bkg])
 	else: this_group_bkg = dftemp_bkg
 
 	while(this_group_e.shape[0] >= batch_size):
 		batch = this_group_e.iloc[:batch_size,:]
 		batch.to_pickle(dataDirOut+'batch_'+str(batchNum)+'.pkl')
+		this_group_e = this_group_e.iloc[batch_size:,:]
 		partition_labels[batchNum] = 1
 		batchNum += 1
 
 	while(this_group_bkg.shape[0] >= batch_size):
 		batch = this_group_bkg.iloc[:batch_size,:]
 		batch.to_pickle(dataDirOut+'batch_'+str(batchNum)+'.pkl')
+		this_group_bkg = this_group_bkg.iloc[batch_size:,:]
 		partition_labels[batchNum] = 0
 		batchNum += 1
 
 	previous_batch_e = this_group_e
 	previous_batch_bkg = this_group_bkg
+
+print(nEvents)
 
 # save last ones too
 previous_batch_e.to_pickle(dataDirOut+'batch_'+str(batchNum)+'.pkl')
