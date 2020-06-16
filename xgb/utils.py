@@ -42,24 +42,23 @@ def nested_defaultdict(default_factory, depth=1):
 def calc_cm(y_test,predictions):
     confusion_matrix = nested_defaultdict(int,2)
     for true,pred in zip(y_test, predictions):
-        t = np.argmax(true)
-        p = np.argmax(pred)
-        confusion_matrix[t][p] += 1
+        confusion_matrix[true][pred] += 1
     return confusion_matrix
 
-def plot_certainty(y_test,predictions,f):
+def plot_predictions(y_test,predictions,f):
 
-    correct_certainty, notcorrect_certainty = [],[]
+    correct_pred, notcorrect_pred = [],[]
     for true,pred in zip(y_test, predictions):
-        if np.argmax(true) == np.argmax(pred):
-            correct_certainty.append(pred[np.argmax(pred)])
+        if round(pred) == true:
+            correct_pred.append(pred)
         else:
-            notcorrect_certainty.append(pred[np.argmax(pred)])
+            notcorrect_pred.append(pred)
     
-    plt.hist(correct_certainty,alpha=0.5,label='Predicted Successfully',density=True)
-    plt.hist(notcorrect_certainty,alpha=0.5,label='Predicted Unsuccessfully',density=True)
-    plt.title("Certainty")
+    plt.hist(correct_pred,alpha=0.5,label='Correct Prediction',density=True)
+    plt.hist(notcorrect_pred,alpha=0.5,label='Wrong Prediction',density=True)
+    plt.yscale('log')
     plt.legend()
+    plt.tight_layout()
     plt.savefig(f)
     plt.clf()
 
@@ -105,35 +104,3 @@ def calc_binary_metrics(confusion_matrix):
     recall = TP / (TP + FN)
 
     return precision, recall
-
-def plot_grid(gs, x_label, y_label, x_target_names, y_target_names, title = 'Grid Search', f='gs.png', cmap=plt.get_cmap('Blues')):
- 
-    #convert to array of floats
-    grid = np.zeros([len(y_target_names),len(x_target_names)])
-    for i in range(len(y_target_names)):
-        for j in range(len(x_target_names)):
-            grid[i][j] = round(gs[i][j],3)
-    grid = grid.astype(float)
-
-    plt.imshow(grid, interpolation='nearest',cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
-    tick_marks_x = np.arange(len(x_target_names))
-    tick_marks_y = np.arange(len(y_target_names))
-    plt.xticks(tick_marks_x, x_target_names)
-    plt.yticks(tick_marks_y, y_target_names)
-    
-    plt.tight_layout()
-
-    width, height = grid.shape
-
-    for x in range(width):
-        for y in range(height):
-            plt.annotate(str(grid[x][y]), xy=(y, x), 
-                        horizontalalignment='center',
-                        verticalalignment='center')
-
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    plt.savefig(f, bbox_inches='tight')
-    plt.clf()

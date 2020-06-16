@@ -58,6 +58,7 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
   tree_ = fs_->make<TTree>("tree", "tree");
   tree_->Branch("tracks", &trackInfos_);
   tree_->Branch("recHits", &recHitInfos_);
+  tree_->Branch("nPV", &nPV_);
 }
 
 TrackImageProducer::~TrackImageProducer()
@@ -99,6 +100,7 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
   edm::Handle<vector<reco::Vertex> > vertices;
   event.getByToken(verticesToken_, vertices);
   const reco::Vertex &pv = vertices->at(0);
+  nPV_ = vertices->size();
 
   edm::Handle<vector<reco::PFJet> > jets;
   event.getByToken(jetsToken_, jets);
@@ -158,6 +160,8 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
 
     trackInfos_.push_back(info);
   }
+
+  if(trackInfos_.size() == 0) return; // only fill tree with passing tracks
 
   recHitInfos_.clear();
   getRecHits(event);
