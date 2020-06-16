@@ -9,50 +9,45 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score
 from imblearn.over_sampling import SMOTE
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.pipeline import Pipeline
 from collections import Counter
 from utils import *
-import random
-from sklearn.metrics import roc_auc_score
+
 
 dataDir = '/data/disappearingTracks/'
 workDir = '/home/llavezzo/'
-plotDir = workDir + 'plots/cnn_weights/'
-weightsDir = workDir + 'weights/cnn_weights/'
+plotDir = workDir + 'plots/cnn/'
+weightsDir = workDir + 'weights/cnn/'
 
 os.system('mkdir '+str(plotDir))
 os.system('mkdir '+str(weightsDir))
 
 #config parameters
+fname = 'images_DYJets50_norm_40x40.pkl'
+pos_class = [1]
+neg_class = [0,2]
 batch_size = 128
-num_classes = 2
 epochs = 100
 patience_count = 20
 img_rows, img_cols = 40, 40
 channels = 3
 input_shape = (img_rows,img_cols,channels)
 
-# data, classes, and reco results
-tag = '_DYJets50_norm_40x40'
-data_e = np.load(dataDir+'e'+tag+'.npy')
-data_m = np.load(dataDir+'muon'+tag+'.npy')
-data_bkg = np.load(dataDir+'bkg'+tag+'.npy')
-e_reco_results = np.load(dataDir + 'e_reco'+tag+'.npy')
-m_reco_results = np.load(dataDir + 'muon_reco'+tag+'.npy')
-bkg_reco_results = np.load(dataDir + 'bkg_reco'+tag+'.npy')
-
-data = np.concatenate([data_e,data_m,data_bkg])
-data = data[:,:,:,[0,2,3]]
-classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_m)),np.zeros(len(data_bkg))])
-reco_results = np.concatenate([e_reco_results,m_reco_results,bkg_reco_results])
-
-# select out events where the electron RECO failed
-indices = [i for i,reco in enumerate(reco_results) if reco[0] > 0.15]
-x = data[indices]
-y = classes[indices]
+# extract data and classes
+df = pd.read_pickle(dataDir+fname)
+df_recofail = df.loc[df['deltaRToClosestElectron']>0.15]
+x = df_recofail.iloc[:,4:].to_numpy()
+x = np.reshape(x, [x.shape[0],40,40,4])
+x = x[:,:,:,[0,2,3]]
+y = df_recofail['type'].to_numpy()
+for i,label in enumerate(y):
+    if label in pos_class: y[i] = 1
+    if label in neg_class: y[i] = 0
 
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.30, random_state=42)
 
@@ -64,17 +59,17 @@ print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
 
 #SMOTE and under sampling
-# counter = Counter(y_train)
-# print("Before",counter)
-# x_train = np.reshape(x_train,[x_train.shape[0],40*40*5])
-# oversample = SMOTE(sampling_strategy=0.5)
-# undersample = RandomUnderSampler(sampling_strategy=0.75)
-# steps = [('o', oversample), ('u', undersample)]
-# pipeline = Pipeline(steps=steps)
-# x_train, y_train = pipeline.fit_resample(x_train, y_train)
-# counter = Counter(y_train)
-# print("After",counter)
-# x_train = np.reshape(x_train,[x_train.shape[0],40,40,5])
+counter = Counter(y_train)
+print("Before",counter)
+x_train = np.reshape(x_train,[x_train.shape[0],40*40*3])
+oversample = SMOTE(sampling_strategy=0.2)
+undersample = RandomUnderSampler(sampling_strategy=0.3)
+steps = [('o', oversample), ('u', undersample)]
+pipeline = Pipeline(steps=steps)
+x_train, y_train = pipeline.fit_resample(x_train, y_train)
+counter = Counter(y_train)
+print("After",counter)
+x_train = np.reshape(x_train,[x_train.shape[0],40,40,3])
 
 # initialize output bias
 neg, pos = np.bincount(y_train)
@@ -88,8 +83,8 @@ weight_for_0 = (1/neg)*(neg+pos)/2.0
 weight_for_1 = (1/pos)*(neg+pos)/2.0
 class_weight = {0: weight_for_0, 1: weight_for_1}
 
-y_train = keras.utils.to_categorical(y_train, num_classes)
-y_test = keras.utils.to_categorical(y_test, num_classes)
+y_train = keras.utils.to_categorical(y_train, 2)
+y_test = keras.utils.to_categorical(y_test, 2)
 
 model = Sequential()
 model.add(Conv2D(32, kernel_size=(3, 3),
@@ -101,13 +96,13 @@ model.add(Dropout(0.2))
 model.add(Conv2D(64, (3, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.2))
-model.add(Conv2D(64, (3, 3), activation='relu'))
+model.add(Conv2D(128, (3, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.2))
 model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
-model.add(Dense(num_classes, activation='softmax',bias_initializer=output_bias))
+model.add(Dense(2, activation='softmax',bias_initializer=output_bias))
 
 model.compile(loss=keras.losses.categorical_crossentropy,
               optimizer=keras.optimizers.Adadelta(),
@@ -130,12 +125,18 @@ model.save_weights(weightsDir + 'first_model.h5')
 
 plt.plot(history.history['accuracy'],label='train')
 plt.plot(history.history['val_accuracy'],label='test')
+plt.title('Accuracy History')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
 plt.legend()
 plt.savefig(plotDir+'accuracy_history.png')
 plt.clf()
 
 plt.plot(history.history['loss'],label='train')
 plt.plot(history.history['val_loss'],label='test')
+plt.title('Loss History')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
 plt.legend()
 plt.savefig(plotDir+'loss_history.png')
 plt.clf()
@@ -153,8 +154,8 @@ plot_certainty(y_test,predictions,plotDir+'certainty.png')
 print()
 
 precision, recall = calc_binary_metrics(cm)
-print("Precision = TP/(TP+FP) = fraction of predicted true actually true ",precision)
-print("Recall = TP/(TP+FN) = fraction of true class predicted to be true ",recall)
+print("Precision = TP/(TP+FP) = fraction of predicted true actually true ",round(precision,3))
+print("Recall = TP/(TP+FN) = fraction of true class predicted to be true ",round(recall),3)
 auc = roc_auc_score(y_test,predictions)
-print("AUC Score:",auc)
+print("AUC Score:",round(auc,5))
 print()

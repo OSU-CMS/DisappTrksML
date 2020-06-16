@@ -137,6 +137,7 @@ class TrackImageProducer : public edm::EDAnalyzer {
 
       vector<TrackInfo> trackInfos_;
       vector<RecHitInfo> recHitInfos_;
+      int nPV_;
 };
 
 #endif

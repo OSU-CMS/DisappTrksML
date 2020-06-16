@@ -118,7 +118,10 @@ for iEvent,event in enumerate(tree):
 
         matrix = matrix.flatten().reshape([matrix.shape[0]*matrix.shape[1]*matrix.shape[2],])  
         info = np.array([check_track(track),
+<<<<<<< HEAD
 	    nPV,
+=======
+>>>>>>> fbb036fc6500d1a2ae143370750b8d46ce65f016
             track.deltaRToClosestElectron,
             track.deltaRToClosestMuon,
             track.deltaRToClosestTauHad])
@@ -128,7 +131,14 @@ for iEvent,event in enumerate(tree):
 if(len(rows)==0): exit()
 
 print("Saving to",fOut)
+<<<<<<< HEAD
 columns = ['type', 'nPV', 'deltaRToClosestElectron','deltaRToClosestMuon','deltaRToClosestTau']
 pixels = [i for i in range(res_eta*res_phi*4)]
 df = pd.DataFrame(rows, columns=np.concatenate([columns,pixels]))
 df.to_pickle(fOut)
+=======
+columns = ['type','deltaRToClosestElectron','deltaRToClosestMuon','deltaRToClosestTau']
+pixels = [i for i in range(res_eta*res_phi*4)]
+df = pd.DataFrame(rows, columns=np.concatenate([columns,pixels]))
+df.to_pickle(fOut)
+>>>>>>> fbb036fc6500d1a2ae143370750b8d46ce65f016

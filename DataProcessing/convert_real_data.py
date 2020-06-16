@@ -1,22 +1,32 @@
 import ROOT as r
+from ROOT import gROOT
+from ROOT.Math import XYZVector
 import numpy as np
+import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import math
 
-dataDir = '/data/disappearingTracks/tracks/'
-fname = 'images_v3_SingleElectron2017.root'
-fin = r.TFile(dataDir + fname)
-tree = fin.Get('trackImageProducer/tree')
+gROOT.ProcessLine('.L /home/llavezzo/DisappTrksML/TreeMaker/interface/Infos.h+')
+gROOT.SetBatch()
 
-e,bkg = 0,0
-events,reco_results = [],[]
+dataDir = '/data/disappearingTracks/'
+fname = 'original/images_SingleMuon2017.root'
+fOut = 'singleElectron2017_DYJets50_tanh_0p5.pkl'
+
+##### config params #####
+scaling = False
+tanh_scaling = True
 res_eta = 40
 res_phi = 40
+eta_ub,eta_lb = 0.5,-0.5
+phi_ub,phi_lb = 0.5,-0.5
+#########################
 
-#eta and phi upper and lower bounds
-eta_ub,eta_lb = 3,-3
-phi_ub,phi_lb = math.pi,-math.pi
+#import data
+fin = r.TFile(dataDir + fname)
+tree = fin.Get('trackImageProducer/tree')
+print("Added",tree.GetEntries(),"from",fname)
 
 def convert_eta(eta):
     return int(round(((res_eta-1)/(eta_ub-eta_lb))*(eta-eta_lb)))
@@ -24,34 +34,76 @@ def convert_eta(eta):
 def convert_phi(phi):
     return int(round(((res_phi-1)/(phi_ub-phi_lb))*(phi-phi_lb)))
 
-#overlap (EE,EB), (CSC,DT,RPC)
 def type_to_channel(hittype):
     #none
-    if(hittype == 0 ): return 0
-    #(EE,EB)
-    if(hittype == 1 or hittype == 2): return 1
+    if(hittype == 0 ): return -1
+    #ECAL (EE,EB)
+    if(hittype == 1 or hittype == 2): return 0
     #ES
-    if(hittype == 3): return 2
+    if(hittype == 3): return 1
     #HCAL
-    if(hittype == 4): return 3
-    #(CSC,DT,RPC)
-    if(hittype == 5 or hittype ==6 or hittype == 7): return 4
+    if(hittype == 4): return 2
+    #Muon (CSC,DT,RPC)
+    if(hittype == 5 or hittype ==6 or hittype == 7): return 3
 
-for i,event in enumerate(tree):
+def check_track(track):
+    if(abs(track.genMatchedID)==11 and abs(track.genMatchedDR) < 0.1): return 1
+    if(abs(track.genMatchedID)==13 and abs(track.genMatchedDR) < 0.1): return 2
+    return 0
+
+def passesIsolatedTrackSelection(track):
+
+    momentum = XYZVector(track.px, track.py, track.pz)
+    eta = momentum.Eta()
+    pt = math.sqrt(momentum.Perp2())
+
+    if not abs(eta) < 2.4: return False
+    if not pt > 30: return False
+    if track.inGap: return False
+    if not track.nValidPixelHits >= 4: return False
+    if not track.nValidHits >= 4: return False
+    if not track.missingInnerHits == 0: return False
+    if not track.missingMiddleHits == 0: return False
+    if not track.trackIso / pt < 0.05: return False
+    if not abs(track.d0) < 0.02: return False
+    if not abs(track.dz) < 0.5: return False
+    if not abs(track.dRMinJet) > 0.5: return False
+    if not abs(track.deltaRToClosestElectron) > 0.15: return False
+    # deltaRToClosestMuon
+    if not abs(track.deltaRToClosestTauHad) > 0.15: return False
+    return True
+
+rows = []
+nPassingProbes, nTagMuons = 0,0
+
+for iEvent,event in enumerate(tree):
     
-    if(i%1000==0): 
-        print(i)
+    if(iEvent%1000==0): print(iEvent)
+    
+    for iTrack,track in enumerate(event.tracks):
 
-    if(len(event.track_eta) != 2): continue
+            isProbe = False
 
-    for iTrack in range(len(event.track_eta)):
+            if passesIsolatedTrackSelection(track):
+                if abs(track.deltaRToClosestMuon) > 0.15:
+                    nPassingProbes += 1
+                    isProbe = True
+                else:
+                    nTagMuons += 1
+                    continue
 
-            matrix = np.zeros([res_eta,res_phi,5])
+            if(not isProbe): continue
+              
+            matrix = np.zeros([res_eta,res_phi,4])
 
-            for iHit in range(len(event.recHits_eta)):
-
-                dEta = event.track_eta[iTrack] - event.recHits_eta[iHit]
-                dPhi = event.track_phi[iTrack] - event.recHits_phi[iHit]
+            momentum = XYZVector(track.px,track.py,track.pz)
+            track_eta = momentum.Eta()
+            track_phi = momentum.Phi()
+            
+            for iHit,hit in enumerate(event.recHits):
+        
+                dEta = track_eta - hit.eta
+                dPhi = track_phi - hit.phi
                 # branch cut [-pi, pi)
                 if abs(dPhi) > math.pi:
                     dPhi -= round(dPhi / (2. * math.pi)) * 2. * math.pi
@@ -61,19 +113,36 @@ for i,event in enumerate(tree):
 
                 dEta = convert_eta(dEta)
                 dPhi = convert_phi(dPhi)
-                channel = type_to_channel(event.recHits_detType[iHit])
 
-                matrix[dEta,dPhi,channel] += event.recHits_energy[iHit] if channel != 4 else 1
-                
-            scale = matrix[:,:,:4].max()
-            scale_muons = matrix[:,:,4].max()
-            if scale > 0: matrix[:,:,:4] = matrix[:,:,:4]*1.0/scale
-            if scale_muons > 0: matrix[:,:,4] = matrix[:,:,4]*1.0/scale_muons
+                channel = type_to_channel(hit.detType)
+                if(channel == -1): continue
 
-            events.append(matrix)
-            if(abs(event.track_deltaRToClosestElectron[iTrack])<0.15): reco_results.append(1)
-            else: reco_results.append(0)
+                if channel != 3: matrix[dEta,dPhi,channel] += hit.energy
+                else: matrix[dEta][dPhi][channel] += 1
 
-print(len(events),len(reco_results))
-np.save(dataDir+'singleElectron2017_v4_norm_40x40', events)
-np.save(dataDir+'singleElectron2017_reco_v4_norm_40x40',reco_results)
+            if(scaling):
+                scale = matrix[:,:,:3].max()
+                scale_muons = matrix[:,:,3].max()
+                if scale > 0: matrix[:,:,:3] = matrix[:,:,:3]*1.0/scale
+                if scale_muons > 0: matrix[:,:,3] = matrix[:,:,3]*1.0/scale_muons
+            if(tanh_scaling):
+                matrix = np.tanh(matrix)
+
+            matrix = matrix.flatten().reshape([matrix.shape[0]*matrix.shape[1]*matrix.shape[2],])  
+            info = np.array([check_track(track),
+                track.deltaRToClosestElectron,
+                track.deltaRToClosestMuon,
+                track.deltaRToClosestTauHad])
+
+            rows.append(np.concatenate([info,matrix])) 
+
+            
+print(nPassingProbes, "nPassingProbes")
+print(nTagMuons,"nTagMuons")
+
+print("Saving to",dataDir)
+
+columns = ['type','deltaRToClosestElectron','deltaRToClosestMuon','deltaRToClosestTau']
+pixels = [i for i in range(res_eta*res_phi*4)]
+df = pd.DataFrame(rows, columns=np.concatenate([columns,pixels]))
+df.to_pickle(dataDir+fOut)
