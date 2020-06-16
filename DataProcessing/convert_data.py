@@ -14,13 +14,12 @@ gROOT.ProcessLine('.L Infos.h+')
 gROOT.SetBatch()
 
 # script arguments
-index = int(sys.argv[1])
-first_event = int(sys.argv[2])
-last_event = int(sys.argv[3])
+process = int(sys.argv[1])
+print("Process",process)
 
-dataDir = '/store/user/mcarrigan/'
-fname = 'images_DYJetsM50.root'
-fOut = 'images_0p25_'+str(index)+'.pkl'
+dataDir = ' /data/users/mcarrigan/condor/images_DYJetsM50/'
+fname = 'hist_'+str(process)+'.root'
+fOut = 'images_0p25_'+str(process)+'.pkl'
 
 ##### config params #####
 scaling = False
@@ -75,11 +74,7 @@ nEvents = tree.GetEntries()
 
 for iEvent,event in enumerate(tree):
     
-    if(iEvent < first_event): continue
-    if(iEvent >= last_event): break
-    if(iEvent > nEvents): break
-
-    if(iEvent%10000==0): print(iEvent)
+    if(iEvent%1000==0): print(iEvent)
     
     for iTrack,track in enumerate(event.tracks):
 
