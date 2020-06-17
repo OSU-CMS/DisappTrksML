@@ -1,22 +1,19 @@
 import os
-import keras
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
-from keras import callbacks, regularizers
-from keras import backend as K
+import tensorflow as tf
+from tensorflow import keras
 import numpy as np
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, KFold
+from sklearn.metrics import roc_auc_score, auc
 from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.pipeline import Pipeline
 from collections import Counter
 from utils import *
 import random
-from sklearn.metrics import roc_auc_score, auc
 import json
 
 

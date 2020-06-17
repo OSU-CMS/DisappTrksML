@@ -1,8 +1,10 @@
 import os
 import keras
+import tensorflow
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 from keras import callbacks
+from tensorflow.keras import regularizers
 from keras.metrics import FalseNegatives
 from keras import backend as K
 import numpy as np
@@ -12,14 +14,15 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
-from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.pipeline import Pipeline
 from collections import Counter
+import json
 from utils import *
 
 
-dataDir = '/data/disappearingTracks/'
+dataDir = '/data/disappearingTracks/e_reco_failed/'
 workDir = '/home/llavezzo/'
 plotDir = workDir + 'plots/cnn/'
 weightsDir = workDir + 'weights/cnn/'
@@ -28,43 +31,64 @@ os.system('mkdir '+str(plotDir))
 os.system('mkdir '+str(weightsDir))
 
 #config parameters
-fname = 'images_DYJets50_norm_40x40.pkl'
 pos_class = [1]
 neg_class = [0,2]
-batch_size = 128
+batch_size = 2048
 epochs = 100
-patience_count = 20
+patience_count = 10
 img_rows, img_cols = 40, 40
 channels = 3
 input_shape = (img_rows,img_cols,channels)
+oversample_val = 0.1
+undersample_val = 0.2
+smote_val = -1
 
-# extract data and classes
-df = pd.read_pickle(dataDir+fname)
-df_recofail = df.loc[df['deltaRToClosestElectron']>0.15]
-x = df_recofail.iloc[:,4:].to_numpy()
+# load partition
+with open(dataDir+'partition.json') as json_file:
+    partition = json.load(json_file)
+
+# load data
+df = pd.DataFrame()
+for filename in os.listdir(dataDir):
+    if "batch" in filename:
+        i=filename.find("_")+1
+        f=filename.find(".pkl")
+        # skip test set
+        if int(filename[i:f]) in partition['test']: continue
+        dftemp = pd.read_pickle(dataDir+filename)
+        df = pd.concat([df,dftemp])
+
+# reshape data and separate classes
+x = df.iloc[:,4:].to_numpy()
 x = np.reshape(x, [x.shape[0],40,40,4])
 x = x[:,:,:,[0,2,3]]
-y = df_recofail['type'].to_numpy()
+y = df['type'].to_numpy()
 for i,label in enumerate(y):
     if label in pos_class: y[i] = 1
     if label in neg_class: y[i] = 0
 
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.30, random_state=42)
 
-x_train = x_train.astype('float32')
-x_test = x_test.astype('float32')
-y_train = y_train.astype('int64')
-y_test = y_test.astype('int64')
 print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
 
-#SMOTE and under sampling
+#SMOTE, over sampling, and under sampling
 counter = Counter(y_train)
 print("Before",counter)
 x_train = np.reshape(x_train,[x_train.shape[0],40*40*3])
-oversample = SMOTE(sampling_strategy=0.2)
-undersample = RandomUnderSampler(sampling_strategy=0.3)
-steps = [('o', oversample), ('u', undersample)]
+steps = []
+if(smote_val != -1): 
+    print("Applying SMOTE with value",smote_val)
+    smote = SMOTE(sampling_strategy=smote_val)
+    steps.append(('o',smote))
+if(oversample_val != -1): 
+    print("Applying oversampling with value",oversample_val)
+    oversample = RandomOverSampler(sampling_strategy=oversample_val)
+    steps.append(('o',oversample))
+if(undersample_val != -1): 
+    print("Applying undersampling with value",undersample_val)
+    undersample = RandomUnderSampler(sampling_strategy=undersample_val)
+    steps.append(('u', undersample))
 pipeline = Pipeline(steps=steps)
 x_train, y_train = pipeline.fit_resample(x_train, y_train)
 counter = Counter(y_train)
@@ -90,23 +114,25 @@ model = Sequential()
 model.add(Conv2D(32, kernel_size=(3, 3),
                  activation='relu',
                  input_shape=input_shape))
-model.add(Conv2D(64, (3, 3), activation='relu'))
+model.add(Conv2D(64, (3, 3), activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.2))
-model.add(Conv2D(64, (3, 3), activation='relu'))
+model.add(Conv2D(64, (3, 3), activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.2))
-model.add(Conv2D(128, (3, 3), activation='relu'))
+model.add(Conv2D(128, (3, 3), activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.2))
 model.add(Flatten())
-model.add(Dense(128, activation='relu'))
+model.add(Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
 model.add(Dropout(0.5))
 model.add(Dense(2, activation='softmax',bias_initializer=output_bias))
 
 model.compile(loss=keras.losses.categorical_crossentropy,
               optimizer=keras.optimizers.Adadelta(),
               metrics=['accuracy'])
+
+model.save_weights(weightsDir+'initial_weights.h5')
 
 callbacks = [
     callbacks.EarlyStopping(patience=patience_count),
