@@ -14,18 +14,15 @@ from imblearn.pipeline import Pipeline
 from collections import Counter
 from utils import *
 import random
-import json
 import sys
 from itertools import product 
+import json
 
 
 dataDir = '/store/user/llavezzo/e_reco_failed/'
 workDir = '/data/users/llavezzo/cnn/'
-plotDir = workDir + 'plots/cnn_gs/'
-weightsDir = workDir + 'weights/cnn_gs/'
-
-os.system('mkdir '+str(plotDir))
-os.system('mkdir '+str(weightsDir))
+plotDir = workDir + 'plots/'
+weightsDir = workDir + 'weights/'
 
 filters_list = [32, 64, 128]  
 layers_list = [2,5,10]
@@ -38,11 +35,13 @@ n_layers = parameters[0]
 n_filters = parameters[1]
 opt = parameters[2]
 
+print("Running on",n_layers,n_filters,opt)
+
 ###########config parameters##################
 pos_class = [1]
 neg_class = [0,2]
 batch_size = 2048
-max_epochs = 100
+max_epochs = 50
 patience_count = 10
 img_rows, img_cols = 40, 40
 channels = 3
@@ -87,8 +86,9 @@ def build_model(layers=1,filters=64,opt='adadelta',kernels=(1,1),output_bias=0):
                     input_shape=input_shape))
     for _ in range(layers-1):
         model.add(keras.layers.Conv2D(filters, (3, 3), activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
-        model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
-        model.add(keras.layers.Dropout(0.2))
+        if(_%2 == 0):
+            model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
+            model.add(keras.layers.Dropout(0.2))
     model.add(keras.layers.Flatten())
     model.add(keras.layers.Dense(128, activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
     model.add(keras.layers.Dropout(0.5))
@@ -96,6 +96,7 @@ def build_model(layers=1,filters=64,opt='adadelta',kernels=(1,1),output_bias=0):
     model.compile(loss=keras.losses.categorical_crossentropy,
               optimizer=opt,
               metrics=['accuracy'])
+    print(model.summary)
 
     return model
 
@@ -211,4 +212,4 @@ avg_recall = valid_recall
 avg_auc = valid_auc
 
 # save the average acc and loss and iterations (on the validation sample!)
-json.dump([avg_acc,avg_loss, avg_iterations, avg_precision, avg_recall, avg_auc], open('gs_results/gs_nlayers'+str(n_layers)+'_nfliters'+str(n_filters)+'_opt'+str(opt)+'.json', 'w'))
+np.save('gsresults_'+str(sys.argv[1]),[avg_acc,avg_loss, avg_iterations, avg_precision, avg_recall, avg_auc])

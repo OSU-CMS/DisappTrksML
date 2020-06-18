@@ -31,7 +31,7 @@ if __name__=="__main__":
     error                   = /data/users/llavezzo/Logs/cnn_gs/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = /home/llavezzo/DisappTrksML/CNN/run_kfold.sh, /home/llavezzo/DisappTrksML/CNN/kfold.py, /home/llavezzo/DisappTrksML/CNN/utils.py
+    transfer_input_files = /home/llavezzo/CMSSW_10_2_20/src/DisappTrksML/CNN/run_kfold.sh, /home/llavezzo/CMSSW_10_2_20/src/DisappTrksML/CNN/kfold.py, /home/llavezzo/CMSSW_10_2_20/src/DisappTrksML/CNN/utils.py
     getenv = true
     queue {0}
 
