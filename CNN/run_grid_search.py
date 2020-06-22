@@ -21,9 +21,9 @@ if __name__=="__main__":
     Universe = vanilla
     +IsLocalJob = true
     Rank = TARGET.IsLocalSlot
-    request_disk = 2MB
-    request_memory = 2048MB
-    request_cpus = 1
+    request_disk = 5GB
+    request_memory = 100MB
+    request_cpus = 4
     executable              = run_kfold.sh
     arguments               = $(PROCESS)
     log                     = /data/users/llavezzo/Logs/cnn_gs/log_$(PROCESS).log
@@ -31,11 +31,11 @@ if __name__=="__main__":
     error                   = /data/users/llavezzo/Logs/cnn_gs/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = /home/llavezzo/CMSSW_10_2_20/src/DisappTrksML/CNN/run_kfold.sh, /home/llavezzo/CMSSW_10_2_20/src/DisappTrksML/CNN/kfold.py, /home/llavezzo/CMSSW_10_2_20/src/DisappTrksML/CNN/utils.py
+    transfer_input_files = {1}run_kfold.sh, {1}kfold.py, {1}cnn.py, {1}utils.py
     getenv = true
     queue {0}
 
-    """.format(njobs)
+    """.format(njobs, "/home/llavezzo/CMSSW_10_2_20/src/work/")
 
     f.write(submitLines)
     f.close()

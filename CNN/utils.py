@@ -5,6 +5,10 @@ from collections import defaultdict
 from functools import partial
 from itertools import repeat
 import numpy as np
+import os
+from collections import Counter
+from imblearn.over_sampling import SMOTE, RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler
 
 def save_event(x, dir, fname):
     
@@ -32,6 +36,30 @@ def plot_event(x):
     
     plt.show()
 
+# load the electron selected data
+def load_electron_data(dataDir, tag):
+    data = np.load(dataDir+'electron_selection'+tag+'.npz')
+    print("Loaded",len(data['images']),"events from",dataDir,tag)
+    return data['images'], data['infos']
+
+# load data with the images, infos .npz structure
+def load_all_data(dataDir, tag):
+
+  full = []
+  infos = []
+
+  for filename in os.listdir(dataDir):
+    if('.npz' in filename and tag in filename and 'images' in filename):
+      temp = np.load(dataDir+filename)
+      full.append(temp['images'])
+      infos.append(temp['infos'])
+
+  full = np.vstack(full)
+  infos = np.vstack(infos)
+  assert full.shape[0] == infos.shape[0], "Full images and infos are of different sizes"
+
+  print("Loaded",full.shape[0],"events from",dataDir,tag)
+  return full, infos
 
 def nested_defaultdict(default_factory, depth=1):
     result = partial(defaultdict, default_factory)
@@ -39,6 +67,56 @@ def nested_defaultdict(default_factory, depth=1):
         result = partial(defaultdict, result)
     return result()
 
+def apply_oversampling(x_train, y_train, oversample_val=0.1):
+  
+  counter = Counter(y_train)
+  print("Before",counter)
+  c1 = x_train.shape[1]
+  c2 = x_train.shape[2]
+  c3 = x_train.shape[3]
+  x_train = np.reshape(x_train,[x_train.shape[0],c1*c2*c3])
+
+  print("Applying oversampling with value",oversample_val)
+  oversample = RandomOverSampler(sampling_strategy=oversample_val)
+  x_train, y_train = oversample.fit_resample(x_train, y_train)
+  x_train = np.reshape(x_train,[x_train.shape[0],c1,c2,c3])
+  
+  counter = Counter(y_train)
+  print("After",counter)
+
+  return x_train, y_train
+
+def apply_undersampling(x_train, y_train, undersample_val=0.1):
+ 
+  counter = Counter(y_train)
+  print("Before",counter)
+  c1 = x_train.shape[1]
+  c2 = x_train.shape[2]
+  c3 = x_train.shape[3]
+  x_train = np.reshape(x_train,[x_train.shape[0],c1*c2*c3])
+  
+  print("Applying undersampling with value",undersample_val)
+  undersample = RandomUnderSampler(sampling_strategy=undersample_val)
+  x_train, y_train = undersample.fit_resample(x_train, y_train)
+  x_train = np.reshape(x_train,[x_train.shape[0],c1,c2,c3])
+  
+  counter = Counter(y_train)
+  print("After",counter)
+
+  return x_train, y_train
+
+
+def plot_history(history, plotDir, variables=['accuracy','loss']):
+  for var in variables:
+    plt.plot(history.history[var],label='train')
+    plt.plot(history.history['val'+var],label='test')
+    plt.title(var + ' History')
+    plt.ylabel(var)
+    plt.xlabel('Epoch')
+    plt.legend()
+    plt.savefig(plotDir+var+'_history.png')
+    plt.clf()
+    
 def calc_cm(y_test,predictions):
     confusion_matrix = nested_defaultdict(int,2)
     for true,pred in zip(y_test, predictions):

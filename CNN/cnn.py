@@ -1,187 +1,169 @@
 import os
-import keras
-import tensorflow
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
-from keras import callbacks
-from tensorflow.keras import regularizers
-from keras.metrics import FalseNegatives
-from keras import backend as K
+import tensorflow as tf
+from tensorflow import keras
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
-from imblearn.over_sampling import SMOTE, RandomOverSampler
-from imblearn.under_sampling import RandomUnderSampler
 from imblearn.pipeline import Pipeline
-from collections import Counter
-import json
-from utils import *
+import utils
 
 
-dataDir = '/data/disappearingTracks/e_reco_failed/'
-workDir = '/home/llavezzo/'
-plotDir = workDir + 'plots/cnn/'
-weightsDir = workDir + 'weights/cnn/'
-
-os.system('mkdir '+str(plotDir))
-os.system('mkdir '+str(weightsDir))
-
-#config parameters
-pos_class = [1]
-neg_class = [0,2]
-batch_size = 2048
-epochs = 100
-patience_count = 10
-img_rows, img_cols = 40, 40
-channels = 3
-input_shape = (img_rows,img_cols,channels)
-oversample_val = 0.1
-undersample_val = 0.2
-smote_val = -1
-
-# load partition
-with open(dataDir+'partition.json') as json_file:
-    partition = json.load(json_file)
-
-# load data
-df = pd.DataFrame()
-for filename in os.listdir(dataDir):
-    if "batch" in filename:
-        i=filename.find("_")+1
-        f=filename.find(".pkl")
-        # skip test set
-        if int(filename[i:f]) in partition['test']: continue
-        dftemp = pd.read_pickle(dataDir+filename)
-        df = pd.concat([df,dftemp])
-
-# reshape data and separate classes
-x = df.iloc[:,4:].to_numpy()
-x = np.reshape(x, [x.shape[0],40,40,4])
-x = x[:,:,:,[0,2,3]]
-y = df['type'].to_numpy()
-for i,label in enumerate(y):
-    if label in pos_class: y[i] = 1
-    if label in neg_class: y[i] = 0
-
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.30, random_state=42)
-
-print(x_train.shape[0], 'train samples')
-print(x_test.shape[0], 'test samples')
-
-#SMOTE, over sampling, and under sampling
-counter = Counter(y_train)
-print("Before",counter)
-x_train = np.reshape(x_train,[x_train.shape[0],40*40*3])
-steps = []
-if(smote_val != -1): 
-    print("Applying SMOTE with value",smote_val)
-    smote = SMOTE(sampling_strategy=smote_val)
-    steps.append(('o',smote))
-if(oversample_val != -1): 
-    print("Applying oversampling with value",oversample_val)
-    oversample = RandomOverSampler(sampling_strategy=oversample_val)
-    steps.append(('o',oversample))
-if(undersample_val != -1): 
-    print("Applying undersampling with value",undersample_val)
-    undersample = RandomUnderSampler(sampling_strategy=undersample_val)
-    steps.append(('u', undersample))
-pipeline = Pipeline(steps=steps)
-x_train, y_train = pipeline.fit_resample(x_train, y_train)
-counter = Counter(y_train)
-print("After",counter)
-x_train = np.reshape(x_train,[x_train.shape[0],40,40,3])
-
-# initialize output bias
-neg, pos = np.bincount(y_train)
-output_bias = np.log(pos/neg)
-output_bias = keras.initializers.Constant(output_bias)
-print("Positive Class Counter:",pos)
-print("Negative Class Counter:",neg)
-
-# output weights
-weight_for_0 = (1/neg)*(neg+pos)/2.0
-weight_for_1 = (1/pos)*(neg+pos)/2.0
-class_weight = {0: weight_for_0, 1: weight_for_1}
-
-y_train = keras.utils.to_categorical(y_train, 2)
-y_test = keras.utils.to_categorical(y_test, 2)
-
-model = Sequential()
-model.add(Conv2D(32, kernel_size=(3, 3),
-                 activation='relu',
-                 input_shape=input_shape))
-model.add(Conv2D(64, (3, 3), activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.2))
-model.add(Conv2D(64, (3, 3), activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.2))
-model.add(Conv2D(128, (3, 3), activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.2))
-model.add(Flatten())
-model.add(Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
-model.add(Dropout(0.5))
-model.add(Dense(2, activation='softmax',bias_initializer=output_bias))
-
-model.compile(loss=keras.losses.categorical_crossentropy,
-              optimizer=keras.optimizers.Adadelta(),
+def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kernels=(1,1),output_bias=0):
+    
+    model = keras.Sequential()
+    model.add(keras.layers.Conv2D(filters, kernel_size=(3, 3),
+                    activation='relu',
+                    input_shape=input_shape))
+    for _ in range(layers-1):
+        model.add(keras.layers.Conv2D(filters, (3, 3), activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
+        if(_%2 == 0):
+            model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
+            model.add(keras.layers.Dropout(0.2))
+    model.add(keras.layers.Flatten())
+    model.add(keras.layers.Dense(128, activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
+    model.add(keras.layers.Dropout(0.5))
+    model.add(keras.layers.Dense(2, activation='softmax',bias_initializer=keras.initializers.Constant(0)))
+    model.compile(loss=keras.losses.categorical_crossentropy,
+              optimizer=opt,
               metrics=['accuracy'])
+    #print(model.summary())
 
-model.save_weights(weightsDir+'initial_weights.h5')
+    return model
 
-callbacks = [
-    callbacks.EarlyStopping(patience=patience_count),
-    callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch:02d}.h5'),
-]
 
-history = model.fit(x_train, y_train,
-          batch_size=batch_size,
-          epochs=epochs,
-          verbose=2,
-          validation_data=(x_test, y_test),
-          callbacks=callbacks,
-          class_weight = class_weight)
 
-model.save_weights(weightsDir + 'first_model.h5')
+def train_model(model, x_train, y_train, x_test, y_test, weightsDir, weightsFile, patience_count = 20, epochs = 100, batch_size = 128, class_weights=True):
 
-plt.plot(history.history['accuracy'],label='train')
-plt.plot(history.history['val_accuracy'],label='test')
-plt.title('Accuracy History')
-plt.ylabel('Accuracy')
-plt.xlabel('Epoch')
-plt.legend()
-plt.savefig(plotDir+'accuracy_history.png')
-plt.clf()
+  neg, pos = np.bincount(y_train)
 
-plt.plot(history.history['loss'],label='train')
-plt.plot(history.history['val_loss'],label='test')
-plt.title('Loss History')
-plt.ylabel('Loss')
-plt.xlabel('Epoch')
-plt.legend()
-plt.savefig(plotDir+'loss_history.png')
-plt.clf()
+  if(class_weights):
+    weight_for_0 = (1/neg)*(neg+pos)/2.0
+    weight_for_1 = (1/pos)*(neg+pos)/2.0
+    class_weight = {0: weight_for_0, 1: weight_for_1}
 
-predictions = model.predict(x_test)
+  y_train = keras.utils.to_categorical(y_train, 2)
+  y_test = keras.utils.to_categorical(y_test, 2)
 
-print()
-print("Calculating and plotting confusion matrix")
-cm = calc_cm(y_test,predictions)
-plot_confusion_matrix(cm,['bkg','e'],plotDir + 'cm.png')
-print()
+  callbacks = [
+      keras.callbacks.EarlyStopping(patience=patience_count),
+      keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch:02d}.h5'),
+  ]
 
-print("Plotting ceratainty")
-plot_certainty(y_test,predictions,plotDir+'certainty.png')
-print()
+  if(class_weights):
+    history = model.fit(x_train, y_train,
+              batch_size=batch_size,
+              epochs=epochs,
+              verbose=2,
+              validation_data=(x_test, y_test),
+              callbacks=callbacks,
+              class_weight = class_weight)
+  else:
+    history = model.fit(x_train, y_train,
+              batch_size=batch_size,
+              epochs=epochs,
+              verbose=2,
+              validation_data=(x_test, y_test),
+              callbacks=callbacks)
 
-precision, recall = calc_binary_metrics(cm)
-print("Precision = TP/(TP+FP) = fraction of predicted true actually true ",round(precision,3))
-print("Recall = TP/(TP+FN) = fraction of true class predicted to be true ",round(recall),3)
-auc = roc_auc_score(y_test,predictions)
-print("AUC Score:",round(auc,5))
-print()
+  model.save_weights(weightsDir+weightsFile)
+
+  return history
+
+
+if __name__ == "__main__":
+
+  #config parameters
+  pos_class = [1]
+  neg_class = [0,2]
+  batch_size = 2048
+  epochs = 100
+  patience_count = 10
+  img_rows, img_cols = 40, 40
+  channels = 3
+  input_shape = (img_rows,img_cols,channels)
+  oversample_val = 0.1
+  undersample_val = 0.2
+  smote_val = -1
+
+  dataDir = '/store/user/llavezzo/images/'
+  tag = '_0p25_tanh'
+  workDir = '/home/llavezzo/CMSSW_10_2_20/src/'
+  plotDir = workDir + 'plots/cnn/'
+  weightsDir = workDir + 'weights/cnn/'
+
+  os.system('mkdir '+str(plotDir))
+  os.system('mkdir '+str(weightsDir))
+
+
+  """
+  infos:
+
+  0: ID
+  1: matched track gen truth flavor (1: electrons, 2: muons, 0: everything else)
+  2: nPV
+  3: deltaRToClosestElectron
+  4: deltaRToClosestMuon
+  5: deltaRToClosestTauHaud
+  6: classes 1: electron, 0: background (electron selection only)
+
+  """
+
+  images, infos = utils.load_electron_data(dataDir, tag)
+
+  x = images[:,:-1]
+  x = np.reshape(x, [len(x),40,40,4])
+  x = x[:,:,:,[0,2,3]]
+
+  y = np.array([x[6] for x in infos])
+  y = y.astype(int)
+
+  x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.30, random_state=42)
+
+  print(x_train.shape[0], 'train samples')
+  print(x_test.shape[0], 'test samples')
+
+  x_train, y_train = utils.apply_oversampling(x_train,y_train,oversample_val=0.1)
+  x_train, y_train = utils.apply_undersampling(x_train,y_train,undersample_val=0.2)
+
+  # initialize output bias
+  neg, pos = np.bincount(y_train)
+  output_bias = np.log(pos/neg)
+  output_bias = keras.initializers.Constant(output_bias)
+  print("Positive Class Counter:",pos)
+  print("Negative Class Counter:",neg)
+
+  model = build_model(input_shape = input_shape, layers = 5, filters = 64, opt='adam',output_bias=output_bias)
+
+  weightsFile = 'first_model.h5'
+
+  history = train_model(model,x_train,y_train,x_test,y_test,
+                        weightsDir,weightsFile,
+                        patience_count=20,
+                        epochs=100,
+                        batch_size=2048,
+                        class_weights=True)
+
+  utils.plot_history(history, plotDir)
+
+  model.load_weights(weightsDir+weightsFile)
+  predictions = model.predict(x_test)
+
+  print()
+  print("Calculating and plotting confusion matrix")
+  cm = utils.calc_cm(y_test,predictions)
+  plot_confusion_matrix(cm,['bkg','e'],plotDir + 'cm.png')
+  print()
+
+  print("Plotting ceratainty")
+  utils.plot_certainty(y_test,predictions,plotDir+'certainty.png')
+  print()
+
+  precision, recall = utils.calc_binary_metrics(cm)
+  print("Precision = TP/(TP+FP) = fraction of predicted true actually true ",round(precision,3))
+  print("Recall = TP/(TP+FN) = fraction of true class predicted to be true ",round(recall),3)
+  auc = roc_auc_score(y_test,predictions)
+  print("AUC Score:",round(auc,5))
+  print()
