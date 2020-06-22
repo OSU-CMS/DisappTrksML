@@ -19,7 +19,7 @@ print("Process",process)
 
 dataDir = ' /data/users/mcarrigan/condor/images_DYJetsM50/'
 fname = 'hist_'+str(process)+'.root'
-fOut = 'images_0p25_'+str(process)+'.pkl'
+fOut = 'images_0p25_tanh_'+str(process)
 
 ##### config params #####
 scaling = False
@@ -33,7 +33,11 @@ phi_ub,phi_lb = 0.25,-0.25
 #import data
 fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
-print("Added",tree.GetEntries(),"from",fname)
+nEvents = tree.GetEntries()
+if(nEvents == 0):
+    print("0 events added from",fname)
+    exit()
+print("Added",nEvents,"from",fname)
 
 def convert_eta(eta):
     return int(round(((res_eta-1)*1.0/(eta_ub-eta_lb))*(eta-eta_lb)))
@@ -69,8 +73,8 @@ def passesSelection(track):
     if not abs(track.dRMinJet) > 0.5: return False
     return True
 
-rows = []
-nEvents = tree.GetEntries()
+images,infos = [],[]
+ID = 0
 
 for iEvent,event in enumerate(tree):
     
@@ -117,24 +121,25 @@ for iEvent,event in enumerate(tree):
             matrix = np.tanh(matrix)
 
         matrix = matrix.flatten().reshape([matrix.shape[0]*matrix.shape[1]*matrix.shape[2],])  
-        info = np.array([check_track(track),
+        matrix = matrix.astype('float32')
+        matrix = np.append(matrix,ID)
+        
+        info = np.array([
+            ID,
+            check_track(track),
 	        nPV,
             track.deltaRToClosestElectron,
             track.deltaRToClosestMuon,
             track.deltaRToClosestTauHad])
 
-        rows.append(np.concatenate([info,matrix])) 
+
+        images.append(matrix)
+        infos.append(info) 
+
+        ID+=1
             
-if(len(rows)==0): exit()
+if(len(images)==0 or len(infos)==0): exit()
+assert len(images)==len(infos),"Images and infos don't match!"
 
 print("Saving to",fOut)
-columns = ['type', 'nPV', 'deltaRToClosestElectron','deltaRToClosestMuon','deltaRToClosestTau']
-pixels = [i for i in range(res_eta*res_phi*4)]
-df = pd.DataFrame(rows, columns=np.concatenate([columns,pixels]))
-df = df.astype('float32')
-df['type'] = df['type'].astype('int32')
-df['nPV'] = df['nPV'].astype('int32')
-df.to_pickle(fOut)
-
-
-
+np.savez_compressed(fOut,images=images,infos=infos)
