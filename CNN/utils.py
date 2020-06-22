@@ -179,8 +179,10 @@ def calc_binary_metrics(confusion_matrix):
     FN = confusion_matrix[c1][c2]
     TN = confusion_matrix[c2][c2]
 
-    precision = TP / (TP + FP)
-    recall = TP / (TP + FN)
+    if((TP+FP) == 0): precision = 0
+    else: precision = TP / (TP + FP)
+    if((TP+FN) == 0): recall = 0
+    else: recall = TP / (TP + FN)
 
     return precision, recall
 

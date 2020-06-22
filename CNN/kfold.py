@@ -47,6 +47,7 @@ patience_count = 10
 img_rows, img_cols = 40, 40
 channels = 3
 input_shape = (img_rows,img_cols,channels)
+class_weights = True
 oversample_val = 0.1
 undersample_val = 0.2
 ##################################################
@@ -97,16 +98,16 @@ for train_index, val_index in skf.split(x, y):
 
     model = cnn.build_model(input_shape = input_shape, layers = n_layers, filters = n_filters, opt=opt, output_bias=output_bias)
     
-    weightsFile = 'numSplit'+str(numSplit)+'_params'+str(parameterNum)+'.h5'
+    weightsFile = 'numSplit'+str(numSplit)+'_params'+str(parameterNum)
 
     history = cnn.train_model(model,x_train,y_train,x_val,y_val,
                         weightsDir,weightsFile,
                         patience_count=patience_count,
                         epochs=max_epochs,
                         batch_size=batch_size,
-                        class_weights = True)
+                        class_weights = class_weights)
 
-    model.load_weights(weightsDir+weightsFile)
+    model.load_weights(weightsDir+weightsFile+'.h5')
 
     predictions = model.predict(x_val)
     cm = utils.calc_cm(y_val,predictions)

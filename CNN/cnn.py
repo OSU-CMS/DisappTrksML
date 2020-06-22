@@ -34,7 +34,6 @@ def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kern
     return model
 
 
-
 def train_model(model, x_train, y_train, x_test, y_test, weightsDir, weightsFile, patience_count = 20, epochs = 100, batch_size = 128, class_weights=True):
 
   neg, pos = np.bincount(y_train)
@@ -48,15 +47,19 @@ def train_model(model, x_train, y_train, x_test, y_test, weightsDir, weightsFile
   y_test = keras.utils.to_categorical(y_test, 2)
 
   callbacks = [
-      keras.callbacks.EarlyStopping(patience=patience_count),
-      keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch:02d}.h5'),
+    keras.callbacks.EarlyStopping(patience=patience_count),
+    keras.callbacks.ModelCheckpoint(filepath=weightsDir+weightsFile+'.h5',
+                                    save_weights_only=True,
+                                    monitor='val_loss',
+                                    mode='auto',
+                                    save_best_only=True),
   ]
 
   if(class_weights):
     history = model.fit(x_train, y_train,
               batch_size=batch_size,
               epochs=epochs,
-              verbose=2,
+              verbose=1,
               validation_data=(x_test, y_test),
               callbacks=callbacks,
               class_weight = class_weight)
@@ -68,31 +71,33 @@ def train_model(model, x_train, y_train, x_test, y_test, weightsDir, weightsFile
               validation_data=(x_test, y_test),
               callbacks=callbacks)
 
-  model.save_weights(weightsDir+weightsFile)
-
   return history
 
 
 if __name__ == "__main__":
 
+  config = tf.ConfigProto(inter_op_parallelism_threads = 2,   
+                          intra_op_parallelism_threads = 2)
+  tf.keras.backend.set_session(tf.Session(config=config))
+
   #config parameters
   pos_class = [1]
   neg_class = [0,2]
-  batch_size = 2048
-  epochs = 100
+  batch_size = 256
+  epochs = 1
   patience_count = 10
   img_rows, img_cols = 40, 40
   channels = 3
   input_shape = (img_rows,img_cols,channels)
+  class_weights = True
   oversample_val = 0.1
   undersample_val = 0.2
-  smote_val = -1
 
   dataDir = '/store/user/llavezzo/images/'
   tag = '_0p25_tanh'
-  workDir = '/home/llavezzo/CMSSW_10_2_20/src/'
-  plotDir = workDir + 'plots/cnn/'
-  weightsDir = workDir + 'weights/cnn/'
+  workDir = '/data/users/llavezzo/cnn/'
+  plotDir = workDir + 'plots/'
+  weightsDir = workDir + 'weights/'
 
   os.system('mkdir '+str(plotDir))
   os.system('mkdir '+str(weightsDir))
@@ -135,20 +140,22 @@ if __name__ == "__main__":
   print("Positive Class Counter:",pos)
   print("Negative Class Counter:",neg)
 
-  model = build_model(input_shape = input_shape, layers = 5, filters = 64, opt='adam',output_bias=output_bias)
+  model = build_model(input_shape = input_shape, 
+                      layers = 5, filters = 64, opt='adam',
+                      output_bias=output_bias)
 
-  weightsFile = 'first_model.h5'
+  weightsFile = 'first_model'
 
   history = train_model(model,x_train,y_train,x_test,y_test,
                         weightsDir,weightsFile,
-                        patience_count=20,
-                        epochs=100,
-                        batch_size=2048,
-                        class_weights=True)
+                        patience_count=patience_count,
+                        epochs=epochs,
+                        batch_size=batch_size,
+                        class_weights=class_weights)
 
   utils.plot_history(history, plotDir)
 
-  model.load_weights(weightsDir+weightsFile)
+  model.load_weights(weightsDir+weightsFile+'.h5')
   predictions = model.predict(x_test)
 
   print()
