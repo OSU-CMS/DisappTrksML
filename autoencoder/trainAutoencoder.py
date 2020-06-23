@@ -62,6 +62,13 @@ print("Validation Samples", x_val.shape[0])
 x_train = x_train[:, :, :, 0]
 x_val = x_val[:, :, :, 0]
 
+fig, plot = plt.subplots(1,5, figsize = (10,5))
+for i in range(5):
+    rand = np.random.randint(0, x_train.shape[0])
+    plot[i].imshow(x_train[rand, :, :])
+
+plt.savefig(workDir + 'TrainElectrons.png')
+
 x_train = np.reshape(x_train, (-1, 40, 40, 1))
 x_val = np.reshape(x_val, (-1, 40, 40, 1))
 
@@ -103,9 +110,11 @@ decoded = Conv2D(1, (3,3), activation = 'sigmoid', padding = 'same')(ae)
 
 
 autoencoder = Model(img, decoded)
+if(len(sys.argv) > 3): 
+    autoencoder.load_weights(saveDir + loadWeights)
+    print("loading weights", loadWeights)
 autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
 
-if(len(sys.argv) > 3): autoencoder.load_weights(saveDir + loadWeights)
 autoencoder.fit(noisyTrain, x_train, epochs = num_epochs, batch_size = batches, shuffle=True, validation_data = (noisyVal, x_val))
 
 autoencoder.save_weights(saveDir+saveWeights)
