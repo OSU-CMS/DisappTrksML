@@ -76,28 +76,30 @@ def train_model(model, x_train, y_train, x_test, y_test, weightsDir, weightsFile
 
 if __name__ == "__main__":
 
+  # limit CPU usage
   config = tf.ConfigProto(inter_op_parallelism_threads = 2,   
                           intra_op_parallelism_threads = 2)
   tf.keras.backend.set_session(tf.Session(config=config))
+
+  dataDir = '/store/user/llavezzo/electron_selection/'
+  tag = '_0p25_tanh'
+  workDir = '/data/users/llavezzo/cnn/'
+  plotDir = workDir + 'plots/'
+  weightsDir = workDir + 'weights/'
 
   #config parameters
   pos_class = [1]
   neg_class = [0,2]
   batch_size = 256
-  epochs = 1
+  epochs = 10
   patience_count = 10
   img_rows, img_cols = 40, 40
   channels = 3
   input_shape = (img_rows,img_cols,channels)
   class_weights = True
   oversample_val = 0.1
-  undersample_val = 0.2
+  undersample_val = 0.3
 
-  dataDir = '/store/user/llavezzo/images/'
-  tag = '_0p25_tanh'
-  workDir = '/data/users/llavezzo/cnn/'
-  plotDir = workDir + 'plots/'
-  weightsDir = workDir + 'weights/'
 
   os.system('mkdir '+str(plotDir))
   os.system('mkdir '+str(weightsDir))
@@ -130,8 +132,8 @@ if __name__ == "__main__":
   print(x_train.shape[0], 'train samples')
   print(x_test.shape[0], 'test samples')
 
-  x_train, y_train = utils.apply_oversampling(x_train,y_train,oversample_val=0.1)
-  x_train, y_train = utils.apply_undersampling(x_train,y_train,undersample_val=0.2)
+  # x_train, y_train = utils.apply_oversampling(x_train,y_train,oversample_val=oversample_val)
+  # x_train, y_train = utils.apply_undersampling(x_train,y_train,undersample_val=undersample_val)
 
   # initialize output bias
   neg, pos = np.bincount(y_train)
