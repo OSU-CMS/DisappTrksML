@@ -5,8 +5,26 @@ import time
 from decimal import Decimal
 import glob
 import subprocess
+import ROOT as r
+import numpy as np
 
 if __name__=="__main__":
+
+    workDir = "/home/llavezzo/CMSSW_10_2_20/src/work/"
+
+    dataDir = '/data/users/mcarrigan/condor/images_DYJetsM50/'
+    files = []
+    for filename in os.listdir(dataDir):
+        if('.root' in filename and 'hist' in filename):
+            fin = r.TFile(dataDir + filename)
+            tree = fin.Get('trackImageProducer/tree')
+            nEvents = tree.GetEntries()
+            if(nEvents > 0): files.append(filename)
+            del fin
+            del tree
+    np.save('fileslist',files)
+
+
 
     f = open('run.sub', 'w')
     submitLines = """
@@ -24,11 +42,11 @@ if __name__=="__main__":
     error                   = /data/users/llavezzo/Logs/convert_data/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = {0}DataProcessing/run_wrapper.sh, {0}DataProcessing/convert_data.py, {0}TreeMaker/interface/Infos.h
+    transfer_input_files = {0}fileslist.npy, {0}run_wrapper.sh, {0}convert_data.py, {0}Infos.h
     getenv = true
-    queue 4000
+    queue {1}
 
-    """.format("/home/llavezzo/CMSSW_10_2_20/src/DisappTrksML/")
+    """.format(workDir,len(files))
 
     f.write(submitLines)
     f.close()

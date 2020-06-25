@@ -10,15 +10,20 @@ import math
 import pandas as pd
 import sys
 
-gROOT.ProcessLine('.L Infos.h+')
+
+gROOT.ProcessLine('.L Infos.h++')
 gROOT.SetBatch()
 
 # script arguments
 process = int(sys.argv[1])
 print("Process",process)
 
-dataDir = ' /data/users/mcarrigan/condor/images_DYJetsM50/'
-fname = 'hist_'+str(process)+'.root'
+files = np.load('fileslist.npy')
+fname = files[process]
+
+print(fname)
+
+dataDir = '/data/users/mcarrigan/condor/images_DYJetsM50/'
 fOut = 'images_0p25_tanh_'+str(process)
 
 ##### config params #####
@@ -85,6 +90,8 @@ for iEvent,event in enumerate(tree):
     for iTrack,track in enumerate(event.tracks):
 
         if(not passesSelection(track)): continue
+
+        #if(track.deltaRToClosestElectron <= 0.15): continue
             
         matrix = np.zeros([res_eta,res_phi,4])
 
@@ -122,7 +129,7 @@ for iEvent,event in enumerate(tree):
 
         matrix = matrix.flatten().reshape([matrix.shape[0]*matrix.shape[1]*matrix.shape[2],])  
         matrix = matrix.astype('float32')
-        matrix = np.append(matrix,ID)
+        matrix = np.append(ID,matrix)
         
         info = np.array([
             ID,
@@ -132,9 +139,8 @@ for iEvent,event in enumerate(tree):
             track.deltaRToClosestMuon,
             track.deltaRToClosestTauHad])
 
-
         images.append(matrix)
-        infos.append(info) 
+        infos.append(info)
 
         ID+=1
             

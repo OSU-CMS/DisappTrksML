@@ -109,7 +109,7 @@ def apply_undersampling(x_train, y_train, undersample_val=0.1):
 def plot_history(history, plotDir, variables=['acc','loss']):
   for var in variables:
     plt.plot(history.history[var],label='train')
-    plt.plot(history.history['val'+var],label='test')
+    plt.plot(history.history['val_'+var],label='test')
     plt.title(var + ' History')
     plt.ylabel(var)
     plt.xlabel('Epoch')

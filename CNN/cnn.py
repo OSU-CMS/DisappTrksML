@@ -67,7 +67,7 @@ def train_model(model, x_train, y_train, x_test, y_test, weightsDir, weightsFile
     history = model.fit(x_train, y_train,
               batch_size=batch_size,
               epochs=epochs,
-              verbose=2,
+              verbose=1,
               validation_data=(x_test, y_test),
               callbacks=callbacks)
 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
   images, infos = utils.load_electron_data(dataDir, tag)
 
-  x = images[:,:-1]
+  x = images[:,1:]
   x = np.reshape(x, [len(x),40,40,4])
   x = x[:,:,:,[0,2,3]]
 
