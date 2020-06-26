@@ -134,8 +134,8 @@ def plot_certainty(y_test,predictions,f):
         else:
             notcorrect_certainty.append(pred[np.argmax(pred)])
     
-    plt.hist(correct_certainty,alpha=0.5,label='Predicted Successfully',density=True)
-    plt.hist(notcorrect_certainty,alpha=0.5,label='Predicted Unsuccessfully',density=True)
+    plt.hist(correct_certainty,alpha=0.5,label='Predicted Successfully',normed=True)
+    plt.hist(notcorrect_certainty,alpha=0.5,label='Predicted Unsuccessfully',normed=True)
     plt.title("Certainty")
     plt.legend()
     plt.savefig(f)
