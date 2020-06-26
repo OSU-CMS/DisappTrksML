@@ -1,4 +1,4 @@
 #!/bin/bash
 
 python convert_data.py $1
-mv images_0p25_tanh_$1.npz /store/user/llavezzo/images/images_0p25_tanh_$1.npz
+mv images*.npz /store/user/llavezzo/disappearingTracks/converted_DYJetsToLL_M50/

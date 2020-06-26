@@ -12,18 +12,17 @@ if __name__=="__main__":
 
     workDir = "/home/llavezzo/CMSSW_10_2_20/src/work/"
 
-    dataDir = '/data/users/mcarrigan/condor/images_DYJetsM50/'
+    dataDir = '/store/user/bfrancis/images_DYJetsToLL_M50/'
     files = []
     for filename in os.listdir(dataDir):
         if('.root' in filename and 'hist' in filename):
-            fin = r.TFile(dataDir + filename)
-            tree = fin.Get('trackImageProducer/tree')
-            nEvents = tree.GetEntries()
-            if(nEvents > 0): files.append(filename)
-            del fin
-            del tree
+            index1 = filename.find("_")
+            index2 = filename.find(".")
+            numFile = int(filename[index1+1:index2])
+            files.append(numFile)
     np.save('fileslist',files)
 
+    print(files)
 
 
     f = open('run.sub', 'w')

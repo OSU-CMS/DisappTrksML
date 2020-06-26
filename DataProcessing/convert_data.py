@@ -18,32 +18,36 @@ gROOT.SetBatch()
 process = int(sys.argv[1])
 print("Process",process)
 
+# name of the file to import
 files = np.load('fileslist.npy')
-fname = files[process]
+fileNum = files[process]
+fname = "hist_"+str(fileNum)+".root"
 
-print(fname)
-
-dataDir = '/data/users/mcarrigan/condor/images_DYJetsM50/'
-fOut = 'images_0p25_tanh_'+str(process)
+# output file tag
+fOut = '0p25_'+str(fileNum)
 
 ##### config params #####
 scaling = False
-tanh_scaling = True
+tanh_scaling = False
 res_eta = 40
 res_phi = 40
 eta_ub,eta_lb = 0.25,-0.25
 phi_ub,phi_lb = 0.25,-0.25
 #########################
 
-#import data
+# import data
+dataDir = '/store/user/bfrancis/images_DYJetsToLL_M50/'
 fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
+print("Opened file",fname)
 nEvents = tree.GetEntries()
 if(nEvents == 0):
-    print("0 events added from",fname)
-    exit()
-print("Added",nEvents,"from",fname)
+    sys.exit("0 events found in file")
+print("Added",nEvents)
 
+
+# Convert coordinates from original mapping
+# to range as specified in parameters
 def convert_eta(eta):
     return int(round(((res_eta-1)*1.0/(eta_ub-eta_lb))*(eta-eta_lb)))
 
@@ -62,6 +66,7 @@ def type_to_channel(hittype):
     #Muon (CSC,DT,RPC)
     if(hittype == 5 or hittype ==6 or hittype == 7): return 3
 
+# Match electrons, muons
 def check_track(track):
     if(abs(track.genMatchedID)==11 and abs(track.genMatchedDR) < 0.1): return 1
     if(abs(track.genMatchedID)==13 and abs(track.genMatchedDR) < 0.1): return 2
@@ -78,7 +83,9 @@ def passesSelection(track):
     if not abs(track.dRMinJet) > 0.5: return False
     return True
 
-images,infos = [],[]
+# images and infos split by gen matched type
+images = [[],[],[]]
+infos = [[],[],[]]
 ID = 0
 
 for iEvent,event in enumerate(tree):
@@ -90,8 +97,6 @@ for iEvent,event in enumerate(tree):
     for iTrack,track in enumerate(event.tracks):
 
         if(not passesSelection(track)): continue
-
-        #if(track.deltaRToClosestElectron <= 0.15): continue
             
         matrix = np.zeros([res_eta,res_phi,4])
 
@@ -119,6 +124,7 @@ for iEvent,event in enumerate(tree):
             if channel != 3: matrix[dEta,dPhi,channel] += hit.energy
             else: matrix[dEta][dPhi][channel] += 1
 
+        # scaling options
         if(scaling):
             scale = matrix[:,:,:3].max()
             scale_muons = matrix[:,:,3].max()
@@ -131,21 +137,28 @@ for iEvent,event in enumerate(tree):
         matrix = matrix.astype('float32')
         matrix = np.append(ID,matrix)
         
+        genMatch = check_track(track)
         info = np.array([
             ID,
-            check_track(track),
+            genMatch,
 	        nPV,
             track.deltaRToClosestElectron,
             track.deltaRToClosestMuon,
             track.deltaRToClosestTauHad])
 
-        images.append(matrix)
-        infos.append(info)
+        images[genMatch].append(matrix)
+        infos[genMatch].append(info)
 
         ID+=1
             
-if(len(images)==0 or len(infos)==0): exit()
-assert len(images)==len(infos),"Images and infos don't match!"
+# check for errors before saving
+nEvents = 0
+for i in range(3):
+    if(len(images[i])!=len(infos[i])): sys.exit("Images and infos don't match!")
+    nEvents += len(images[i])
+if(nEvents == 0): sys.exit("The output file is empty")
 
 print("Saving to",fOut)
-np.savez_compressed(fOut,images=images,infos=infos)
+np.savez_compressed("images_bkg_"+fOut,images=images[0],infos=infos[0])
+np.savez_compressed("images_e_"+fOut,images=images[1],infos=infos[1])
+np.savez_compressed("images_m_"+fOut,images=images[2],infos=infos[2])
