@@ -116,7 +116,7 @@ if __name__ == "__main__":
   weightsDir = workDir + 'weights/cnn/'
 
   ################config parameters################
-  nTotE, nTotBkg = 100,1000       # max: 15463 electron events and 3256305 background events
+  nTotE, nTotBkg = 1000,1000       # max: 15463 electron events and 3256305 background events
   batch_size = 256
   epochs = 1
   patience_count = 10
@@ -149,8 +149,6 @@ if __name__ == "__main__":
   with open(dataDir+'bkgCounts.json') as json_file:
     bkgCounts = json.load(json_file)
 
-
-
   nBatches = (nTotE + nTotBkg)*1.0/batch_size
   nBatchE = int(nTotE/nBatches)
   nBatchBkg = int(nTotBkg/nBatches)
@@ -160,7 +158,10 @@ if __name__ == "__main__":
   nSavedE = 0
   thisBatchE = 0
   temp = []
-  for thisFile, thisFileE in eCounts.items():
+  keys = list(eCounts.keys())
+  random.shuffle(keys)
+  for thisFile in keys:
+    thisFileE = eCounts[thisFile]
     if(thisFileE < 1): continue
     if(nSavedE > nTotE): break
 
@@ -177,7 +178,10 @@ if __name__ == "__main__":
   nSavedBkg = 0
   thisBatchBkg = 0
   temp = []
-  for thisFile, thisFileBkg in bkgCounts.items():
+  keys = list(bkgCounts.keys())
+  random.shuffle(keys)
+  for thisFile in keys:
+    thisFileBkg = bkgCounts[thisFile]
     if(thisFileBkg < 1): continue
     if(nSavedBkg > nTotBkg): break
 
@@ -252,29 +256,28 @@ if __name__ == "__main__":
 
   # predict each of the validation files individually
 
-  predictions, true = [],[]
-  valFilesE = np.asarray(valFilesE)
-  valFilesBkg = np.asarray(valFilesBkg)
-  for file in valFilesE.flatten():
+  valFilesE = [file for batch in valFilesE for file in batch]
+  valFilesBkg = [file for batch in valFilesBkg for file in batch]
+  for i,file in enumerate(valFilesE):
     fname = "e_"+tag1+file+".npz"
     temp = np.load(dataDir+fname) 
     images = temp['images'][:,1:]
     images = np.reshape(images, [len(images),40,40,4])
     x_test = images[:,:,:,[0,2,3]]
-    y_test = np.ones(len(images))
-    y_test = keras.utils.to_categorical(y_test, num_classes=2)
-    predictions.append(model.predict(x_test))
-    true.append(y_test)
-  for file in valFilesE.flatten():
+    if(i==0): predictionsE = model.predict(x_test)
+    else: predictionsE = np.concatenate([predictionsE, model.predict(x_test)])
+  for i,file in enumerate(valFilesBkg):
     fname = "bkg_"+tag2+file+".npz"
     temp = np.load(dataDir+fname) 
-    images = temp['images'][:,1:]
+    images = temp['images'][:batch_size,1:]
     images = np.reshape(images, [len(images),40,40,4])
     x_test = images[:,:,:,[0,2,3]]
-    y_test = np.zeros(len(images))
-    y_test = keras.utils.to_categorical(y_test, num_classes=2)
-    predictions.append(model.predict(x_test))
-    true.append(y_test)
+    if(i == 0): predictionsB = model.predict(x_test)
+    else: predictionsB = np.concatenate([predictionsB, model.predict(x_test)])
+
+  predictions = np.concatenate((predictionsE, predictionsB))
+  true = np.concatenate((np.ones(len(predictionsE)), np.zeros(len(predictionsB))))
+  y_test = keras.utils.to_categorical(true, num_classes=2)
 
   utils.plot_history(history, plotDir,['loss','accuracy'])
 
@@ -295,8 +298,10 @@ if __name__ == "__main__":
   print("AUC Score:",round(auc,5))
   print()
 
-  fileOut = open(plotDir+"metrics.txt","w")
+  fOut = "metrics.txt"
+  fileOut = open(plotDir+fOut,"w")
   fileOut.write("Precision = TP/(TP+FP) = fraction of predicted true actually true "+str(round(precision,3))+"\n")
   fileOut.write("Recall = TP/(TP+FN) = fraction of true class predicted to be true "+str(round(recall,3))+"\n")
   fileOut.write("AUC Score:"+str(round(auc,5)))
   fileOut.close()
+  print("Wrote out metrics to",fOut)
