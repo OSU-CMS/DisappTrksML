@@ -55,14 +55,11 @@ class generator(keras.utils.Sequence):
     filenamesBkg = self.filesBkg[idx]
 
     # import images
-    e_images = np.array([])
     for i,file in enumerate(filenamesE): 
       temp = np.load(self.dataDir+'e_'+tag1+str(file)+'.npz')['images']
-      if(not(temp.shape[0] > 0)): print("FUCK",file)
       if(i==0): e_images = temp
       else: e_images = np.concatenate((e_images,temp))
     
-    bkg_images = np.array([])
     for i,file in enumerate(filenamesBkg): 
       temp = np.load(self.dataDir+'bkg_'+tag2+str(file)+'.npz')['images']
       if(i==0): bkg_images = temp
@@ -80,17 +77,13 @@ class generator(keras.utils.Sequence):
     numAdded = len(added_e)
     if(numAdded > 0): added_e = np.reshape(added_e,[numAdded, 6400])
 
-    # fill the rest of the batch with random bkg images
-    batch_indices = list(range(0,bkg_images.shape[0]))
-    random.shuffle(batch_indices)
-    bkg_images = bkg_images[batch_indices[(numE+numAdded):batch_size],1:]
+    # fill the rest of the batch with bkg images
+    # random.shuffle(bkg_images)          #FIXME: could shuffle the background to have a different sample every epoch
+    bkg_images = bkg_images[:(batch_size-(numE+numAdded)),1:]
     
     # join and reshape the images
     if(numAdded > 0): batch_x = np.concatenate((e_images,added_e,bkg_images))
     else: batch_x = np.concatenate((e_images,bkg_images))
-    
-    # debugging
-    assert batch_x.shape[0] == batch_size, "batch_x doesn't match batch size"
 
     batch_x = np.reshape(batch_x,(batch_size,40,40,4))
     batch_x = batch_x[:,:,:,[0,2,3]]
@@ -123,17 +116,16 @@ if __name__ == "__main__":
   weightsDir = workDir + 'weights/cnn/'
 
   ################config parameters################
-  pos,neg = 431, 91805              # FIXME: fix class weights, output bias
+  nTotE, nTotBkg = 100,1000       # max: 15463 electron events and 3256305 background events
   batch_size = 256
   epochs = 1
   patience_count = 10
-  maxFiles = 500
   val_size = 0.2
   img_rows, img_cols = 40, 40
   channels = 3
   input_shape = (img_rows,img_cols,channels)
   class_weights = False             # FIXME: not implemented yet
-  e_fraction = 0.1
+  e_fraction = -1
   #################################################
 
   if(not os.path.isdir(plotDir)): os.system('mkdir '+str(plotDir))
@@ -158,7 +150,6 @@ if __name__ == "__main__":
     bkgCounts = json.load(json_file)
 
 
-  nTotE, nTotBkg = 10000,100000
 
   nBatches = (nTotE + nTotBkg)*1.0/batch_size
   nBatchE = int(nTotE/nBatches)
@@ -177,7 +168,7 @@ if __name__ == "__main__":
     thisBatchE += thisFileE
     
     if(thisBatchE >= nBatchE or thisFile == list(eCounts.keys())[-1]):
-      nSavedE += thisBatchE
+      nSavedE += nBatchE
       filesE.append(temp)
       temp = []
       thisBatchE = 0
@@ -229,7 +220,7 @@ if __name__ == "__main__":
   val_generator = generator(valFilesE, valFilesBkg, batch_size, dataDir, e_fraction)
 
   # initialize output bias
-  output_bias = np.log(pos/neg)       #FIXME: doesn't work with oversampling
+  output_bias = np.log(nTotE/nTotBkg)       #FIXME: doesn't work with oversampling
 
   model = build_model(input_shape = input_shape, 
                       layers = 5, filters = 64, opt='adam',
@@ -237,8 +228,8 @@ if __name__ == "__main__":
 
   weightsFile = 'first_model'
 
-  weight_for_0 = (1/neg)*(neg+pos)/2.0  #FIXME: doesn't work oversampling
-  weight_for_1 = (1/pos)*(neg+pos)/2.0
+  weight_for_0 = (1/nTotBkg)*(nTotBkg+nTotE)/2.0  #FIXME: doesn't work oversampling
+  weight_for_1 = (1/nTotE)*(nTotBkg+nTotE)/2.0
   class_weights = {0: weight_for_0, 1: weight_for_1}
     
   callbacks = [
@@ -260,25 +251,32 @@ if __name__ == "__main__":
   model.load_weights(weightsDir+weightsFile+'.h5')
 
   # predict each of the validation files individually
+
   predictions, true = [],[]
-  for file in list(set(valFiles)):
-    print(file)
-    f1 = "0p25_tanh_"+str(file)+".npz"
-    f2 = "0p25_tahn_"+str(file)+".npz"
-    temp1 = np.load(dataDir+"e_"+f1)
-    temp2 = np.load(dataDir+"bkg_"+f2) 
-    images_e = temp1['images'][:,1:]
-    images_bkg = temp2['images'][:,1:]
-    images = np.concatenate((images_e,images_bkg))
+  valFilesE = np.asarray(valFilesE)
+  valFilesBkg = np.asarray(valFilesBkg)
+  for file in valFilesE.flatten():
+    fname = "e_"+tag1+file+".npz"
+    temp = np.load(dataDir+fname) 
+    images = temp['images'][:,1:]
     images = np.reshape(images, [len(images),40,40,4])
     x_test = images[:,:,:,[0,2,3]]
-    y_test = np.concatenate((np.ones(len(images_e)),np.zeros(len(images_bkg))))
+    y_test = np.ones(len(images))
+    y_test = keras.utils.to_categorical(y_test, num_classes=2)
+    predictions.append(model.predict(x_test))
+    true.append(y_test)
+  for file in valFilesE.flatten():
+    fname = "bkg_"+tag2+file+".npz"
+    temp = np.load(dataDir+fname) 
+    images = temp['images'][:,1:]
+    images = np.reshape(images, [len(images),40,40,4])
+    x_test = images[:,:,:,[0,2,3]]
+    y_test = np.zeros(len(images))
     y_test = keras.utils.to_categorical(y_test, num_classes=2)
     predictions.append(model.predict(x_test))
     true.append(y_test)
 
-  
-  utils.plot_history(history, plotDir,['loss','acc'])
+  utils.plot_history(history, plotDir,['loss','accuracy'])
 
   print()
   print("Calculating and plotting confusion matrix")
