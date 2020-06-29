@@ -114,18 +114,28 @@ if __name__ == "__main__":
   workDir = '/home/llavezzo/'
   plotDir = workDir + 'plots/cnn/'
   weightsDir = workDir + 'weights/cnn/'
+  weightsFile = 'first_model'
+
 
   ################config parameters################
-  nTotE, nTotBkg = 1000,1000       # max: 15463 electron events and 3256305 background events
+  """
+  nTotE, nTotBkg:
+    how many electrons, background to use
+    from maximum 15463 electron events and 3256305 background events
+  e_fraction:
+    use to oversample electron events,
+    fraction of electron events per batch
+  """
+  nTotE, nTotBkg = 10000,10000
   batch_size = 256
-  epochs = 1
+  epochs = 10
   patience_count = 10
   val_size = 0.2
   img_rows, img_cols = 40, 40
   channels = 3
   input_shape = (img_rows,img_cols,channels)
-  class_weights = False             # FIXME: not implemented yet
-  e_fraction = -1
+  class_weights = True             
+  e_fraction = -1              
   #################################################
 
   if(not os.path.isdir(plotDir)): os.system('mkdir '+str(plotDir))
@@ -149,12 +159,15 @@ if __name__ == "__main__":
   with open(dataDir+'bkgCounts.json') as json_file:
     bkgCounts = json.load(json_file)
 
+  # batches per epoch, number of electrons, bkg events per batch
   nBatches = (nTotE + nTotBkg)*1.0/batch_size
-  nBatchE = int(nTotE/nBatches)
-  nBatchBkg = int(nTotBkg/nBatches)
+  nElectronsPerBatch = int(nTotE/nBatches)
+  nBkgPerPatch = int(nTotBkg/nBatches)
 
+  # in each batch, store as many files as needed to reach
+  # the desired number of events in each class in each batch
   filesE, filesBkg = [], []
-
+  
   nSavedE = 0
   thisBatchE = 0
   temp = []
@@ -168,13 +181,12 @@ if __name__ == "__main__":
     temp.append(thisFile)
     thisBatchE += thisFileE
     
-    if(thisBatchE >= nBatchE or thisFile == list(eCounts.keys())[-1]):
-      nSavedE += nBatchE
+    if(thisBatchE >= nElectronsPerBatch or thisFile == list(eCounts.keys())[-1]):
+      nSavedE += nElectronsPerBatch
       filesE.append(temp)
       temp = []
       thisBatchE = 0
     
-
   nSavedBkg = 0
   thisBatchBkg = 0
   temp = []
@@ -188,8 +200,8 @@ if __name__ == "__main__":
     temp.append(thisFile)
     thisBatchBkg += thisFileBkg
 
-    if(thisBatchBkg >= nBatchBkg or thisFile == list(bkgCounts.keys())[-1]):
-      nSavedBkg += nBatchBkg
+    if(thisBatchBkg >= nBkgPerPatch or thisFile == list(bkgCounts.keys())[-1]):
+      nSavedBkg += nBkgPerPatch
       filesBkg.append(temp)
       temp = []
       thisBatchBkg = 0
@@ -204,6 +216,7 @@ if __name__ == "__main__":
   if(nTotE > nSavedE): sys.exit("ERROR: Requested more electron events than are available")
   if(nTotBkg > nSavedBkg): sys.exit("ERROR: Requested more electron events than available")
 
+  # make sure they are same length
   while(len(filesE) > len(filesBkg)):
     filesE = filesE[:-1]
   while(len(filesE) < len(filesBkg)):
@@ -217,24 +230,32 @@ if __name__ == "__main__":
   trainFilesBkg = filesBkg[:int((1-val_size)*len(filesBkg))]
   valFilesBkg = filesBkg[int((1-val_size)*len(filesBkg)):]
 
-  print("Training on",len(trainFilesE),"batches of files and validating on",len(valFilesE))
+  print("Training on:")
+  print("\t",len(trainFilesE),"batches of files (approx.",nElectronsPerBatch*len(trainFilesE),"electron and",nBkgPerPatch*len(trainFilesE), "background events)")
+  print("Validating on:")
+  print("\t",len(valFilesE),"batches of files (approx.",nElectronsPerBatch*len(valFilesE),"electron and",nBkgPerPatch*len(valFilesE)," background events)")
 
   # initialize generators
   train_generator = generator(trainFilesE, trainFilesBkg, batch_size, dataDir, e_fraction)
   val_generator = generator(valFilesE, valFilesBkg, batch_size, dataDir, e_fraction)
 
   # initialize output bias
-  output_bias = np.log(nTotE/nTotBkg)       #FIXME: doesn't work with oversampling
+  if(e_fraction == -1): output_bias = np.log(nTotE/nTotBkg)
+  else: output_bias = np.log(1.0*e_fraction/(1-e_fraction))
 
   model = build_model(input_shape = input_shape, 
                       layers = 5, filters = 64, opt='adam',
-                      output_bias=0)
+                      output_bias=output_bias)
 
-  weightsFile = 'first_model'
-
-  weight_for_0 = (1/nTotBkg)*(nTotBkg+nTotE)/2.0  #FIXME: doesn't work oversampling
-  weight_for_1 = (1/nTotE)*(nTotBkg+nTotE)/2.0
-  class_weights = {0: weight_for_0, 1: weight_for_1}
+  # class weights
+  if(e_fraction == -1):
+    weight_for_0 = (1/nTotBkg)*(nTotBkg+nTotE)/2.0
+    weight_for_1 = (1/nTotE)*(nTotBkg+nTotE)/2.0
+    class_weight = {0: weight_for_0, 1: weight_for_1}
+  else:
+    weight_for_0 = 1/(2*(1-e_fraction))  #FIXME: check if this works
+    weight_for_1 = 1/(2.0*e_fraction)
+    class_weight = {0: weight_for_0, 1: weight_for_1}
     
   callbacks = [
     keras.callbacks.EarlyStopping(patience=patience_count),
@@ -245,17 +266,23 @@ if __name__ == "__main__":
                                     save_best_only=True),
   ]
 
-  history = model.fit(train_generator, 
-                      epochs = epochs,
-                      verbose= 1,
-                      validation_data=val_generator,
-                      callbacks=callbacks)
-                      #class_weight=class_weights)
-
+  if(class_weights):
+    history = model.fit(train_generator, 
+                        epochs = epochs,
+                        verbose= 2,
+                        validation_data=val_generator,
+                        callbacks=callbacks,
+                        class_weight=class_weight)
+  else:
+    history = model.fit(train_generator, 
+                        epochs = epochs,
+                        verbose= 2,
+                        validation_data=val_generator,
+                        callbacks=callbacks)
+                        
   model.load_weights(weightsDir+weightsFile+'.h5')
 
   # predict each of the validation files individually
-
   valFilesE = [file for batch in valFilesE for file in batch]
   valFilesBkg = [file for batch in valFilesBkg for file in batch]
   for i,file in enumerate(valFilesE):
@@ -274,10 +301,11 @@ if __name__ == "__main__":
     x_test = images[:,:,:,[0,2,3]]
     if(i == 0): predictionsB = model.predict(x_test)
     else: predictionsB = np.concatenate([predictionsB, model.predict(x_test)])
-
+  
   predictions = np.concatenate((predictionsE, predictionsB))
   true = np.concatenate((np.ones(len(predictionsE)), np.zeros(len(predictionsB))))
   y_test = keras.utils.to_categorical(true, num_classes=2)
+
 
   utils.plot_history(history, plotDir,['loss','accuracy'])
 
@@ -292,16 +320,15 @@ if __name__ == "__main__":
   print()
 
   precision, recall = utils.calc_binary_metrics(cm)
-  print("Precision = TP/(TP+FP) = fraction of predicted true actually true ",round(precision,3))
-  print("Recall = TP/(TP+FN) = fraction of true class predicted to be true ",round(recall,3))
+  print("Precision = TP/(TP+FP) = fraction of predicted true actually true ",round(precision,5))
+  print("Recall = TP/(TP+FN) = fraction of true class predicted to be true ",round(recall,5))
   auc = roc_auc_score(y_test,predictions)
   print("AUC Score:",round(auc,5))
   print()
 
-  fOut = "metrics.txt"
-  fileOut = open(plotDir+fOut,"w")
-  fileOut.write("Precision = TP/(TP+FP) = fraction of predicted true actually true "+str(round(precision,3))+"\n")
-  fileOut.write("Recall = TP/(TP+FN) = fraction of true class predicted to be true "+str(round(recall,3))+"\n")
+  fileOut = open(plotDir+"metrics.txt","w")
+  fileOut.write("Precision = TP/(TP+FP) = fraction of predicted true actually true "+str(round(precision,5))+"\n")
+  fileOut.write("Recall = TP/(TP+FN) = fraction of true class predicted to be true "+str(round(recall,5))+"\n")
   fileOut.write("AUC Score:"+str(round(auc,5)))
   fileOut.close()
-  print("Wrote out metrics to",fOut)
+  print("Wrote out metrics to metrics.txt")
