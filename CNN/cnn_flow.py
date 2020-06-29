@@ -65,6 +65,8 @@ class generator(keras.utils.Sequence):
 
     # fill the batch with e_fraction electron images,
     # oversampling if needed (none by default)
+    assert images_e.shape[0] > 0, "e images < 0"+str(filename)
+
     images_e = images_e[:,1:]
     added_e = []
     while((numE+len(added_e))*1.0 / batch_size < self.e_fraction):
@@ -82,6 +84,10 @@ class generator(keras.utils.Sequence):
     # join and reshape the images
     if(numAdded > 0): batch_x = np.concatenate((images_e,added_e,images_bkg))
     else: batch_x = np.concatenate((images_e,images_bkg))
+    
+    # debugging
+    assert batch_x.shape[0] == batch_size, "batch_x doesn't match batch size"
+
     batch_x = np.reshape(batch_x,(batch_size,40,40,4))
     batch_x = batch_x[:,:,:,[0,2,3]]
 
@@ -115,9 +121,9 @@ if __name__ == "__main__":
   ################config parameters################
   pos,neg = 431, 91805              # from splt.py
   batch_size = 256
-  epochs = 10
+  epochs = 1
   patience_count = 10
-  maxFiles = 1000
+  maxFiles = 500
   val_size = 0.2
   img_rows, img_cols = 40, 40
   channels = 3
@@ -153,6 +159,8 @@ if __name__ == "__main__":
   nFiles = 0
   nTotalEvents = 0
   for (file, numE),(file,numBkg) in zip(eCounts.items(),bkgCounts.items()):
+    if(numE < 5): continue
+    if(numBkg < batch_size): continue
     nSamples = int(np.ceil((numE+numBkg)/batch_size))   #FIXME: should we sample more from each file?
     for _ in range(nSamples): files.append(file) 
     nTotalEvents += (numE+numBkg)
@@ -162,8 +170,7 @@ if __name__ == "__main__":
   # split files into train and validation sets
   trainFiles, valFiles = [],[]
   trainCount, valCount = 0,0
-  uniqueFiles = list(eCounts.keys())
-  uniqueFiles = uniqueFiles[:nFiles]
+  uniqueFiles = list(set(files))
   random.shuffle(uniqueFiles)
   for file in uniqueFiles:
     if(trainCount < (1-val_size)*nTotalEvents):
@@ -172,7 +179,6 @@ if __name__ == "__main__":
     else:
       valFiles.append(file)
       valCount += (eCounts[file]+bkgCounts[file])
-
 
   # initialize generators
   train_generator = generator(trainFiles, batch_size, dataDir, e_fraction)
@@ -201,7 +207,7 @@ if __name__ == "__main__":
   ]
 
   history = model.fit_generator(train_generator, 
-                                epochs = 10,
+                                epochs = epochs,
                                 verbose= 1,
                                 validation_data=val_generator,
                                 callbacks=callbacks)                                #class_weight=class_weights)
@@ -211,15 +217,17 @@ if __name__ == "__main__":
   # predict each of the validation files individually
   predictions, true = [],[]
   for file in valFiles:
-    f = tag+'_'+str(file)+'.npz'
-    temp1 = np.load(dataDir+"e_"+f)
-    temp2 = np.load(dataDir+"bkg_"+f) 
+    print(file)
+    f1 = "0p25_tanh_"+str(file)+".npz"
+    f2 = "0p25_tahn_"+str(file)+".npz"
+    temp1 = np.load(dataDir+"e_"+f1)
+    temp2 = np.load(dataDir+"bkg_"+f2) 
     images_e = temp1['images'][:,1:]
     images_bkg = temp2['images'][:,1:]
     images = np.concatenate((images_e,images_bkg))
     images = np.reshape(images, [len(images),40,40,4])
     x_test = images[:,:,:,[0,2,3]]
-    y_test = np.concatenate((np.ones(len(images_e)),np.zeros(len(imges_bkg))))
+    y_test = np.concatenate((np.ones(len(images_e)),np.zeros(len(images_bkg))))
     y_test = keras.utils.to_categorical(y_test, num_classes=2)
     predictions.append(model.predict(x_test))
     true.append(y_test)
