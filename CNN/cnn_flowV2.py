@@ -39,50 +39,55 @@ def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kern
 # generate batches of images from files
 class generator(keras.utils.Sequence):
   
-  def __init__(self, filenames, batch_size, dataDir, e_fraction=-1):
-    self.filenames = filenames
+  def __init__(self, filesE, filesBkg, batch_size, dataDir, e_fraction=-1):
+    self.filesE = filesE
+    self.filesBkg = filesBkg
     self.batch_size = batch_size
     self.dataDir = dataDir
     self.e_fraction = e_fraction
     
   def __len__(self) :
-    return (np.ceil(len(self.filenames*self.batch_size) / float(self.batch_size))).astype(np.int)
+    return len(self.filesE)
 
   def __getitem__(self, idx) :
 
-    filename = self.filenames[idx]
+    filenamesE = self.filesE[idx]
+    filenamesBkg = self.filesBkg[idx]
 
     # import images
-    file_bkg = np.load(self.dataDir+'bkg_'+tag2+str(filename)+'.npz')
-    file_e = np.load(self.dataDir+'e_'+tag1+str(filename)+'.npz')
-    images_bkg = file_bkg['images']
-    images_e = file_e['images']
+    e_images = np.array([])
+    for i,file in enumerate(filenamesE): 
+      temp = np.load(self.dataDir+'e_'+tag1+str(file)+'.npz')['images']
+      if(not(temp.shape[0] > 0)): print("FUCK",file)
+      if(i==0): e_images = temp
+      else: e_images = np.concatenate((e_images,temp))
+    
+    bkg_images = np.array([])
+    for i,file in enumerate(filenamesBkg): 
+      temp = np.load(self.dataDir+'bkg_'+tag2+str(file)+'.npz')['images']
+      if(i==0): bkg_images = temp
+      else: bkg_images = np.concatenate((bkg_images,temp))
 
-    # store number of images
-    numE = images_e.shape[0]
-    numBkg = images_bkg.shape[0]
+    numE = e_images.shape[0]
+    numBkg = bkg_images.shape[0]
 
-    # fill the batch with e_fraction electron images,
-    # oversampling if needed (none by default)
-    assert images_e.shape[0] > 0, "e images < 0"+str(filename)
-
-    images_e = images_e[:,1:]
+    e_images = e_images[:,1:]
     added_e = []
     while((numE+len(added_e))*1.0 / batch_size < self.e_fraction):
-      added_e.append(images_e[random.randint(0,numE-1),:])
+      added_e.append(e_images[random.randint(0,numE-1),:])
     
     # number of added electrons
     numAdded = len(added_e)
     if(numAdded > 0): added_e = np.reshape(added_e,[numAdded, 6400])
 
     # fill the rest of the batch with random bkg images
-    batch_indices = list(range(0,images_bkg.shape[0]))
+    batch_indices = list(range(0,bkg_images.shape[0]))
     random.shuffle(batch_indices)
-    images_bkg = images_bkg[batch_indices[(numE+numAdded):batch_size],1:]
+    bkg_images = bkg_images[batch_indices[(numE+numAdded):batch_size],1:]
     
     # join and reshape the images
-    if(numAdded > 0): batch_x = np.concatenate((images_e,added_e,images_bkg))
-    else: batch_x = np.concatenate((images_e,images_bkg))
+    if(numAdded > 0): batch_x = np.concatenate((e_images,added_e,bkg_images))
+    else: batch_x = np.concatenate((e_images,bkg_images))
     
     # debugging
     assert batch_x.shape[0] == batch_size, "batch_x doesn't match batch size"
@@ -152,42 +157,76 @@ if __name__ == "__main__":
   with open(dataDir+'bkgCounts.json') as json_file:
     bkgCounts = json.load(json_file)
 
-  # store each file number proportionally
-  # to how many events it has and the batch size
-  files = []
-  nFiles = 0
-  nTotalEvents = 0
-  for (file, numE),(file,numBkg) in zip(eCounts.items(),bkgCounts.items()):
-    if(numE < 5): continue
-    if(numBkg < batch_size): continue
 
-    nSamples = int(np.ceil((numE+numBkg)/batch_size))   #FIXME: should we sample more from each file?
-    for _ in range(nSamples): files.append(file) 
+  nTotE, nTotBkg = 10000,100000
 
-    nTotalEvents += (numE+numBkg)
-    nFiles += 1
-    if(nFiles >= maxFiles): break
+  nBatches = (nTotE + nTotBkg)*1.0/batch_size
+  nBatchE = int(nTotE/nBatches)
+  nBatchBkg = int(nTotBkg/nBatches)
+
+  filesE, filesBkg = [], []
+
+  nSavedE = 0
+  thisBatchE = 0
+  temp = []
+  for thisFile, thisFileE in eCounts.items():
+    if(thisFileE < 1): continue
+    if(nSavedE > nTotE): break
+
+    temp.append(thisFile)
+    thisBatchE += thisFileE
+    
+    if(thisBatchE >= nBatchE or thisFile == list(eCounts.keys())[-1]):
+      nSavedE += thisBatchE
+      filesE.append(temp)
+      temp = []
+      thisBatchE = 0
+    
+
+  nSavedBkg = 0
+  thisBatchBkg = 0
+  temp = []
+  for thisFile, thisFileBkg in bkgCounts.items():
+    if(thisFileBkg < 1): continue
+    if(nSavedBkg > nTotBkg): break
+
+    temp.append(thisFile)
+    thisBatchBkg += thisFileBkg
+
+    if(thisBatchBkg >= nBatchBkg or thisFile == list(bkgCounts.keys())[-1]):
+      nSavedBkg += nBatchBkg
+      filesBkg.append(temp)
+      temp = []
+      thisBatchBkg = 0
+
+  print("Requested:")
+  print("\t",nTotE,"electron events and",nTotBkg,"background events")
+  print("Using:")
+  print("\t",nSavedE,"electron events and",nSavedBkg,"background events")
+  print("From total available events:")
+  print("\t",sum(list(eCounts.values())),"electron events and",sum(list(bkgCounts.values())),"background events")
+
+  if(nTotE > nSavedE): sys.exit("ERROR: Requested more electron events than are available")
+  if(nTotBkg > nSavedBkg): sys.exit("ERROR: Requested more electron events than available")
+
+  while(len(filesE) > len(filesBkg)):
+    filesE = filesE[:-1]
+  while(len(filesE) < len(filesBkg)):
+    filesBkg = filesBkg[:-1]
 
   # split files into train and validation sets
-  trainFiles, valFiles = [],[]
-  trainCount, valCount = 0,0
-  uniqueFiles = list(set(files))
-  random.shuffle(uniqueFiles)
-  for file in uniqueFiles:
-    if(trainCount < (1-val_size)*nTotalEvents):
-      for _ in range(files.count(file)): 
-        trainFiles.append(file)
-      trainCount += (eCounts[file]+bkgCounts[file])
-    else:
-      for _ in range(files.count(file)): 
-        valFiles.append(file)
-      valCount += (eCounts[file]+bkgCounts[file])
+  random.shuffle(filesE)
+  random.shuffle(filesBkg)
+  trainFilesE = filesE[:int((1-val_size)*len(filesE))]
+  valFilesE = filesE[int((1-val_size)*len(filesE)):]
+  trainFilesBkg = filesBkg[:int((1-val_size)*len(filesBkg))]
+  valFilesBkg = filesBkg[int((1-val_size)*len(filesBkg)):]
 
-  print("Training on", trainCount, "files, validating on", valCount, "files")
+  print("Training on",len(trainFilesE),"batches of files and validating on",len(valFilesE))
 
   # initialize generators
-  train_generator = generator(trainFiles, batch_size, dataDir, e_fraction)
-  val_generator = generator(valFiles, batch_size, dataDir, e_fraction)
+  train_generator = generator(trainFilesE, trainFilesBkg, batch_size, dataDir, e_fraction)
+  val_generator = generator(valFilesE, valFilesBkg, batch_size, dataDir, e_fraction)
 
   # initialize output bias
   output_bias = np.log(pos/neg)       #FIXME: doesn't work with oversampling
@@ -212,10 +251,11 @@ if __name__ == "__main__":
   ]
 
   history = model.fit(train_generator, 
-                                epochs = epochs,
-                                verbose= 1,
-                                validation_data=val_generator,
-                                callbacks=callbacks)                                #class_weight=class_weights)
+                      epochs = epochs,
+                      verbose= 1,
+                      validation_data=val_generator,
+                      callbacks=callbacks)
+                      #class_weight=class_weights)
 
   model.load_weights(weightsDir+weightsFile+'.h5')
 
