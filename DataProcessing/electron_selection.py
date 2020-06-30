@@ -7,6 +7,18 @@ dataDir = "/store/user/llavezzo/disappearingTracks/converted_DYJetsToLL_M50/"
 outDataDir = "/store/user/llavezzo/disappearingTracks/electron_selection_DYJetsToll_M50/"
 tag = "0p25_"
 
+"""
+infos:
+
+0: ID
+1: matched track gen truth flavor (1: electrons, 2: muons, 0: everything else)
+2: nPV
+3: deltaRToClosestElectron
+4: deltaRToClosestMuon
+5: deltaRToClosestTauHaud
+
+"""
+
 # keep count of how many electrons, bkg events per file
 eCounts = {}
 bkgCounts = {}
@@ -69,7 +81,7 @@ for i in range(4000):
 	print()
 
 
-	save and move to appropriate dir
+	# save and move to appropriate dir
 	f1 = 'e_'+tag+"tanh_"+str(i)
 	f2 = 'bkg_'+tag+"tanh_"+str(i)
 	np.savez_compressed(f1,images=outImages_e,infos=outInfos_e)

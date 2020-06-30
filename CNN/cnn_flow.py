@@ -39,53 +39,51 @@ def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kern
 # generate batches of images from files
 class generator(keras.utils.Sequence):
   
-  def __init__(self, filenames, batch_size, dataDir, e_fraction=-1):
-    self.filenames = filenames
+  def __init__(self, filesE, filesBkg, batch_size, dataDir, e_fraction=-1):
+    self.filesE = filesE
+    self.filesBkg = filesBkg
     self.batch_size = batch_size
     self.dataDir = dataDir
     self.e_fraction = e_fraction
     
   def __len__(self) :
-    return (np.ceil(len(self.filenames*self.batch_size) / float(self.batch_size))).astype(np.int)
+    return len(self.filesE)
 
   def __getitem__(self, idx) :
 
-    filename = self.filenames[idx]
+    filenamesE = self.filesE[idx]
+    filenamesBkg = self.filesBkg[idx]
 
     # import images
-    file_bkg = np.load(self.dataDir+'bkg_'+tag2+str(filename)+'.npz')
-    file_e = np.load(self.dataDir+'e_'+tag1+str(filename)+'.npz')
-    images_bkg = file_bkg['images']
-    images_e = file_e['images']
+    for i,file in enumerate(filenamesE): 
+      temp = np.load(self.dataDir+'e_'+tag1+str(file)+'.npz')['images']
+      if(i==0): e_images = temp
+      else: e_images = np.concatenate((e_images,temp))
+    
+    for i,file in enumerate(filenamesBkg): 
+      temp = np.load(self.dataDir+'bkg_'+tag2+str(file)+'.npz')['images']
+      if(i==0): bkg_images = temp
+      else: bkg_images = np.concatenate((bkg_images,temp))
 
-    # store number of images
-    numE = images_e.shape[0]
-    numBkg = images_bkg.shape[0]
+    numE = e_images.shape[0]
+    numBkg = bkg_images.shape[0]
 
-    # fill the batch with e_fraction electron images,
-    # oversampling if needed (none by default)
-    assert images_e.shape[0] > 0, "e images < 0"+str(filename)
-
-    images_e = images_e[:,1:]
+    e_images = e_images[:,1:]
     added_e = []
     while((numE+len(added_e))*1.0 / batch_size < self.e_fraction):
-      added_e.append(images_e[random.randint(0,numE-1),:])
+      added_e.append(e_images[random.randint(0,numE-1),:])
     
     # number of added electrons
     numAdded = len(added_e)
     if(numAdded > 0): added_e = np.reshape(added_e,[numAdded, 6400])
 
-    # fill the rest of the batch with random bkg images
-    batch_indices = list(range(0,images_bkg.shape[0]))
-    random.shuffle(batch_indices)
-    images_bkg = images_bkg[batch_indices[(numE+numAdded):batch_size],1:]
+    # fill the rest of the batch with bkg images
+    # random.shuffle(bkg_images)          #FIXME: could shuffle the background to have a different sample every epoch
+    bkg_images = bkg_images[:(batch_size-(numE+numAdded)),1:]
     
     # join and reshape the images
-    if(numAdded > 0): batch_x = np.concatenate((images_e,added_e,images_bkg))
-    else: batch_x = np.concatenate((images_e,images_bkg))
-    
-    # debugging
-    assert batch_x.shape[0] == batch_size, "batch_x doesn't match batch size"
+    if(numAdded > 0): batch_x = np.concatenate((e_images,added_e,bkg_images))
+    else: batch_x = np.concatenate((e_images,bkg_images))
 
     batch_x = np.reshape(batch_x,(batch_size,40,40,4))
     batch_x = batch_x[:,:,:,[0,2,3]]
@@ -116,35 +114,33 @@ if __name__ == "__main__":
   workDir = '/home/llavezzo/'
   plotDir = workDir + 'plots/cnn/'
   weightsDir = workDir + 'weights/cnn/'
+  weightsFile = 'first_model'
+
 
   ################config parameters################
-  pos,neg = 431, 91805              # FIXME: fix class weights, output bias
+  """
+  nTotE, nTotBkg:
+    how many electrons, background events to use
+    from maximum 15463 electron events and 3256305 background events
+  e_fraction:
+    use to oversample electron events,
+    fraction of electron events per batch
+  """
+  nTotE, nTotBkg = 15000,200000
   batch_size = 256
-  epochs = 1
+  epochs = 10
   patience_count = 10
-  maxFiles = 500
   val_size = 0.2
   img_rows, img_cols = 40, 40
   channels = 3
   input_shape = (img_rows,img_cols,channels)
-  class_weights = False             # FIXME: not implemented yet
-  e_fraction = 0.1
+  class_weights = True             
+  e_fraction = 0.2              
   #################################################
+
 
   if(not os.path.isdir(plotDir)): os.system('mkdir '+str(plotDir))
   if(not os.path.isdir(weightsDir)): os.system('mkdir '+str(weightsDir))
-
-  """
-  infos:
-
-  0: ID
-  1: matched track gen truth flavor (1: electrons, 2: muons, 0: everything else)
-  2: nPV
-  3: deltaRToClosestElectron
-  4: deltaRToClosestMuon
-  5: deltaRToClosestTauHaud
-
-  """
 
   # import count dicts
   with open(dataDir+'eCounts.json') as json_file:
@@ -152,55 +148,108 @@ if __name__ == "__main__":
   with open(dataDir+'bkgCounts.json') as json_file:
     bkgCounts = json.load(json_file)
 
-  # store each file number proportionally
-  # to how many events it has and the batch size
-  files = []
-  nFiles = 0
-  nTotalEvents = 0
-  for (file, numE),(file,numBkg) in zip(eCounts.items(),bkgCounts.items()):
-    if(numE < 5): continue
-    if(numBkg < batch_size): continue
+  # can't request more events than we have
+  if(nTotE > sum(list(eCounts.values()))): sys.exit("ERROR: Requested more electron events than are available")
+  if(nTotBkg > sum(list(bkgCounts.values()))): sys.exit("ERROR: Requested more electron events than available")
 
-    nSamples = int(np.ceil((numE+numBkg)/batch_size))   #FIXME: should we sample more from each file?
-    for _ in range(nSamples): files.append(file) 
+  # batches per epoch, number of electrons, bkg events per batch
+  nBatches = np.ceil((nTotE + nTotBkg)*1.0/batch_size)
+  nElectronsPerBatch = int(nTotE/nBatches)
+  nBkgPerPatch = int(nTotBkg/nBatches)
 
-    nTotalEvents += (numE+numBkg)
-    nFiles += 1
-    if(nFiles >= maxFiles): break
+  # create batches of files to reach in each batch
+  # the desired number of events of each class
+  filesE, filesBkg = [], []
+  
+  nSavedE = 0
+  thisBatchE = 0
+  temp = []
+  keys = list(eCounts.keys())
+  while nSavedE < nTotE:
+    
+    random.shuffle(keys)
+    for thisFile in keys:
+      thisFileE = eCounts[thisFile]
+      if(thisFileE < 1): continue
+      if(nSavedE > nTotE): break
 
-  # split files into train and validation sets
-  trainFiles, valFiles = [],[]
-  trainCount, valCount = 0,0
-  uniqueFiles = list(set(files))
-  random.shuffle(uniqueFiles)
-  for file in uniqueFiles:
-    if(trainCount < (1-val_size)*nTotalEvents):
-      for _ in range(files.count(file)): 
-        trainFiles.append(file)
-      trainCount += (eCounts[file]+bkgCounts[file])
-    else:
-      for _ in range(files.count(file)): 
-        valFiles.append(file)
-      valCount += (eCounts[file]+bkgCounts[file])
+      temp.append(thisFile)
+      thisBatchE += thisFileE
+      
+      if(thisBatchE >= nElectronsPerBatch or thisFile == list(eCounts.keys())[-1]):
+        nSavedE += nElectronsPerBatch
+        filesE.append(temp)
+        temp = []
+        thisBatchE = 0
 
-  print("Training on", trainCount, "files, validating on", valCount, "files")
+
+  nSavedBkg = 0
+  thisBatchBkg = 0
+  temp = []
+  keys = list(bkgCounts.keys())
+  random.shuffle(keys)
+  for thisFile in keys:
+    thisFileBkg = bkgCounts[thisFile]
+    if(thisFileBkg < 1): continue
+    if(nSavedBkg > nTotBkg): break
+
+    temp.append(thisFile)
+    thisBatchBkg += thisFileBkg
+
+    if(thisBatchBkg >= nBkgPerPatch or thisFile == list(bkgCounts.keys())[-1]):
+      nSavedBkg += nBkgPerPatch
+      filesBkg.append(temp)
+      temp = []
+      thisBatchBkg = 0
+
+  print("Requested:")
+  print("\t",nTotE,"electron events and",nTotBkg,"background events")
+  print("Using:")
+  print("\t",nSavedE,"electron events and",nSavedBkg,"background events")
+  print("From total available events:")
+  print("\t",sum(list(eCounts.values())),"electron events and",sum(list(bkgCounts.values())),"background events")
+
+  
+  # make sure they are same length
+  while(len(filesE) > len(filesBkg)):
+    filesE = filesE[:-1]
+  while(len(filesE) < len(filesBkg)):
+    filesBkg = filesBkg[:-1]
+
+  # split batches of files into train and validation sets
+  random.shuffle(filesE)
+  random.shuffle(filesBkg)
+  trainFilesE = filesE[:int((1-val_size)*len(filesE))]
+  valFilesE = filesE[int((1-val_size)*len(filesE)):]
+  trainFilesBkg = filesBkg[:int((1-val_size)*len(filesBkg))]
+  valFilesBkg = filesBkg[int((1-val_size)*len(filesBkg)):]
+
+  print("Training on:")
+  print("\t",len(trainFilesE),"batches of files (approx.",nElectronsPerBatch*len(trainFilesE),"electron and",nBkgPerPatch*len(trainFilesE), "background events)")
+  print("Validating on:")
+  print("\t",len(valFilesE),"batches of files (approx.",nElectronsPerBatch*len(valFilesE),"electron and",nBkgPerPatch*len(valFilesE)," background events)")
 
   # initialize generators
-  train_generator = generator(trainFiles, batch_size, dataDir, e_fraction)
-  val_generator = generator(valFiles, batch_size, dataDir, e_fraction)
+  train_generator = generator(trainFilesE, trainFilesBkg, batch_size, dataDir, e_fraction)
+  val_generator = generator(valFilesE, valFilesBkg, batch_size, dataDir, e_fraction)
 
   # initialize output bias
-  output_bias = np.log(pos/neg)       #FIXME: doesn't work with oversampling
+  if(e_fraction == -1): output_bias = np.log(nTotE/nTotBkg)
+  else: output_bias = np.log(1.0*e_fraction/(1-e_fraction))
 
   model = build_model(input_shape = input_shape, 
                       layers = 5, filters = 64, opt='adam',
-                      output_bias=0)
+                      output_bias=output_bias)
 
-  weightsFile = 'first_model'
-
-  weight_for_0 = (1/neg)*(neg+pos)/2.0  #FIXME: doesn't work oversampling
-  weight_for_1 = (1/pos)*(neg+pos)/2.0
-  class_weights = {0: weight_for_0, 1: weight_for_1}
+  # class weights
+  if(e_fraction == -1):
+    weight_for_0 = (1/nTotBkg)*(nTotBkg+nTotE)/2.0
+    weight_for_1 = (1/nTotE)*(nTotBkg+nTotE)/2.0
+    class_weight = {0: weight_for_0, 1: weight_for_1}
+  else:
+    weight_for_0 = 1/(2*(1-e_fraction))  #FIXME: check if this works
+    weight_for_1 = 1/(2.0*e_fraction)
+    class_weight = {0: weight_for_0, 1: weight_for_1}
     
   callbacks = [
     keras.callbacks.EarlyStopping(patience=patience_count),
@@ -211,34 +260,48 @@ if __name__ == "__main__":
                                     save_best_only=True),
   ]
 
-  history = model.fit(train_generator, 
-                                epochs = epochs,
-                                verbose= 1,
-                                validation_data=val_generator,
-                                callbacks=callbacks)                                #class_weight=class_weights)
-
+  if(class_weights):
+    history = model.fit(train_generator, 
+                        epochs = epochs,
+                        verbose= 2,
+                        validation_data=val_generator,
+                        callbacks=callbacks,
+                        class_weight=class_weight)
+  else:
+    history = model.fit(train_generator, 
+                        epochs = epochs,
+                        verbose= 2,
+                        validation_data=val_generator,
+                        callbacks=callbacks)
+                        
   model.load_weights(weightsDir+weightsFile+'.h5')
 
   # predict each of the validation files individually
-  predictions, true = [],[]
-  for file in list(set(valFiles)):
-    print(file)
-    f1 = "0p25_tanh_"+str(file)+".npz"
-    f2 = "0p25_tahn_"+str(file)+".npz"
-    temp1 = np.load(dataDir+"e_"+f1)
-    temp2 = np.load(dataDir+"bkg_"+f2) 
-    images_e = temp1['images'][:,1:]
-    images_bkg = temp2['images'][:,1:]
-    images = np.concatenate((images_e,images_bkg))
+  valFilesE = [file for batch in valFilesE for file in batch]
+  valFilesBkg = [file for batch in valFilesBkg for file in batch]
+  for i,file in enumerate(valFilesE):
+    fname = "e_"+tag1+file+".npz"
+    temp = np.load(dataDir+fname) 
+    images = temp['images'][:,1:]
     images = np.reshape(images, [len(images),40,40,4])
     x_test = images[:,:,:,[0,2,3]]
-    y_test = np.concatenate((np.ones(len(images_e)),np.zeros(len(images_bkg))))
-    y_test = keras.utils.to_categorical(y_test, num_classes=2)
-    predictions.append(model.predict(x_test))
-    true.append(y_test)
-
+    if(i==0): predictionsE = model.predict(x_test)
+    else: predictionsE = np.concatenate([predictionsE, model.predict(x_test)])
+  for i,file in enumerate(valFilesBkg):
+    fname = "bkg_"+tag2+file+".npz"
+    temp = np.load(dataDir+fname) 
+    images = temp['images'][:batch_size,1:]
+    images = np.reshape(images, [len(images),40,40,4])
+    x_test = images[:,:,:,[0,2,3]]
+    if(i == 0): predictionsB = model.predict(x_test)
+    else: predictionsB = np.concatenate([predictionsB, model.predict(x_test)])
   
-  utils.plot_history(history, plotDir,['loss','acc'])
+  predictions = np.concatenate((predictionsE, predictionsB))
+  true = np.concatenate((np.ones(len(predictionsE)), np.zeros(len(predictionsB))))
+  y_test = keras.utils.to_categorical(true, num_classes=2)
+
+
+  utils.plot_history(history, plotDir,['loss','accuracy'])
 
   print()
   print("Calculating and plotting confusion matrix")
@@ -251,14 +314,15 @@ if __name__ == "__main__":
   print()
 
   precision, recall = utils.calc_binary_metrics(cm)
-  print("Precision = TP/(TP+FP) = fraction of predicted true actually true ",round(precision,3))
-  print("Recall = TP/(TP+FN) = fraction of true class predicted to be true ",round(recall,3))
+  print("Precision = TP/(TP+FP) = fraction of predicted true actually true ",round(precision,5))
+  print("Recall = TP/(TP+FN) = fraction of true class predicted to be true ",round(recall,5))
   auc = roc_auc_score(y_test,predictions)
   print("AUC Score:",round(auc,5))
   print()
 
   fileOut = open(plotDir+"metrics.txt","w")
-  fileOut.write("Precision = TP/(TP+FP) = fraction of predicted true actually true "+str(round(precision,3))+"\n")
-  fileOut.write("Recall = TP/(TP+FN) = fraction of true class predicted to be true "+str(round(recall,3))+"\n")
+  fileOut.write("Precision = TP/(TP+FP) = fraction of predicted true actually true "+str(round(precision,5))+"\n")
+  fileOut.write("Recall = TP/(TP+FN) = fraction of true class predicted to be true "+str(round(recall,5))+"\n")
   fileOut.write("AUC Score:"+str(round(auc,5)))
   fileOut.close()
+  print("Wrote out metrics to metrics.txt")
