@@ -32,19 +32,19 @@ def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kern
               optimizer=opt,
               metrics=['accuracy'])
     #print(model.summary())
-
+    
     return model
 
   
 # generate batches of images from files
 class generator(keras.utils.Sequence):
   
-  def __init__(self, filesE, filesBkg, batch_size, dataDir, e_fraction=-1):
+  def __init__(self, filesE, filesBkg, batch_size, dataDir, nElectronsPerBatch):
     self.filesE = filesE
     self.filesBkg = filesBkg
     self.batch_size = batch_size
     self.dataDir = dataDir
-    self.e_fraction = e_fraction
+    self.nElectronsPerBatch = nElectronsPerBatch
     
   def __len__(self) :
     return len(self.filesE)
@@ -56,47 +56,39 @@ class generator(keras.utils.Sequence):
 
     # import images
     for i,file in enumerate(filenamesE): 
-      temp = np.load(self.dataDir+'e_'+tag1+str(file)+'.npz')['images']
+      temp = np.load(self.dataDir+'e_'+tag+str(file)+'.npz')['images']
       if(i==0): e_images = temp
       else: e_images = np.concatenate((e_images,temp))
-    
     for i,file in enumerate(filenamesBkg): 
-      temp = np.load(self.dataDir+'bkg_'+tag2+str(file)+'.npz')['images']
+      temp = np.load(self.dataDir+'bkg_'+tag+str(file)+'.npz')['images']
       if(i==0): bkg_images = temp
       else: bkg_images = np.concatenate((bkg_images,temp))
 
     numE = e_images.shape[0]
     numBkg = bkg_images.shape[0]
 
-    e_images = e_images[:,1:]
-    added_e = []
-    while((numE+len(added_e))*1.0 / batch_size < self.e_fraction):
-      added_e.append(e_images[random.randint(0,numE-1),:])
-    
-    # number of added electrons
-    numAdded = len(added_e)
-    if(numAdded > 0): added_e = np.reshape(added_e,[numAdded, 6400])
+    # shuffle and select appropriate amount of electrons, bkg
+    indices = list(range(e_images.shape[0]))
+    random.shuffle(indices)
+    e_images = e_images[indices[:self.nElectronsPerBatch],1:]
 
-    # fill the rest of the batch with bkg images
-    # random.shuffle(bkg_images)          #FIXME: could shuffle the background to have a different sample every epoch
-    bkg_images = bkg_images[:(batch_size-(numE+numAdded)),1:]
-    
-    # join and reshape the images
-    if(numAdded > 0): batch_x = np.concatenate((e_images,added_e,bkg_images))
-    else: batch_x = np.concatenate((e_images,bkg_images))
+    indices = list(range(bkg_images.shape[0]))
+    random.shuffle(indices)
+    bkg_images = bkg_images[indices[:(batch_size-self.nElectronsPerBatch)],1:]
 
+    # concatenate images and suffle them, create labels
+    batch_x = np.concatenate((e_images,bkg_images))
+    batch_y = np.concatenate((np.ones(self.nElectronsPerBatch),np.zeros(batch_size-self.nElectronsPerBatch)))
+    
+    indices = list(range(batch_x.shape[0]))
+    random.shuffle(indices)
+
+    batch_x = batch_x[indices[:batch_size],:]
     batch_x = np.reshape(batch_x,(batch_size,40,40,4))
     batch_x = batch_x[:,:,:,[0,2,3]]
 
-    # labels
-    batch_y = np.concatenate((np.ones(numE),np.ones(numAdded),np.zeros(numBkg)))
+    batch_y = batch_y[indices[:batch_size]]
     batch_y = keras.utils.to_categorical(batch_y, 2)
-
-    # shuffle the images and labels
-    indices = list(range(len(batch_x)))
-    random.shuffle(indices)
-    batch_x = batch_x[indices]
-    batch_y = batch_y[indices]
 
     return np.array(batch_x), np.array(batch_y)
 
@@ -109,8 +101,7 @@ if __name__ == "__main__":
   tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
   dataDir = "/data/disappearingTracks/electron_selection_DYJetsToll_M50/"
-  tag1 = '0p25_tanh_'
-  tag2 = '0p25_tahn_'
+  tag = '0p25_tanh_'
   workDir = '/home/llavezzo/'
   plotDir = workDir + 'plots/cnn/'
   weightsDir = workDir + 'weights/cnn/'
@@ -123,10 +114,10 @@ if __name__ == "__main__":
     how many electrons, background events to use
     from maximum 15463 electron events and 3256305 background events
   e_fraction:
-    use to oversample electron events,
-    fraction of electron events per batch
+    use to oversample electron events, fraction of electron events per batch
+    set to -1 if it's not needed
   """
-  nTotE, nTotBkg = 15000,200000
+  nTotE, nTotBkg = 15000,20000
   batch_size = 256
   epochs = 10
   patience_count = 10
@@ -135,7 +126,7 @@ if __name__ == "__main__":
   channels = 3
   input_shape = (img_rows,img_cols,channels)
   class_weights = True             
-  e_fraction = 0.2              
+  e_fraction = 0.5        
   #################################################
 
 
@@ -155,7 +146,7 @@ if __name__ == "__main__":
   # batches per epoch, number of electrons, bkg events per batch
   nBatches = np.ceil((nTotE + nTotBkg)*1.0/batch_size)
   nElectronsPerBatch = int(nTotE/nBatches)
-  nBkgPerPatch = int(nTotBkg/nBatches)
+  nBkgPerBatch = int(nTotBkg/nBatches)
 
   # create batches of files to reach in each batch
   # the desired number of events of each class
@@ -165,22 +156,20 @@ if __name__ == "__main__":
   thisBatchE = 0
   temp = []
   keys = list(eCounts.keys())
-  while nSavedE < nTotE:
-    
-    random.shuffle(keys)
-    for thisFile in keys:
-      thisFileE = eCounts[thisFile]
-      if(thisFileE < 1): continue
-      if(nSavedE > nTotE): break
+  random.shuffle(keys)
+  for thisFile in keys:
+    thisFileE = eCounts[thisFile]
+    if(thisFileE < 1): continue
+    if(nSavedE > nTotE): break
 
-      temp.append(thisFile)
-      thisBatchE += thisFileE
-      
-      if(thisBatchE >= nElectronsPerBatch or thisFile == list(eCounts.keys())[-1]):
-        nSavedE += nElectronsPerBatch
-        filesE.append(temp)
-        temp = []
-        thisBatchE = 0
+    temp.append(thisFile)
+    thisBatchE += thisFileE
+    
+    if(thisBatchE >= nElectronsPerBatch):
+      nSavedE += nElectronsPerBatch
+      filesE.append(temp)
+      temp = []
+      thisBatchE = 0
 
 
   nSavedBkg = 0
@@ -196,8 +185,8 @@ if __name__ == "__main__":
     temp.append(thisFile)
     thisBatchBkg += thisFileBkg
 
-    if(thisBatchBkg >= nBkgPerPatch or thisFile == list(bkgCounts.keys())[-1]):
-      nSavedBkg += nBkgPerPatch
+    if(thisBatchBkg >= nBkgPerBatch):
+      nSavedBkg += nBkgPerBatch
       filesBkg.append(temp)
       temp = []
       thisBatchBkg = 0
@@ -208,7 +197,6 @@ if __name__ == "__main__":
   print("\t",nSavedE,"electron events and",nSavedBkg,"background events")
   print("From total available events:")
   print("\t",sum(list(eCounts.values())),"electron events and",sum(list(bkgCounts.values())),"background events")
-
   
   # make sure they are same length
   while(len(filesE) > len(filesBkg)):
@@ -225,13 +213,31 @@ if __name__ == "__main__":
   valFilesBkg = filesBkg[int((1-val_size)*len(filesBkg)):]
 
   print("Training on:")
-  print("\t",len(trainFilesE),"batches of files (approx.",nElectronsPerBatch*len(trainFilesE),"electron and",nBkgPerPatch*len(trainFilesE), "background events)")
+  print("\t",len(trainFilesE),"batches of files (approx.",nElectronsPerBatch*len(trainFilesE),"electron and",nBkgPerBatch*len(trainFilesE), "background events)")
   print("Validating on:")
-  print("\t",len(valFilesE),"batches of files (approx.",nElectronsPerBatch*len(valFilesE),"electron and",nBkgPerPatch*len(valFilesE)," background events)")
+  print("\t",len(valFilesE),"batches of files (approx.",nElectronsPerBatch*len(valFilesE),"electron and",nBkgPerBatch*len(valFilesE)," background events)")
+
+  # oversample the training electron files if e_fraction != -1
+  nElectronsPerBatchOversampled = int(np.ceil(batch_size*e_fraction))
+  ovsFiles = list([file for batch in trainFilesE for file in batch])
+  random.shuffle(ovsFiles)
+  for i,batch in enumerate(trainFilesE):
+    nElectronsThisBatch = 0
+    for file in batch: nElectronsThisBatch+=eCounts[file]
+    while nElectronsThisBatch < nElectronsPerBatchOversampled:
+      randFile = ovsFiles[random.randint(0,len(ovsFiles)-1)]
+      trainFilesE[i].append(randFile)
+      nElectronsThisBatch += eCounts[randFile]
+  if(e_fraction != -1):
+    print("Oversampling:")
+    print("\t Number of electrons per batch:",nElectronsPerBatchOversampled)
+    print("\t",len(trainFilesE),"batches of files (approx.",nElectronsPerBatchOversampled*len(trainFilesE),"electron and",(batch_size-nElectronsPerBatchOversampled)*len(trainFilesE), "background events)")
 
   # initialize generators
-  train_generator = generator(trainFilesE, trainFilesBkg, batch_size, dataDir, e_fraction)
-  val_generator = generator(valFilesE, valFilesBkg, batch_size, dataDir, e_fraction)
+  # if oversampling in training data, set appropriate e_fraction in each batch
+  if(e_fraction == -1):  train_generator = generator(trainFilesE, trainFilesBkg, batch_size, dataDir, nElectronsPerBatch)
+  else: train_generator = generator(trainFilesE, trainFilesBkg, batch_size, dataDir, nElectronsPerBatchOversampled)
+  val_generator = generator(valFilesE, valFilesBkg, batch_size, dataDir, nElectronsPerBatch)
 
   # initialize output bias
   if(e_fraction == -1): output_bias = np.log(nTotE/nTotBkg)
@@ -280,7 +286,7 @@ if __name__ == "__main__":
   valFilesE = [file for batch in valFilesE for file in batch]
   valFilesBkg = [file for batch in valFilesBkg for file in batch]
   for i,file in enumerate(valFilesE):
-    fname = "e_"+tag1+file+".npz"
+    fname = "e_"+tag+file+".npz"
     temp = np.load(dataDir+fname) 
     images = temp['images'][:,1:]
     images = np.reshape(images, [len(images),40,40,4])
@@ -288,7 +294,7 @@ if __name__ == "__main__":
     if(i==0): predictionsE = model.predict(x_test)
     else: predictionsE = np.concatenate([predictionsE, model.predict(x_test)])
   for i,file in enumerate(valFilesBkg):
-    fname = "bkg_"+tag2+file+".npz"
+    fname = "bkg_"+tag+file+".npz"
     temp = np.load(dataDir+fname) 
     images = temp['images'][:batch_size,1:]
     images = np.reshape(images, [len(images),40,40,4])

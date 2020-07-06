@@ -132,8 +132,8 @@ if __name__ == "__main__":
   print(x_train.shape[0], 'train samples')
   print(x_test.shape[0], 'test samples')
 
-  # x_train, y_train = utils.apply_oversampling(x_train,y_train,oversample_val=oversample_val)
-  # x_train, y_train = utils.apply_undersampling(x_train,y_train,undersample_val=undersample_val)
+  x_train, y_train = utils.apply_oversampling(x_train,y_train,oversample_val=oversample_val)
+  x_train, y_train = utils.apply_undersampling(x_train,y_train,undersample_val=undersample_val)
 
   # initialize output bias
   neg, pos = np.bincount(y_train)
