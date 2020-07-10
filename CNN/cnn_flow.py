@@ -12,7 +12,6 @@ import json
 import random
 import sys
 
-
 def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kernels=(1,1),output_bias=0):
     
     model = keras.Sequential()
@@ -107,7 +106,6 @@ if __name__ == "__main__":
   weightsDir = workDir + 'weights/cnn/'
   weightsFile = 'first_model'
 
-
   ################config parameters################
   """
   nTotE, nTotBkg:
@@ -117,16 +115,16 @@ if __name__ == "__main__":
     use to oversample electron events, fraction of electron events per batch
     set to -1 if it's not needed
   """
-  nTotE, nTotBkg = 15000,20000
+  nTotE, nTotBkg = 15000,100000
   batch_size = 256
-  epochs = 10
+  epochs = 5
   patience_count = 10
   val_size = 0.2
   img_rows, img_cols = 40, 40
   channels = 3
   input_shape = (img_rows,img_cols,channels)
   class_weights = True             
-  e_fraction = 0.5        
+  e_fraction = 0.3     
   #################################################
 
 
@@ -143,7 +141,7 @@ if __name__ == "__main__":
   if(nTotE > sum(list(eCounts.values()))): sys.exit("ERROR: Requested more electron events than are available")
   if(nTotBkg > sum(list(bkgCounts.values()))): sys.exit("ERROR: Requested more electron events than available")
 
-  # batches per epoch, number of electrons, bkg events per batch
+  # batches per epoch, number of electrons/bkg events per batch
   nBatches = np.ceil((nTotE + nTotBkg)*1.0/batch_size)
   nElectronsPerBatch = int(nTotE/nBatches)
   nBkgPerBatch = int(nTotBkg/nBatches)
@@ -171,25 +169,22 @@ if __name__ == "__main__":
       temp = []
       thisBatchE = 0
 
-
   nSavedBkg = 0
-  thisBatchBkg = 0
-  temp = []
-  keys = list(bkgCounts.keys())
-  random.shuffle(keys)
-  for thisFile in keys:
-    thisFileBkg = bkgCounts[thisFile]
-    if(thisFileBkg < 1): continue
-    if(nSavedBkg > nTotBkg): break
+  for batchE in filesE:
+    iFile = 0
+    thisBatchBkg = 0
+    batch = []
+    while(thisBatchBkg < nBkgPerBatch):
+      thisFile = batchE[iFile]
+      thisFileBkg = bkgCounts[thisFile]
+      if(thisFileBkg < 1): continue
 
-    temp.append(thisFile)
-    thisBatchBkg += thisFileBkg
-
-    if(thisBatchBkg >= nBkgPerBatch):
+      batch.append(thisFile)
+      thisBatchBkg += thisFileBkg
       nSavedBkg += nBkgPerBatch
-      filesBkg.append(temp)
-      temp = []
-      thisBatchBkg = 0
+
+      iFile+=1 
+    filesBkg.append(batch)
 
   print("Requested:")
   print("\t",nTotE,"electron events and",nTotBkg,"background events")
@@ -205,8 +200,12 @@ if __name__ == "__main__":
     filesBkg = filesBkg[:-1]
 
   # split batches of files into train and validation sets
-  random.shuffle(filesE)
-  random.shuffle(filesBkg)
+  indices = np.arange(len(filesE)).astype(int)
+  random.shuffle(indices)
+  filesE = np.asarray(filesE)
+  filesBkg = np.asarray(filesBkg)
+  filesE = filesE[indices]
+  filesBkg = filesBkg[indices]
   trainFilesE = filesE[:int((1-val_size)*len(filesE))]
   valFilesE = filesE[int((1-val_size)*len(filesE)):]
   trainFilesBkg = filesBkg[:int((1-val_size)*len(filesBkg))]
@@ -253,7 +252,7 @@ if __name__ == "__main__":
     weight_for_1 = (1/nTotE)*(nTotBkg+nTotE)/2.0
     class_weight = {0: weight_for_0, 1: weight_for_1}
   else:
-    weight_for_0 = 1/(2*(1-e_fraction))  #FIXME: check if this works
+    weight_for_0 = 1/(2*(1-e_fraction))
     weight_for_1 = 1/(2.0*e_fraction)
     class_weight = {0: weight_for_0, 1: weight_for_1}
     
@@ -284,7 +283,7 @@ if __name__ == "__main__":
 
   # predict each of the validation files individually
   valFilesE = [file for batch in valFilesE for file in batch]
-  valFilesBkg = [file for batch in valFilesBkg for file in batch]
+
   for i,file in enumerate(valFilesE):
     fname = "e_"+tag+file+".npz"
     temp = np.load(dataDir+fname) 
@@ -293,10 +292,13 @@ if __name__ == "__main__":
     x_test = images[:,:,:,[0,2,3]]
     if(i==0): predictionsE = model.predict(x_test)
     else: predictionsE = np.concatenate([predictionsE, model.predict(x_test)])
-  for i,file in enumerate(valFilesBkg):
+
+  # Important to sample the bkg from the same files as the electrons
+  # to keep the original ratio of the two classes
+  for i,file in enumerate(valFilesE): 
     fname = "bkg_"+tag+file+".npz"
     temp = np.load(dataDir+fname) 
-    images = temp['images'][:batch_size,1:]
+    images = temp['images'][:,1:]
     images = np.reshape(images, [len(images),40,40,4])
     x_test = images[:,:,:,[0,2,3]]
     if(i == 0): predictionsB = model.predict(x_test)
