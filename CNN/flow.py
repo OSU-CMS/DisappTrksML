@@ -275,9 +275,7 @@ if __name__ == "__main__":
       iFile+=1 
 
     trainBatchesBkg.append(batch)
-    valBatchesBkg.append(batch)
       
-
   for i in range(len(valBatchesE)):
     iFile = 0
     thisBatchBkg = 0
@@ -293,14 +291,13 @@ if __name__ == "__main__":
       iFile+=1 
     
     valBatchesBkg.append(batch)
-
-
+  
   trainFilesBkg = [file for batch in trainBatchesBkg for file in batch]
   valFilesBkg = [file for batch in valBatchesBkg for file in batch]
   nTrainBkg = int(sum(bkgCounts[file] for file in trainFilesBkg))
   nValBkg = int(sum(bkgCounts[file] for file in valFilesBkg))
   nSavedBkgTrain = int(nBkgPerBatch*len(trainBatchesBkg))
-  nSavedBkgVal = int(nBkgPerBatch*len(valBatchesBkg))
+  nSavedBkgVal = int(nBkgPerBatchData*len(valBatchesBkg))
 
   batch_size_val = int(nBkgPerBatchData+nElectronsPerBatch)
 
@@ -309,7 +306,8 @@ if __name__ == "__main__":
   print("Training on:\t"+str(nSavedETrain)+"\t\t"+str(nSavedBkgTrain)+"\t\t"+str(round(nSavedETrain*1.0/(nSavedETrain+nSavedBkgTrain),3)))
   print("Validating on:\t"+str(nSavedEVal)+"\t\t"+str(nSavedBkgVal)+"\t\t"+str(round(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal),3)))
   print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,3)))
- 
+
+
   # oversample the training electron files if oversample_e != -1
   nElectronsPerBatchOversampled = int(np.ceil(batch_size*oversample_e))
   ovsFiles = list([file for batch in trainBatchesE for file in batch])
@@ -363,14 +361,14 @@ if __name__ == "__main__":
   if(train and class_weights):
     history = model.fit(train_generator, 
                         epochs = epochs,
-                        verbose= 1,
+                        verbose= 2,
                         validation_data=val_generator,
                         callbacks=callbacks,
                         class_weight=class_weight)
   elif(train):
     history = model.fit(train_generator, 
                         epochs = epochs,
-                        verbose= 1,
+                        verbose= 2,
                         validation_data=val_generator,
                         callbacks=callbacks)
                         
