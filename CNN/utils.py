@@ -9,6 +9,8 @@ import os
 from collections import Counter
 from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
+from sklearn.metrics import roc_auc_score
+
 
 def save_event(x, dir, fname):
     
@@ -117,12 +119,18 @@ def plot_history(history, plotDir, variables=['acc','loss']):
     plt.savefig(plotDir+var+'_history.png')
     plt.clf()
     
-def calc_cm(y_test,predictions):
+def calc_cm_probas(y_test,predictions):
     confusion_matrix = nested_defaultdict(int,2)
     for true,pred in zip(y_test, predictions):
         t = np.argmax(true)
         p = np.argmax(pred)
         confusion_matrix[t][p] += 1
+    return confusion_matrix
+
+def calc_cm(y_test,predictions):
+    confusion_matrix = nested_defaultdict(int,2)
+    for true,pred in zip(y_test, predictions):
+        confusion_matrix[true][pred] += 1
     return confusion_matrix
 
 def plot_certainty(y_test,predictions,f):
@@ -134,8 +142,8 @@ def plot_certainty(y_test,predictions,f):
         else:
             notcorrect_certainty.append(pred[np.argmax(pred)])
     
-    plt.hist(correct_certainty,alpha=0.5,label='Predicted Successfully',normed=True)
-    plt.hist(notcorrect_certainty,alpha=0.5,label='Predicted Unsuccessfully',normed=True)
+    plt.hist(correct_certainty,alpha=0.5,label='Predicted Successfully',density=True)
+    plt.hist(notcorrect_certainty,alpha=0.5,label='Predicted Unsuccessfully',density=True)
     plt.title("Certainty")
     plt.legend()
     plt.savefig(f)
@@ -217,3 +225,48 @@ def plot_grid(gs, x_label, y_label, x_target_names, y_target_names, title = 'Gri
     plt.ylabel(y_label)
     plt.savefig(f, bbox_inches='tight')
     plt.clf()
+
+# plot precision and recall for different electron probabilities
+def plot_precision_recall(true, probas, fname, nsplits=20):
+  precisions, recalls, splits = [],[],[]
+  for split in np.arange(0,1,1.0/nsplits):
+    preds = []
+    for t,p in zip(true,probas):
+      if(p[1]>split): preds.append(1)
+      else: preds.append(0)
+    cm = calc_cm(true,preds)
+    precision, recall = calc_binary_metrics(cm)
+    precisions.append(precision)
+    recalls.append(recall)
+    splits.append(split)
+
+  plt.scatter(splits, precisions, label="Precision")
+  plt.scatter(splits, recalls, label="Recalls")
+  plt.ylim(-0.1,1.1)
+  plt.xlim(-0.1,1.1)
+  plt.ylabel("Metric Value")
+  plt.xlabel("Split on Electron Probability")
+  plt.title("Metrics per Probability")
+  plt.legend()
+  plt.tight_layout()
+  plt.savefig(fname)
+  plt.clf()
+
+# calculate and save metrics
+def metrics(y_test, true, predictions, plotDir):
+
+    cm = calc_cm_probas(y_test,predictions)
+    plot_confusion_matrix(cm,['bkg','e'],plotDir + 'cm.png')
+    
+    plot_certainty(y_test,predictions,plotDir+'certainty.png')
+
+    plot_precision_recall(true,predictions,plotDir+'precision_recall.png')
+
+    precision, recall = calc_binary_metrics(cm)
+    auc = roc_auc_score(y_test,predictions)
+
+    fileOut = open(plotDir+"metrics.txt","w")
+    fileOut.write("Precision = TP/(TP+FP) = fraction of predicted true actually true "+str(round(precision,5))+"\n")
+    fileOut.write("Recall = TP/(TP+FN) = fraction of true class predicted to be true "+str(round(recall,5))+"\n")
+    fileOut.write("AUC Score:"+str(round(auc,5)))
+    fileOut.close()

@@ -96,25 +96,30 @@ class generator(keras.utils.Sequence):
 if __name__ == "__main__":
 
   # limit CPU usage
-  config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 2,   
-                          intra_op_parallelism_threads = 2)
-  tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
+  # config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 2,   
+  #                         intra_op_parallelism_threads = 2)
+  # tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
   dataDir = "/data/disappearingTracks/electron_selectionV2/"
   tag = '0p25_tanh_'
   workDir = '/home/llavezzo/'
   plotDir = workDir + 'plots/cnn/'
   weightsDir = workDir + 'weights/cnn/'
-  weightsFile = 'cnn_first_model'
+  weightsFile = 'cnn_us0p9'
 
   ################config parameters################
-  nTrainE = 5000
+  train = True
+  validate = True
+  valEvents = "valIDs"
+  trainEvents = "trainIDs"
+
+  nTrainE = 9000
   nValE = 1000
   undersample_bkg = 0.9          
   oversample_e = -1
 
   batch_size = 256
-  epochs = 20
+  epochs = 5
   patience_count = 10
   class_weights = True
   metrics = ['accuracy', 'Precision', 'Recall']
@@ -124,12 +129,16 @@ if __name__ == "__main__":
   input_shape = (img_rows,img_cols,channels)
   #################################################
 
+  """
+  ID:
+  (class: 0 or 1)(fileNum: 4 digits, e.g. 0014)(event number within each file)
+  """
 
   if(not os.path.isdir(plotDir)): os.system('mkdir '+str(plotDir))
   if(not os.path.isdir(weightsDir)): os.system('mkdir '+str(weightsDir))
 
   # load list of images
-  imageList = np.load("imageList.npy")
+  imageList = np.load(dataDir+"imageList.npy")
   random.shuffle(imageList)
 
   # import count dicts
@@ -246,57 +255,54 @@ if __name__ == "__main__":
                                     save_best_only=True),
   ]
 
-  if(class_weights):
+  if(train and class_weights):
     history = model.fit(train_generator, 
                         epochs = epochs,
                         verbose= 1,
                         validation_data=val_generator,
                         callbacks=callbacks,
                         class_weight=class_weight)
-  else:
+  elif(train):
     history = model.fit(train_generator, 
                         epochs = epochs,
                         verbose= 1,
                         validation_data=val_generator,
                         callbacks=callbacks)
-                        
-  model.load_weights(weightsDir+weightsFile+'.h5')
-
-  true = []
-  predictions = []
-  for ID in valIDs:
-
-    if(ID[0]=="0"): fname = 'bkg_'+tag+str(int(ID[1:5]))+'.npy'
-    else: fname = 'e_'+tag+str(int(ID[1:5]))+'.npy'
-    temp = np.load(dataDir+fname, mmap_mode='r')[int(ID[5:]),1:]  
-
-    true.append(int(ID[0]))
-    predictions.append(model.predict(temp))
   
-  true = keras.utils.to_categorical(true, num_classes=2)
+  model.load_weights(weightsDir+weightsFile+'.h5')
+  
+ if(train):
+    model.save_weights(weightsDir+weightsFile+'_lastEpoch.h5')
+    print("Saved weights to",weightsDir+weightsFile)
+    utils.plot_history(history, plotDir,['loss']+metrics)
 
-  utils.plot_history(history, plotDir,['loss','accuracy'])
+    # save the train and validation IDs
+    np.save(trainEvents, trainIDs)
+    np.save(valEvents, valIDs)  
 
-  print()
-  print("Calculating and plotting confusion matrix")
-  cm = utils.calc_cm(y_test,predictions)
-  utils.plot_confusion_matrix(cm,['bkg','e'],plotDir + 'cm.png')
-  print()
+  if(validate):
 
-  print("Plotting certainty")
-  utils.plot_certainty(y_test,predictions,plotDir+'certainty.png')
-  print()
+    valIDs = np.load(valEvents+'.npy') 
 
-  precision, recall = utils.calc_binary_metrics(cm)
-  print("Precision = TP/(TP+FP) = fraction of predicted true actually true ",round(precision,5))
-  print("Recall = TP/(TP+FN) = fraction of true class predicted to be true ",round(recall,5))
-  auc = roc_auc_score(y_test,predictions)
-  print("AUC Score:",round(auc,5))
-  print()
+    true = []
+    predictions = []
+    for i,ID in enumerate(valIDs):
 
-  fileOut = open(plotDir+"metrics.txt","w")
-  fileOut.write("Precision = TP/(TP+FP) = fraction of predicted true actually true "+str(round(precision,5))+"\n")
-  fileOut.write("Recall = TP/(TP+FN) = fraction of true class predicted to be true "+str(round(recall,5))+"\n")
-  fileOut.write("AUC Score:"+str(round(auc,5)))
-  fileOut.close()
-  print("Wrote out metrics to metrics.txt")
+      if(i%1000==0): print(i)
+      
+      if(ID[0]=="0"): fname = 'bkg_'+tag+str(int(ID[1:5]))+'.npy'
+      else: fname = 'e_'+tag+str(int(ID[1:5]))+'.npy'
+      temp = np.load(dataDir+fname, mmap_mode='r')[int(ID[5:]),1:] 
+      temp = np.reshape(temp, [1,40,40,4])
+      temp = temp[:,:,:,[0,2,3]] 
+
+      true.append(int(ID[0]))
+      predictions.append(model.predict(temp))
+
+    true = keras.utils.to_categorical(true, num_classes=2)
+
+    utils.metrics(y_test, predictions, plotDir)
+
+    print()
+    print("Saved metrics to",plotDir)
+    print()
