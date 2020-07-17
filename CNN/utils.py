@@ -11,6 +11,15 @@ from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.metrics import roc_auc_score
 
+class bcolors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 def save_event(x, dir, fname):
     
@@ -108,7 +117,7 @@ def apply_undersampling(x_train, y_train, undersample_val=0.1):
   return x_train, y_train
 
 
-def plot_history(history, plotDir, variables=['acc','loss']):
+def plot_history(history, plotDir, variables=['accuracy','loss']):
   for var in variables:
     plt.plot(history.history[var],label='train')
     plt.plot(history.history['val_'+var],label='test')
@@ -119,7 +128,7 @@ def plot_history(history, plotDir, variables=['acc','loss']):
     plt.savefig(plotDir+var+'_history.png')
     plt.clf()
     
-def calc_cm_probas(y_test,predictions):
+def calc_cm_one_hot(y_test,predictions):
     confusion_matrix = nested_defaultdict(int,2)
     for true,pred in zip(y_test, predictions):
         t = np.argmax(true)
@@ -127,13 +136,13 @@ def calc_cm_probas(y_test,predictions):
         confusion_matrix[t][p] += 1
     return confusion_matrix
 
-def calc_cm(y_test,predictions):
+def calc_cm(true,predictions):
     confusion_matrix = nested_defaultdict(int,2)
-    for true,pred in zip(y_test, predictions):
-        confusion_matrix[true][pred] += 1
+    for t,p in zip(true, predictions):
+        confusion_matrix[t][p] += 1
     return confusion_matrix
 
-def plot_certainty(y_test,predictions,f):
+def plot_certainty_one_hot(y_test,predictions,f):
 
     correct_certainty, notcorrect_certainty = [],[]
     for true,pred in zip(y_test, predictions):
@@ -231,17 +240,17 @@ def plot_precision_recall(true, probas, fname, nsplits=20):
   precisions, recalls, splits = [],[],[]
   for split in np.arange(0,1,1.0/nsplits):
     preds = []
-    for t,p in zip(true,probas):
-      if(p[1]>split): preds.append(1)
-      else: preds.append(0)
+    for p in probas:
+        if(p>split): preds.append(1)
+        else: preds.append(0)
     cm = calc_cm(true,preds)
     precision, recall = calc_binary_metrics(cm)
     precisions.append(precision)
     recalls.append(recall)
     splits.append(split)
 
-  plt.scatter(splits, precisions, label="Precision")
-  plt.scatter(splits, recalls, label="Recalls")
+  plt.scatter(splits, precisions, label="Precision", marker="+")
+  plt.scatter(splits, recalls, label="Recall", marker="+")
   plt.ylim(-0.1,1.1)
   plt.xlim(-0.1,1.1)
   plt.ylabel("Metric Value")
@@ -253,17 +262,20 @@ def plot_precision_recall(true, probas, fname, nsplits=20):
   plt.clf()
 
 # calculate and save metrics
-def metrics(y_test, true, predictions, plotDir):
+def metrics(true, predictions, plotDir, threshold=0.5):
 
-    cm = calc_cm_probas(y_test,predictions)
+    class_predictions = []
+    for p in predictions:
+        if(p >= threshold): class_predictions.append(1)
+        else: class_predictions.append(0)
+
+    cm = calc_cm(true, class_predictions)
     plot_confusion_matrix(cm,['bkg','e'],plotDir + 'cm.png')
     
-    plot_certainty(y_test,predictions,plotDir+'certainty.png')
-
-    plot_precision_recall(true,predictions,plotDir+'precision_recall.png')
+    plot_precision_recall(true,predictions,plotDir+'precision_recall.png',nsplits=50)
 
     precision, recall = calc_binary_metrics(cm)
-    auc = roc_auc_score(y_test,predictions)
+    auc = roc_auc_score(true, predictions)
 
     fileOut = open(plotDir+"metrics.txt","w")
     fileOut.write("Precision = TP/(TP+FP) = fraction of predicted true actually true "+str(round(precision,5))+"\n")
