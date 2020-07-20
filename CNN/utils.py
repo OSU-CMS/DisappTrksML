@@ -295,7 +295,7 @@ def make_batches(events, files, nPerBatch, nBatches):
     event_batches_full = chunks(events,nPerBatch)
     file_batches_full = chunks(files,nPerBatch)
 
-    event_batches, file_batches = [],[]
+    event_batches, file_batches = [], []
     batches = 0
     for events, files in zip(event_batches_full, file_batches_full):
         if(batches == nBatches): break
@@ -306,7 +306,7 @@ def make_batches(events, files, nPerBatch, nBatches):
         file_batches.append(list(set(files)))
         batches+=1
 
-    return np.array(event_batches), np.array(file_batches)
+    return np.array(event_batches), file_batches
 
 def count_events(file_batches, event_batches, dict):
   nSaved=0

@@ -6,6 +6,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.applications import VGG19
 import json
 import random
 import sys
@@ -121,9 +122,9 @@ class generator(keras.utils.Sequence):
 if __name__ == "__main__":
 
     # limit CPU usage
-    # config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 2,   
-    #                         intra_op_parallelism_threads = 2)
-    # tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
+    config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 2,   
+                            intra_op_parallelism_threads = 2)
+    tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
     # suppress warnings
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
@@ -132,10 +133,10 @@ if __name__ == "__main__":
     dataDir = "/data/disappearingTracks/electron_selectionV2/"
     tag = '0p25_tanh_'
     workDir = '/home/llavezzo/'
-    plotDir = workDir + 'plots/cnnDebug/'
-    weightsDir = workDir + 'weights/cnnDebug/'
-    outputDir = workDir + 'outputFiles/cnnDebug/'
-    weightsFile = 'cnnDebug'
+    plotDir = workDir + 'plots/cnn_undersampled/'
+    weightsDir = workDir + 'weights/cnn_undersampled/'
+    outputDir = workDir + 'outputFiles/cnn_undersampled/'
+    weightsFile = 'cnn_undersampled'
 
     ################config parameters################
     """
@@ -160,17 +161,17 @@ if __name__ == "__main__":
     """
 
     run_validate = True
-    trainFile = "trainBatchesDebug"
-    valFile = "valBatchesDebug"
+    trainFile = "trainBatches_undersampled"
+    valFile = "valBatches_undersampled"
 
-    nTotE = 10000
+    nTotE = 12500
     val_size = 0.2
     undersample_bkg = 0.9        
     oversample_e = -1   
 
-    v = 1
-    batch_size = 256
-    epochs = 5
+    v = 2
+    batch_size = 128
+    epochs = 20
     patience_count = 5
     monitor = 'val_precision'
     class_weights = True  
@@ -273,9 +274,18 @@ if __name__ == "__main__":
 
         nAddedBkg = utils.count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
 
+
+    nBatchesAdded = len(bkg_event_batches_added)
+
+    filler_events = [[0,0]]*nBatchesAdded
+    filler_files = [list(set([0])) for _ in range(nBatchesAdded)]
+
     val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
     val_bkg_file_batches = np.concatenate((val_bkg_file_batches,bkg_file_batches_added))
+    val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
+    val_e_file_batches = val_e_file_batches + filler_files
 
+    nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
     nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
 
     print("\t\tElectrons\tBackground\te/(e+bkg)")
@@ -313,6 +323,28 @@ if __name__ == "__main__":
                         layers = 5, filters = 64, opt='adam',
                         output_bias=output_bias,
                         metrics=metrics)
+
+    # base_model = VGG19(input_shape = input_shape, 
+    #                 include_top=False,
+    #                 weights=None,
+    #                 classifier_activation="sigmoid")
+
+    # x = base_model.output
+    # x = keras.layers.GlobalAveragePooling2D()(x)
+    # x = keras.layers.Dense(1024, activation='relu')(x)
+    # predictions = keras.layers.Dense(1, activation='sigmoid')(x)
+    # model = keras.models.Model(inputs=base_model.input, outputs=predictions)
+
+    # # first: train only the top layers (which were randomly initialized)
+    # # i.e. freeze all convolutional InceptionV3 layers
+    # # for layer in base_model.layers:
+    # #     layer.trainable = False
+
+    # # compile the model (should be done *after* setting layers to non-trainable)
+    # model.compile(loss=keras.losses.BinaryCrossentropy(),
+    #             optimizer='adam',
+    #             metrics=metrics)
+
 
     callbacks = [
     keras.callbacks.EarlyStopping(patience=patience_count),
