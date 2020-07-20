@@ -132,10 +132,10 @@ if __name__ == "__main__":
     dataDir = "/data/disappearingTracks/electron_selectionV2/"
     tag = '0p25_tanh_'
     workDir = '/home/llavezzo/'
-    plotDir = workDir + 'plots/cnn/'
-    weightsDir = workDir + 'weights/cnn/'
-    outputDir = workDir + 'outputFiles/cnn/'
-    weightsFile = 'cnn'
+    plotDir = workDir + 'plots/cnnDebug/'
+    weightsDir = workDir + 'weights/cnnDebug/'
+    outputDir = workDir + 'outputFiles/cnnDebug/'
+    weightsFile = 'cnnDebug'
 
     ################config parameters################
     """
@@ -160,17 +160,17 @@ if __name__ == "__main__":
     """
 
     run_validate = True
-    trainFile = "trainBatches"
-    valFile = "valBatches"
+    trainFile = "trainBatchesDebug"
+    valFile = "valBatchesDebug"
 
-    nTotE = 100
+    nTotE = 10000
     val_size = 0.2
     undersample_bkg = 0.9        
     oversample_e = -1   
 
-    v = 2
+    v = 1
     batch_size = 256
-    epochs = 1
+    epochs = 5
     patience_count = 5
     monitor = 'val_precision'
     class_weights = True  
@@ -283,8 +283,6 @@ if __name__ == "__main__":
     print("Training on:\t"+str(nSavedETrain)+"\t\t"+str(nSavedBkgTrain)+"\t\t"+str(round(nSavedETrain*1.0/(nSavedETrain+nSavedBkgTrain),5)))
     print("Validating on:\t"+str(nSavedEVal)+"\t\t"+str(nSavedBkgVal)+"\t\t"+str(round(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal),5)))
     print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,5)))
-
-    sys.exit(0)
 
     # # oversample the training electron files if oversample_e != -1
     # nElectronsPerBatchOversampled = int(np.ceil(batch_size*oversample_e))
