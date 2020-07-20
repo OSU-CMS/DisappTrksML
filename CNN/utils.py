@@ -263,22 +263,65 @@ def plot_precision_recall(true, probas, fname, nsplits=20):
 
 # calculate and save metrics
 def metrics(true, predictions, plotDir, threshold=0.5):
+  class_predictions = []
+  for p in predictions:
+      if(p >= threshold): class_predictions.append(1)
+      else: class_predictions.append(0)
 
-    class_predictions = []
-    for p in predictions:
-        if(p >= threshold): class_predictions.append(1)
-        else: class_predictions.append(0)
+  cm = calc_cm(true, class_predictions)
+  plot_confusion_matrix(cm,['bkg','e'],plotDir + 'cm.png')
+  
+  plot_precision_recall(true,predictions,plotDir+'precision_recall.png',nsplits=50)
 
-    cm = calc_cm(true, class_predictions)
-    plot_confusion_matrix(cm,['bkg','e'],plotDir + 'cm.png')
-    
-    plot_precision_recall(true,predictions,plotDir+'precision_recall.png',nsplits=50)
+  precision, recall = calc_binary_metrics(cm)
+  auc = roc_auc_score(true, predictions)
 
-    precision, recall = calc_binary_metrics(cm)
-    auc = roc_auc_score(true, predictions)
+  fileOut = open(plotDir+"metrics.txt","w")
+  fileOut.write("Precision = TP/(TP+FP) = fraction of predicted true actually true "+str(round(precision,5))+"\n")
+  fileOut.write("Recall = TP/(TP+FN) = fraction of true class predicted to be true "+str(round(recall,5))+"\n")
+  fileOut.write("AUC Score:"+str(round(auc,5)))
+  fileOut.close()
 
-    fileOut = open(plotDir+"metrics.txt","w")
-    fileOut.write("Precision = TP/(TP+FP) = fraction of predicted true actually true "+str(round(precision,5))+"\n")
-    fileOut.write("Recall = TP/(TP+FN) = fraction of true class predicted to be true "+str(round(recall,5))+"\n")
-    fileOut.write("AUC Score:"+str(round(auc,5)))
-    fileOut.close()
+def chunks(lst, chunk_sizes):
+  out = []
+  i = 0
+  for chunk in chunk_sizes:
+      out.append(lst[i:i+chunk])
+      i=i+chunk
+  return out
+
+def make_batches(events, files, nPerBatch, nBatches):
+
+    event_batches_full = chunks(events,nPerBatch)
+    file_batches_full = chunks(files,nPerBatch)
+
+    event_batches, file_batches = [],[]
+    batches = 0
+    for events, files in zip(event_batches_full, file_batches_full):
+        if(batches == nBatches): break
+        events = list(map(int, events)) 
+        files = list(map(int, files)) 
+        files.sort()
+        event_batches.append([events[0],events[-1]])
+        file_batches.append(list(set(files)))
+        batches+=1
+
+    return np.array(event_batches), np.array(file_batches)
+
+def count_events(file_batches, event_batches, dict):
+  nSaved=0
+  for files, indices in zip(file_batches, event_batches):
+      lastFile = len(files)-1
+      for iFile, file in enumerate(files):
+          if(iFile == 0 and iFile != lastFile):
+              nSaved+=(dict[str(file)]-indices[0])
+
+          elif(iFile == lastFile and iFile != 0):
+              nSaved+=(indices[1]+1)
+
+          elif(iFile == 0 and iFile == lastFile):
+              nSaved+=(indices[1]-indices[0]+1)
+
+          elif(iFile != 0 and iFile != lastFile):
+              nSaved+=dict[str(file)]
+  return nSaved

@@ -103,9 +103,9 @@ if __name__ == "__main__":
   dataDir = "/data/disappearingTracks/electron_selectionV2/"
   tag = '0p25_tanh_'
   workDir = '/home/llavezzo/'
-  plotDir = workDir + 'plots/cnn/'
-  weightsDir = workDir + 'weights/cnn/'
-  weightsFile = 'cnn_us0p9'
+  plotDir = workDir + 'plots/cnnV2/'
+  weightsDir = workDir + 'weights/cnnV2/'
+  weightsFile = 'cnn_full'
 
   ################config parameters################
   train = True
@@ -115,12 +115,12 @@ if __name__ == "__main__":
 
   nTrainE = 9000
   nValE = 1000
-  undersample_bkg = 0.9          
+  undersample_bkg = -1         
   oversample_e = -1
 
   batch_size = 256
-  epochs = 5
-  patience_count = 10
+  epochs = 20
+  patience_count = 5
   class_weights = True
   metrics = ['accuracy', 'Precision', 'Recall']
 
@@ -271,10 +271,10 @@ if __name__ == "__main__":
   
   model.load_weights(weightsDir+weightsFile+'.h5')
   
- if(train):
+  if(train):
     model.save_weights(weightsDir+weightsFile+'_lastEpoch.h5')
     print("Saved weights to",weightsDir+weightsFile)
-    utils.plot_history(history, plotDir,['loss']+metrics)
+    utils.plot_history(history, plotDir,['loss','accuracy'])
 
     # save the train and validation IDs
     np.save(trainEvents, trainIDs)

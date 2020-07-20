@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
     v = 2
     batch_size = 256
-    epochs = 1
+    epochs = 10
     patience_count = 5
     monitor = 'val_precision'
     class_weights = True  
