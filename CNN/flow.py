@@ -29,7 +29,7 @@ def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kern
     model.add(keras.layers.Dense(128, activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
     model.add(keras.layers.Dropout(0.5))
     model.add(keras.layers.Dense(1, activation='sigmoid',bias_initializer=keras.initializers.Constant(output_bias)))
-    model.compile(loss=keras.losses.BinaryCrossentropy(),
+    model.compile(loss=keras.losses.binary_crossentropy,
               optimizer=opt,
               metrics=metrics)
     #print(model.summary())
@@ -127,8 +127,8 @@ class generator(keras.utils.Sequence):
 if __name__ == "__main__":
 
     # limit CPU usage
-    config = tf.ConfigProto(inter_op_parallelism_threads = 2,   
-                            intra_op_parallelism_threads = 2)
+    config = tf.ConfigProto(inter_op_parallelism_threads = 4,   
+                            intra_op_parallelism_threads = 0)
     tf.keras.backend.set_session(tf.Session(config=config))
 
     # suppress warnings
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     # output dir
     if(len(sys.argv) == 1):
         print(utils.bcolors.YELLOW+"No output directory specified, printing to cnn_results/"+utils.bcolors.ENDC)
-        print(utils.bcolors.YELLOW+"Run 'python3 flow.py dir' to specific directory"+utils.bcolors.ENDC)
+        print(utils.bcolors.YELLOW+"Run 'python3 flow.py dir' to create and output to specific directory"+utils.bcolors.ENDC)
         workDir = 'cnn_results'
     if(len(sys.argv) == 2):
         workDir = sys.argv[1]
@@ -152,6 +152,54 @@ if __name__ == "__main__":
     weightsDir = workDir + '/weights/'
     outputDir = workDir + '/outputFiles/'
     weightsFile = '/weights/'
+
+    def Precision(y_true,y_pred):
+        TP = tf.count_nonzero(y_pred * y_true)
+        TN = tf.count_nonzero((y_pred - 1) * (y_true - 1))
+        FP = tf.count_nonzero(y_pred * (y_true - 1))
+        FN = tf.count_nonzero((y_pred - 1) * y_true)
+
+        precision = TP / (TP + FP)
+
+        return precision
+    
+    def Recall(y_true,y_pred):
+        TP = tf.count_nonzero(y_pred * y_true)
+        TN = tf.count_nonzero((y_pred - 1) * (y_true - 1))
+        FP = tf.count_nonzero(y_pred * (y_true - 1))
+        FN = tf.count_nonzero((y_pred - 1) * y_true)
+
+        recall = TP / (TP + FN)
+
+        return recall
+
+    def F1(y_true,y_pred):
+        TP = tf.count_nonzero(y_pred * y_true)
+        TN = tf.count_nonzero((y_pred - 1) * (y_true - 1))
+        FP = tf.count_nonzero(y_pred * (y_true - 1))
+        FN = tf.count_nonzero((y_pred - 1) * y_true)
+
+        precision = TP / (TP + FP)
+        recall = TP / (TP + FN)
+        f1 = 2 * precision * recall / (precision + recall)
+
+        return f1
+
+    def TruePositives(y_true,y_pred):
+        TP = tf.count_nonzero(y_pred * y_true)
+        return TP
+    
+    def FalseNegatives(y_true,y_pred):
+        FN = tf.count_nonzero((y_pred - 1) * y_true)
+        return FN
+
+    def TrueNegatives(y_true,y_pred):
+        TN = tf.count_nonzero((y_pred - 1) * (y_true - 1))
+        return TN
+
+    def FalsePositives(y_true,y_pred):
+        FP = tf.count_nonzero(y_pred * (y_true - 1))
+        return FP
 
     ################config parameters################
     """
@@ -180,30 +228,31 @@ if __name__ == "__main__":
     tag = '0p25_tanh_'
 
     run_validate = True
-    trainFile = "trainBatches_undersample"
-    valFile = "valBatches_undersample"
+    trainFile = "trainBatches"
+    valFile = "valBatches"
 
     nTotE = 10000
     val_size = 0.2
     undersample_bkg = 0.9      
     oversample_e = -1   
 
-    v = 2
+    v = 1
     batch_size = 256
-    epochs = 20
+    epochs = 10
     patience_count = 5
     monitor = 'val_precision'
     class_weights = True  
-    metrics = ['Precision', 'Recall',
-            'TruePositives','TrueNegatives',
-            'FalsePositives', 'FalseNegatives']
+    # metrics = [precision, 'Recall',
+    #         'TruePositives','TrueNegatives',
+    #         'FalsePositives', 'FalseNegatives']
+    metrics = [Precision, Recall, F1]
 
     img_rows, img_cols = 40, 40
     channels = 3
     input_shape = (img_rows,img_cols,channels)
     #################################################
 
-
+    
     # create output directories
     os.system('mkdir '+str(workDir))
     os.system('mkdir '+str(plotDir))
@@ -387,7 +436,7 @@ if __name__ == "__main__":
             weight_for_1 = 1/(2.0*oversample_e)
             class_weight = {0: weight_for_0, 1: weight_for_1}
 
-        history = model.fit(train_generator, 
+        history = model.fit_generator(train_generator, 
                             epochs = epochs,
                             verbose= v,
                             validation_data=val_generator,
