@@ -1,5 +1,6 @@
-CNN/grid_search/run.sub
-DataProcessing/run.sub
 DataProcessing/Infos_h.so
 DataProcessing/Infos_h.d
 DataProcessing/Infos_h_ACLiC_dict_rdict.pcm
+**.out
+**.sub
+**.log
