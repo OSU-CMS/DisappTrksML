@@ -311,6 +311,7 @@ def make_batches(events, files, nPerBatch, nBatches):
 def count_events(file_batches, event_batches, dict):
   nSaved=0
   for files, indices in zip(file_batches, event_batches):
+      if(len(files) == 1 and files[0] == -1): continue
       lastFile = len(files)-1
       for iFile, file in enumerate(files):
           if(iFile == 0 and iFile != lastFile):

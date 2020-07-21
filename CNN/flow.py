@@ -60,6 +60,10 @@ class generator(keras.utils.Sequence):
     lastFile = len(filenamesE)-1
     filenamesE.sort()
     for iFile, file in enumerate(filenamesE):
+        if(file == -1): 
+            e_images = []
+            continue
+
         if(iFile == 0 and iFile != lastFile):
             e_images = np.load(self.dataDir+'e_'+tag+str(file)+'.npy')[indexE[0]:]
 
@@ -94,9 +98,10 @@ class generator(keras.utils.Sequence):
     bkg_images = bkg_images[:numBkg]
 
     # shuffle and select appropriate amount of electrons, bkg
-    indices = list(range(e_images.shape[0]))
-    random.shuffle(indices)
-    e_images = e_images[indices,1:]
+    if(numE != 0):
+        indices = list(range(e_images.shape[0]))
+        random.shuffle(indices)
+        e_images = e_images[indices,1:]
 
     indices = list(range(bkg_images.shape[0]))
     bkg_images = bkg_images[indices,1:]
@@ -133,10 +138,10 @@ if __name__ == "__main__":
     dataDir = "/data/disappearingTracks/electron_selectionV2/"
     tag = '0p25_tanh_'
     workDir = '/home/llavezzo/'
-    plotDir = workDir + 'plots/cnn_undersampled/'
-    weightsDir = workDir + 'weights/cnn_undersampled/'
-    outputDir = workDir + 'outputFiles/cnn_undersampled/'
-    weightsFile = 'cnn_undersampled'
+    plotDir = workDir + 'plots/cnn_undersample/'
+    weightsDir = workDir + 'weights/cnn_undersample/'
+    outputDir = workDir + 'outputFiles/cnn_undersample/'
+    weightsFile = 'cnn_undersample'
 
     ################config parameters################
     """
@@ -161,16 +166,16 @@ if __name__ == "__main__":
     """
 
     run_validate = True
-    trainFile = "trainBatches_undersampled"
-    valFile = "valBatches_undersampled"
+    trainFile = "trainBatches_undersample"
+    valFile = "valBatches_undersample"
 
-    nTotE = 12500
+    nTotE = 10000
     val_size = 0.2
-    undersample_bkg = 0.9        
+    undersample_bkg = 0.9      
     oversample_e = -1   
 
     v = 2
-    batch_size = 128
+    batch_size = 256
     epochs = 20
     patience_count = 5
     monitor = 'val_precision'
@@ -251,7 +256,7 @@ if __name__ == "__main__":
     nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
     nSavedBkgTrain = utils.count_events(train_bkg_file_batches, train_bkg_event_batches, bkgCounts)
     nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
-
+    
     if(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal) > fE):
         nBkgToLoad = int(nSavedEVal*(1-fE)/fE-nSavedBkgVal)
         lastFile = bkg_file_batches[-1][-1]
@@ -266,20 +271,18 @@ if __name__ == "__main__":
                 b_events.append(evt)
                 b_files.append(file)
     
-        # make batches of 1000 bkg files
-        nBatches = int(nBkgToLoad*1.0/1000)
-        bkgPerBatch = [1000]*nBatches
+        # make batches of same size with bkg files
+        nBatchesAdded = int(nBkgToLoad*1.0/batch_size)
+        bkgPerBatch = [batch_size]*nBatchesAdded
                
-        bkg_event_batches_added, bkg_file_batches_added = utils.make_batches(b_events, b_files, bkgPerBatch, nBatches)
+        bkg_event_batches_added, bkg_file_batches_added = utils.make_batches(b_events, b_files, bkgPerBatch, nBatchesAdded)
 
         nAddedBkg = utils.count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
 
 
-    nBatchesAdded = len(bkg_event_batches_added)
-
     filler_events = [[0,0]]*nBatchesAdded
-    filler_files = [list(set([0])) for _ in range(nBatchesAdded)]
-
+    filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
+        
     val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
     val_bkg_file_batches = np.concatenate((val_bkg_file_batches,bkg_file_batches_added))
     val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
