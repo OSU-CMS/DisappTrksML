@@ -6,7 +6,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.applications import VGG19
+#from tensorflow.keras.applications import VGG19
 import json
 import random
 import sys
@@ -127,43 +127,57 @@ class generator(keras.utils.Sequence):
 if __name__ == "__main__":
 
     # limit CPU usage
-    config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 2,   
+    config = tf.ConfigProto(inter_op_parallelism_threads = 2,   
                             intra_op_parallelism_threads = 2)
-    tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
+    tf.keras.backend.set_session(tf.Session(config=config))
 
     # suppress warnings
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
 
-    dataDir = "/data/disappearingTracks/electron_selectionV2/"
-    tag = '0p25_tanh_'
-    workDir = '/home/llavezzo/'
-    plotDir = workDir + 'plots/cnn_undersample/'
-    weightsDir = workDir + 'weights/cnn_undersample/'
-    outputDir = workDir + 'outputFiles/cnn_undersample/'
-    weightsFile = 'cnn_undersample'
+    # output dir
+    if(len(sys.argv) == 1):
+        print(utils.bcolors.YELLOW+"No output directory specified, printing to cnn_results/"+utils.bcolors.ENDC)
+        print(utils.bcolors.YELLOW+"Run 'python3 flow.py dir' to specific directory"+utils.bcolors.ENDC)
+        workDir = 'cnn_results'
+    if(len(sys.argv) == 2):
+        workDir = sys.argv[1]
+        cnt=0
+        while(os.path.isdir(workDir)):
+            cnt+=1
+            if(cnt==1): workDir = workDir+"_"+str(cnt)
+            else: workDir = workDir[:-1] + str(cnt)
+        print(utils.bcolors.YELLOW+"Printing to "+workDir+utils.bcolors.ENDC)      
+    plotDir = workDir + '/plots/'
+    weightsDir = workDir + '/weights/'
+    outputDir = workDir + '/outputFiles/'
+    weightsFile = '/weights/'
 
     ################config parameters################
     """
+    tag:
+    tag for data to import
+
     train/val Files:
     saves the names of the events/files for train/val data
     for reproducibility
 
     nTotE:
-    how many electron events to use
-    from maximum 15463 electron events
+    how many electron events to use from maximum 15463 electron events
     IMPORTANT: the validation set will use nTotE * val_size electrons
     but as many background events as needed to keep the ratio between the classes
     equal to the one in the real data
 
-    oversample_e:
+    oversample_e: (NOT WORKING)
     use to oversample electron events, fraction of electron events per batch
     set to -1 if it's not needed
 
     undersample_bkg:
-    what fraction of train events to be bkg,
-    set to -1 if it's not needed
+    what fraction of train events to be bkg, set to -1 if it's not needed
     """
+
+    dataDir = "/store/user/llavezzo/disappearingTracks/electron_selectionV2/"
+    tag = '0p25_tanh_'
 
     run_validate = True
     trainFile = "trainBatches_undersample"
@@ -190,9 +204,11 @@ if __name__ == "__main__":
     #################################################
 
 
-    if(not os.path.isdir(plotDir)): os.system('mkdir '+str(plotDir))
-    if(not os.path.isdir(weightsDir)): os.system('mkdir '+str(weightsDir))
-    if(not os.path.isdir(outputDir)): os.system('mkdir '+str(outputDir))
+    # create output directories
+    os.system('mkdir '+str(workDir))
+    os.system('mkdir '+str(plotDir))
+    os.system('mkdir '+str(weightsDir))
+    os.system('mkdir '+str(outputDir))
 
     # import count dicts
     with open(dataDir+'eCounts.json') as json_file:
@@ -257,6 +273,8 @@ if __name__ == "__main__":
     nSavedBkgTrain = utils.count_events(train_bkg_file_batches, train_bkg_event_batches, bkgCounts)
     nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
     
+    # add background events to validation data
+    # to keep ratio e/bkg equal to that in original dataset
     if(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal) > fE):
         nBkgToLoad = int(nSavedEVal*(1-fE)/fE-nSavedBkgVal)
         lastFile = bkg_file_batches[-1][-1]
@@ -279,15 +297,15 @@ if __name__ == "__main__":
 
         nAddedBkg = utils.count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
 
-
+    # add the bkg and e events to rebalance val data
     filler_events = [[0,0]]*nBatchesAdded
     filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
-        
     val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
     val_bkg_file_batches = np.concatenate((val_bkg_file_batches,bkg_file_batches_added))
     val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
     val_e_file_batches = val_e_file_batches + filler_files
 
+    # re count
     nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
     nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
 
@@ -308,11 +326,10 @@ if __name__ == "__main__":
     #         randFile = ovsFiles[random.randint(0,len(ovsFiles)-1)]
     #         trainBatchesE[i].append(randFile)
     #         nElectronsThisBatch += eCounts[randFile]
-
-    if(oversample_e != -1):
-        print("Oversampling:")
-        print("\t Number of electrons per batch:",nElectronsPerBatchOversampled)
-        print("\t",len(trainBatchesE),"batches of files (approx.",nElectronsPerBatchOversampled*len(trainBatchesE),"electron and",(batch_size-nElectronsPerBatchOversampled)*len(trainBatchesE), "background events)")
+    # if(oversample_e != -1):
+    #     print("Oversampling:")
+    #     print("\t Number of electrons per batch:",nElectronsPerBatchOversampled)
+    #     print("\t",len(trainBatchesE),"batches of files (approx.",nElectronsPerBatchOversampled*len(trainBatchesE),"electron and",(batch_size-nElectronsPerBatchOversampled)*len(trainBatchesE), "background events)")
 
     # initialize generators
     train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, batch_size, dataDir)

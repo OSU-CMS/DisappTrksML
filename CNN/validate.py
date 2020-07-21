@@ -26,6 +26,10 @@ def validate(model, valFile, batchDir, dataDir, tag, plotDir):
         lastFile = len(files)-1
         files.sort()
         for iFile, file in enumerate(files):
+            if(file == -1): 
+                e_images = []
+                continue
+
             if(iFile == 0 and iFile != lastFile):
                 e_images = np.load(dataDir+'e_'+tag+str(file)+'.npy')[indices[0]:]
 
@@ -37,7 +41,7 @@ def validate(model, valFile, batchDir, dataDir, tag, plotDir):
 
             elif(iFile != 0 and iFile != lastFile):
                 e_images = np.concatenate((e_images,np.load(dataDir+'e_'+tag+str(file)+'.npy')))
-    
+            
         e_images = np.reshape(e_images[:,1:],(e_images.shape[0],40,40,4))
         e_images = e_images[:,:,:,[0,2,3]]
         validatedE+=e_images.shape[0]
