@@ -182,30 +182,36 @@ if __name__ == "__main__":
     weightsFile = 'weights'
 
     def Precision(y_true,y_pred):
-        TP = tf.count_nonzero(y_pred * y_true)
-        TN = tf.count_nonzero((y_pred - 1) * (y_true - 1))
-        FP = tf.count_nonzero(y_pred * (y_true - 1))
-        FN = tf.count_nonzero((y_pred - 1) * y_true)
+
+        preds = tf.round(y_pred)        
+        TP = tf.count_nonzero(preds * y_true)
+        TN = tf.count_nonzero((preds - 1) * (y_true - 1))
+        FP = tf.count_nonzero(preds * (y_true - 1))
+        FN = tf.count_nonzero((preds - 1) * y_true)
 
         precision = TP / (TP + FP)
 
         return precision
     
     def Recall(y_true,y_pred):
-        TP = tf.count_nonzero(y_pred * y_true)
-        TN = tf.count_nonzero((y_pred - 1) * (y_true - 1))
-        FP = tf.count_nonzero(y_pred * (y_true - 1))
-        FN = tf.count_nonzero((y_pred - 1) * y_true)
+
+        preds = tf.round(y_pred)
+        TP = tf.count_nonzero(preds * y_true)
+        TN = tf.count_nonzero((preds - 1) * (y_true - 1))
+        FP = tf.count_nonzero(preds * (y_true - 1))
+        FN = tf.count_nonzero((preds - 1) * y_true)
 
         recall = TP / (TP + FN)
 
         return recall
 
     def F1(y_true,y_pred):
-        TP = tf.count_nonzero(y_pred * y_true)
-        TN = tf.count_nonzero((y_pred - 1) * (y_true - 1))
-        FP = tf.count_nonzero(y_pred * (y_true - 1))
-        FN = tf.count_nonzero((y_pred - 1) * y_true)
+
+        preds = tf.round(y_pred)
+        TP = tf.count_nonzero(preds * y_true)
+        TN = tf.count_nonzero((preds - 1) * (y_true - 1))
+        FP = tf.count_nonzero(preds * (y_true - 1))
+        FN = tf.count_nonzero((preds - 1) * y_true)
 
         precision = TP / (TP + FP)
         recall = TP / (TP + FN)
@@ -214,19 +220,19 @@ if __name__ == "__main__":
         return f1
 
     def TruePositives(y_true,y_pred):
-        TP = tf.count_nonzero(y_pred * y_true)
+        TP = tf.count_nonzero(tf.round(y_pred) * y_true)
         return TP
     
     def FalseNegatives(y_true,y_pred):
-        FN = tf.count_nonzero((y_pred - 1) * y_true)
+        FN = tf.count_nonzero((tf.round(y_pred) - 1) * y_true)
         return FN
 
     def TrueNegatives(y_true,y_pred):
-        TN = tf.count_nonzero((y_pred - 1) * (y_true - 1))
+        TN = tf.count_nonzero((tf.round(y_pred) - 1) * (y_true - 1))
         return TN
 
     def FalsePositives(y_true,y_pred):
-        FP = tf.count_nonzero(y_pred * (y_true - 1))
+        FP = tf.count_nonzero(tf.round(y_pred) * (y_true - 1))
         return FP
 
     ################config parameters################
@@ -257,9 +263,9 @@ if __name__ == "__main__":
 
     run_validate = True
 
-    nTotE = 12500
+    nTotE = 10000
     val_size = 0.2
-    undersample_bkg = 0.9     
+    undersample_bkg = 0.5     
     oversample_e = -1   
 
     v = 1
