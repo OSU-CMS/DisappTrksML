@@ -4,3 +4,10 @@ DataProcessing/Infos_h_ACLiC_dict_rdict.pcm
 **.out
 **.sub
 **.log
+**.png
+**.npy
+**.npz
+**.local
+**.txt
+**.h5
+**history

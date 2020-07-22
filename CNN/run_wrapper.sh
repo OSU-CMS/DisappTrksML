@@ -13,7 +13,7 @@ cd CMSSW_10_2_20/src/
 eval `scramv1 runtime -sh`
 
 python3 flow.py $1
-mv $1* /data/users/llavezzo/cnn/
+mv $1 /data/users/llavezzo/cnn/
 
 cd ..
 cd ..
