@@ -180,60 +180,27 @@ if __name__ == "__main__":
     weightsDir = workDir + '/weights/'
     outputDir = workDir + '/outputFiles/'
     weightsFile = 'weights'
-
-    def Precision(y_true,y_pred):
-
-        preds = tf.round(y_pred)        
-        TP = tf.count_nonzero(preds * y_true)
-        TN = tf.count_nonzero((preds - 1) * (y_true - 1))
-        FP = tf.count_nonzero(preds * (y_true - 1))
-        FN = tf.count_nonzero((preds - 1) * y_true)
-
-        precision = TP / (TP + FP)
-
-        return precision
-    
-    def Recall(y_true,y_pred):
-
-        preds = tf.round(y_pred)
-        TP = tf.count_nonzero(preds * y_true)
-        TN = tf.count_nonzero((preds - 1) * (y_true - 1))
-        FP = tf.count_nonzero(preds * (y_true - 1))
-        FN = tf.count_nonzero((preds - 1) * y_true)
-
-        recall = TP / (TP + FN)
-
+   
+    def Recall(y_true, y_pred):
+        true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
+        possible_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true, 0, 1)))
+        recall = true_positives / (possible_positives + tf.keras.backend.epsilon())
         return recall
 
+    def Precision(y_true, y_pred):
+        true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
+        predicted_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_pred, 0, 1)))
+        precision = true_positives / (predicted_positives + tf.keras.backend.epsilon())
+        return precision
+
     def F1(y_true,y_pred):
+        true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
+        possible_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true, 0, 1)))
+        recall = true_positives / (possible_positives + tf.keras.backend.epsilon())
+        predicted_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_pred, 0, 1)))
+        precision = true_positives / (predicted_positives + tf.keras.backend.epsilon())
 
-        preds = tf.round(y_pred)
-        TP = tf.count_nonzero(preds * y_true)
-        TN = tf.count_nonzero((preds - 1) * (y_true - 1))
-        FP = tf.count_nonzero(preds * (y_true - 1))
-        FN = tf.count_nonzero((preds - 1) * y_true)
-
-        precision = TP / (TP + FP)
-        recall = TP / (TP + FN)
-        f1 = 2 * precision * recall / (precision + recall)
-
-        return f1
-
-    def TruePositives(y_true,y_pred):
-        TP = tf.count_nonzero(tf.round(y_pred) * y_true)
-        return TP
-    
-    def FalseNegatives(y_true,y_pred):
-        FN = tf.count_nonzero((tf.round(y_pred) - 1) * y_true)
-        return FN
-
-    def TrueNegatives(y_true,y_pred):
-        TN = tf.count_nonzero((tf.round(y_pred) - 1) * (y_true - 1))
-        return TN
-
-    def FalsePositives(y_true,y_pred):
-        FP = tf.count_nonzero(tf.round(y_pred) * (y_true - 1))
-        return FP
+        return 2.0*recall*precision/(precision+recall)
 
     ################config parameters################
     """
@@ -263,14 +230,14 @@ if __name__ == "__main__":
 
     run_validate = True
 
-    nTotE = 10000
+    nTotE = 12500
     val_size = 0.2
-    undersample_bkg = 0.5     
+    undersample_bkg = 0.9     
     oversample_e = -1   
 
-    v = 1
+    v = 2
     batch_size = 256
-    epochs = 10
+    epochs = 20
     patience_count = 5
     monitor = 'val_loss'
     class_weights = True  
@@ -396,6 +363,16 @@ if __name__ == "__main__":
     print("Validating on:\t"+str(nSavedEVal)+"\t\t"+str(nSavedBkgVal)+"\t\t"+str(round(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal),5)))
     print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,5)))
 
+    # save the train and validation batches
+    np.save(outputDir+"e_files_trainBatches", train_e_file_batches)
+    np.save(outputDir+"e_events_trainBatches", train_e_event_batches)
+    np.save(outputDir+"e_files_valBatches", val_e_file_batches)
+    np.save(outputDir+"e_events_valBatches", val_e_event_batches)
+    np.save(outputDir+"bkg_files_trainBatches", train_bkg_file_batches)
+    np.save(outputDir+"bkg_events_trainBatches", train_bkg_event_batches)
+    np.save(outputDir+"bkg_files_valBatches", val_bkg_file_batches)
+    np.save(outputDir+"bkg_events_valBatches", val_bkg_event_batches)
+
     # FIXME: not implemented yet
     # # oversample the training electron files if oversample_e != -1
     # nElectronsPerBatchOversampled = int(np.ceil(batch_size*oversample_e))
@@ -463,22 +440,11 @@ if __name__ == "__main__":
 
     model.save_weights(weightsDir+weightsFile+'_lastEpoch.h5')
     print(utils.bcolors.GREEN+"Saved weights to "+weightsDir+weightsFile+utils.bcolors.ENDC)
-
-    # save the train and validation batches
-    np.save(outputDir+"e_files_trainBatches", train_e_file_batches)
-    np.save(outputDir+"e_events_trainBatches", train_e_event_batches)
-    np.save(outputDir+"e_files_valBatches", val_e_file_batches)
-    np.save(outputDir+"e_events_valBatches", val_e_event_batches)
-    np.save(outputDir+"bkg_files_trainBatches", train_bkg_file_batches)
-    np.save(outputDir+"bkg_events_trainBatches", train_bkg_event_batches)
-    np.save(outputDir+"bkg_files_valBatches", val_bkg_file_batches)
-    np.save(outputDir+"bkg_events_valBatches", val_bkg_event_batches)
     
-    with open(outputDir+'history', 'wb') as f:
+    # save and plot history file
+    with open(outputDir+'history.pkl', 'wb') as f:
         pickle.dump(history.history, f)
-
     print(utils.bcolors.GREEN+"Saved history, train and validation files to "+outputDir+utils.bcolors.ENDC)
-
     utils.plot_history(history, plotDir, ['loss','Recall','Precision'])
     print(utils.bcolors.YELLOW+"Plotted history to "+plotDir+utils.bcolors.ENDC) 
 
