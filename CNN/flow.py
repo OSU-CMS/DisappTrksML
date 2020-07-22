@@ -62,6 +62,24 @@ def build_VGG19(input_shape):
 
     return model
 
+def Recall(y_true, y_pred):
+    true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
+    possible_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true, 0, 1)))
+    return true_positives / (possible_positives + tf.keras.backend.epsilon())
+
+def Precision(y_true, y_pred):
+    true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
+    predicted_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_pred, 0, 1)))
+    return true_positives / (predicted_positives + tf.keras.backend.epsilon())
+
+def F1(y_true,y_pred):
+    true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
+    possible_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true, 0, 1)))
+    recall = true_positives / (possible_positives + tf.keras.backend.epsilon())
+    predicted_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_pred, 0, 1)))
+    precision = true_positives / (predicted_positives + tf.keras.backend.epsilon())
+    return 2.0*recall*precision/(precision+recall)
+
 # generate batches of images from files
 class generator(keras.utils.Sequence):
   
@@ -162,7 +180,6 @@ if __name__ == "__main__":
     # suppress warnings
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
-
     # output dir
     if(len(sys.argv) == 1):
         print(utils.bcolors.YELLOW+"No output directory specified, printing to cnn_results/"+utils.bcolors.ENDC)
@@ -180,37 +197,9 @@ if __name__ == "__main__":
     weightsDir = workDir + '/weights/'
     outputDir = workDir + '/outputFiles/'
     weightsFile = 'weights'
-   
-    def Recall(y_true, y_pred):
-        true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
-        possible_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true, 0, 1)))
-        recall = true_positives / (possible_positives + tf.keras.backend.epsilon())
-        return recall
-
-    def Precision(y_true, y_pred):
-        true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
-        predicted_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_pred, 0, 1)))
-        precision = true_positives / (predicted_positives + tf.keras.backend.epsilon())
-        return precision
-
-    def F1(y_true,y_pred):
-        true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
-        possible_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true, 0, 1)))
-        recall = true_positives / (possible_positives + tf.keras.backend.epsilon())
-        predicted_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_pred, 0, 1)))
-        precision = true_positives / (predicted_positives + tf.keras.backend.epsilon())
-
-        return 2.0*recall*precision/(precision+recall)
 
     ################config parameters################
     """
-    tag:
-    tag for data to import
-
-    train/val Files:
-    saves the names of the events/files for train/val data
-    for reproducibility
-
     nTotE:
     how many electron events to use from maximum 15463 electron events
     IMPORTANT: the validation set will use nTotE * val_size electrons
@@ -227,6 +216,7 @@ if __name__ == "__main__":
 
     dataDir = "/store/user/llavezzo/disappearingTracks/electron_selectionV2/"
     tag = '0p25_tanh_'
+    log_dir = "/share/scratch0/llavezzo/CMSSW_10_2_20/src/DisappTrksML/CNN/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
     run_validate = True
 
@@ -241,9 +231,6 @@ if __name__ == "__main__":
     patience_count = 5
     monitor = 'val_loss'
     class_weights = True  
-    # metrics = [precision, 'Recall',
-    #         'TruePositives','TrueNegatives',
-    #         'FalsePositives', 'FalseNegatives']
     metrics = [Precision, Recall, F1]
 
     img_rows, img_cols = 40, 40
@@ -346,12 +333,12 @@ if __name__ == "__main__":
         nAddedBkg = utils.count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
 
     # add the bkg and e events to rebalance val data
-    filler_events = [[0,0]]*nBatchesAdded
-    filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
-    val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
-    val_bkg_file_batches = np.concatenate((val_bkg_file_batches,bkg_file_batches_added))
-    val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
-    val_e_file_batches = val_e_file_batches + filler_files
+    # filler_events = [[0,0]]*nBatchesAdded
+    # filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
+    # val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
+    # val_bkg_file_batches = np.concatenate((val_bkg_file_batches,bkg_file_batches_added))
+    # val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
+    # val_e_file_batches = val_e_file_batches + filler_files
 
     # re count
     nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
@@ -403,8 +390,6 @@ if __name__ == "__main__":
                         output_bias=output_bias,
                         metrics=metrics)
 
-    log_dir = "/share/scratch0/llavezzo/CMSSW_10_2_20/src/DisappTrksML/CNN/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-
     callbacks = [
     keras.callbacks.EarlyStopping(patience=patience_count),
     keras.callbacks.ModelCheckpoint(filepath=weightsDir+weightsFile+'.h5',
@@ -439,7 +424,7 @@ if __name__ == "__main__":
     model.load_weights(weightsDir+weightsFile+'.h5')
 
     model.save_weights(weightsDir+weightsFile+'_lastEpoch.h5')
-    print(utils.bcolors.GREEN+"Saved weights to "+weightsDir+weightsFile+utils.bcolors.ENDC)
+    print(utils.bcolors.GREEN+"Saved weights to "+weightsDir+utils.bcolors.ENDC)
     
     # save and plot history file
     with open(outputDir+'history.pkl', 'wb') as f:
@@ -448,5 +433,4 @@ if __name__ == "__main__":
     utils.plot_history(history, plotDir, ['loss','Recall','Precision'])
     print(utils.bcolors.YELLOW+"Plotted history to "+plotDir+utils.bcolors.ENDC) 
 
-    if(run_validate):
-        validate.validate(model, outputDir, dataDir, tag, plotDir)
+    if(run_validate): validate.validate(model, outputDir, dataDir, tag, plotDir)

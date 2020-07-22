@@ -17,7 +17,7 @@ if __name__=="__main__":
     Universe = vanilla
     +IsLocalJob = true
     Rank = TARGET.IsLocalSlot
-    request_disk = 250
+    request_disk = 250MB
     request_memory = 2GB
     request_cpus = 4
     executable              = run_wrapper.sh
