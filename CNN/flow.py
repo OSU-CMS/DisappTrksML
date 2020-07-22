@@ -13,6 +13,7 @@ import sys
 import pickle
 import utils
 import validate
+import datetime
 
 def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kernels=(1,1),output_bias=0,metrics=['accuracy']):
     
@@ -36,6 +37,31 @@ def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kern
     
     return model
   
+def build_VGG19(input_shape):
+    
+    base_model = VGG19(input_shape = input_shape, 
+                    include_top=False,
+                    weights=None,
+                    classifier_activation="sigmoid")
+
+    x = base_model.output
+    x = keras.layers.GlobalAveragePooling2D()(x)
+    x = keras.layers.Dense(1024, activation='relu')(x)
+    predictions = keras.layers.Dense(1, activation='sigmoid')(x)
+    model = keras.models.Model(inputs=base_model.input, outputs=predictions)
+
+    # first: train only the top layers (which were randomly initialized)
+    # i.e. freeze all convolutional InceptionV3 layers
+    # for layer in base_model.layers:
+    #     layer.trainable = False
+
+    # compile the model (should be done *after* setting layers to non-trainable)
+    model.compile(loss=keras.losses.BinaryCrossentropy(),
+                optimizer='adam',
+                metrics=metrics)
+
+    return model
+
 # generate batches of images from files
 class generator(keras.utils.Sequence):
   
@@ -61,7 +87,7 @@ class generator(keras.utils.Sequence):
     filenamesE.sort()
     for iFile, file in enumerate(filenamesE):
         if(file == -1): 
-            e_images = []
+            e_images = np.array([])
             continue
 
         if(iFile == 0 and iFile != lastFile):
@@ -98,16 +124,18 @@ class generator(keras.utils.Sequence):
     bkg_images = bkg_images[:numBkg]
 
     # shuffle and select appropriate amount of electrons, bkg
+
+    indices = list(range(bkg_images.shape[0]))
+    bkg_images = bkg_images[indices,1:]
+
     if(numE != 0):
         indices = list(range(e_images.shape[0]))
         random.shuffle(indices)
         e_images = e_images[indices,1:]
 
-    indices = list(range(bkg_images.shape[0]))
-    bkg_images = bkg_images[indices,1:]
-
     # concatenate images and suffle them, create labels
-    batch_x = np.concatenate((e_images,bkg_images))
+    if(numE != 0): batch_x = np.concatenate((e_images,bkg_images))
+    else: batch_x = bkg_images
     batch_y = np.concatenate((np.ones(numE),np.zeros(numBkg)))
     
     indices = list(range(batch_x.shape[0]))
@@ -138,7 +166,7 @@ if __name__ == "__main__":
     # output dir
     if(len(sys.argv) == 1):
         print(utils.bcolors.YELLOW+"No output directory specified, printing to cnn_results/"+utils.bcolors.ENDC)
-        print(utils.bcolors.YELLOW+"Run 'python3 flow.py dir' to create and output to specific directory"+utils.bcolors.ENDC)
+        print(utils.bcolors.YELLOW+"\tRun 'python3 flow.py dir' to create and output to specific directory"+utils.bcolors.ENDC)
         workDir = 'cnn_results'
     if(len(sys.argv) == 2):
         workDir = sys.argv[1]
@@ -151,7 +179,7 @@ if __name__ == "__main__":
     plotDir = workDir + '/plots/'
     weightsDir = workDir + '/weights/'
     outputDir = workDir + '/outputFiles/'
-    weightsFile = '/weights/'
+    weightsFile = 'weights'
 
     def Precision(y_true,y_pred):
         TP = tf.count_nonzero(y_pred * y_true)
@@ -228,19 +256,17 @@ if __name__ == "__main__":
     tag = '0p25_tanh_'
 
     run_validate = True
-    trainFile = "trainBatches"
-    valFile = "valBatches"
 
-    nTotE = 10000
+    nTotE = 12500
     val_size = 0.2
-    undersample_bkg = 0.9      
+    undersample_bkg = 0.9     
     oversample_e = -1   
 
     v = 1
     batch_size = 256
     epochs = 10
     patience_count = 5
-    monitor = 'val_precision'
+    monitor = 'val_loss'
     class_weights = True  
     # metrics = [precision, 'Recall',
     #         'TruePositives','TrueNegatives',
@@ -364,6 +390,7 @@ if __name__ == "__main__":
     print("Validating on:\t"+str(nSavedEVal)+"\t\t"+str(nSavedBkgVal)+"\t\t"+str(round(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal),5)))
     print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,5)))
 
+    # FIXME: not implemented yet
     # # oversample the training electron files if oversample_e != -1
     # nElectronsPerBatchOversampled = int(np.ceil(batch_size*oversample_e))
     # ovsFiles = list([file for batch in trainBatchesE for file in batch])
@@ -393,48 +420,24 @@ if __name__ == "__main__":
                         output_bias=output_bias,
                         metrics=metrics)
 
-    # base_model = VGG19(input_shape = input_shape, 
-    #                 include_top=False,
-    #                 weights=None,
-    #                 classifier_activation="sigmoid")
-
-    # x = base_model.output
-    # x = keras.layers.GlobalAveragePooling2D()(x)
-    # x = keras.layers.Dense(1024, activation='relu')(x)
-    # predictions = keras.layers.Dense(1, activation='sigmoid')(x)
-    # model = keras.models.Model(inputs=base_model.input, outputs=predictions)
-
-    # # first: train only the top layers (which were randomly initialized)
-    # # i.e. freeze all convolutional InceptionV3 layers
-    # # for layer in base_model.layers:
-    # #     layer.trainable = False
-
-    # # compile the model (should be done *after* setting layers to non-trainable)
-    # model.compile(loss=keras.losses.BinaryCrossentropy(),
-    #             optimizer='adam',
-    #             metrics=metrics)
-
+    log_dir = "/share/scratch0/llavezzo/CMSSW_10_2_20/src/DisappTrksML/CNN/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
     callbacks = [
     keras.callbacks.EarlyStopping(patience=patience_count),
     keras.callbacks.ModelCheckpoint(filepath=weightsDir+weightsFile+'.h5',
                                     save_weights_only=True,
-                                    monitor='val_precision',
+                                    monitor=monitor,
                                     mode='auto',
                                     save_best_only=True),
+    tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0)
     ]
 
     if(class_weights):
 
         # class weights
-        if(oversample_e == -1):
-            weight_for_0 = (1/nTotBkg)*(nTotBkg+nTotE)/2.0
-            weight_for_1 = (1/nTotE)*(nTotBkg+nTotE)/2.0
-            class_weight = {0: weight_for_0, 1: weight_for_1}
-        else:
-            weight_for_0 = 1/(2*(1-oversample_e))
-            weight_for_1 = 1/(2.0*oversample_e)
-            class_weight = {0: weight_for_0, 1: weight_for_1}
+        weight_for_0 = (1/nSavedBkgTrain)*(nSavedBkgTrain+nSavedETrain)/2.0
+        weight_for_1 = (1/nSavedETrain)*(nSavedBkgTrain+nSavedETrain)/2.0
+        class_weight = {0: weight_for_0, 1: weight_for_1}
 
         history = model.fit_generator(train_generator, 
                             epochs = epochs,
@@ -456,22 +459,22 @@ if __name__ == "__main__":
     print(utils.bcolors.GREEN+"Saved weights to "+weightsDir+weightsFile+utils.bcolors.ENDC)
 
     # save the train and validation batches
-    np.save(outputDir+'e_files_'+trainFile, train_e_file_batches)
-    np.save(outputDir+'e_events_'+trainFile, train_e_event_batches)
-    np.save(outputDir+'e_files_'+valFile, val_e_file_batches)
-    np.save(outputDir+'e_events_'+valFile, val_e_event_batches)
-    np.save(outputDir+'bkg_files_'+trainFile, train_bkg_file_batches)
-    np.save(outputDir+'bkg_events_'+trainFile, train_bkg_event_batches)
-    np.save(outputDir+'bkg_files_'+valFile, val_bkg_file_batches)
-    np.save(outputDir+'bkg_events_'+valFile, val_bkg_event_batches)
+    np.save(outputDir+"e_files_trainBatches", train_e_file_batches)
+    np.save(outputDir+"e_events_trainBatches", train_e_event_batches)
+    np.save(outputDir+"e_files_valBatches", val_e_file_batches)
+    np.save(outputDir+"e_events_valBatches", val_e_event_batches)
+    np.save(outputDir+"bkg_files_trainBatches", train_bkg_file_batches)
+    np.save(outputDir+"bkg_events_trainBatches", train_bkg_event_batches)
+    np.save(outputDir+"bkg_files_valBatches", val_bkg_file_batches)
+    np.save(outputDir+"bkg_events_valBatches", val_bkg_event_batches)
     
     with open(outputDir+'history', 'wb') as f:
         pickle.dump(history.history, f)
 
     print(utils.bcolors.GREEN+"Saved history, train and validation files to "+outputDir+utils.bcolors.ENDC)
 
-    utils.plot_history(history, plotDir, ['loss','recall','precision'])
+    utils.plot_history(history, plotDir, ['loss','Recall','Precision'])
     print(utils.bcolors.YELLOW+"Plotted history to "+plotDir+utils.bcolors.ENDC) 
 
     if(run_validate):
-        validate.validate(model, valFile, outputDir, dataDir, tag, plotDir)
+        validate.validate(model, outputDir, dataDir, tag, plotDir)

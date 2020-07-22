@@ -249,8 +249,8 @@ def plot_precision_recall(true, probas, fname, nsplits=20):
     recalls.append(recall)
     splits.append(split)
 
-  plt.scatter(splits, precisions, label="Precision", marker="+")
-  plt.scatter(splits, recalls, label="Recall", marker="+")
+  plt.scatter(splits, precisions, label="Precision", marker="+",color="red")
+  plt.scatter(splits, recalls, label="Recall", marker="+",color="blue")
   plt.ylim(-0.1,1.1)
   plt.xlim(-0.1,1.1)
   plt.ylabel("Metric Value")

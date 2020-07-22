@@ -12,13 +12,13 @@ import pickle
 import utils
 import flow as cnn
 
-def validate(model, valFile, batchDir, dataDir, tag, plotDir):
+def validate(model, batchDir, dataDir, tag, plotDir):
 
 	# load the batches used to train and validate
-    val_e_file_batches = np.load(batchDir+'e_files_'+valFile+'.npy')
-    val_e_event_batches = np.load(batchDir+'e_events_'+valFile+'.npy')
-    val_bkg_file_batches = np.load(batchDir+'bkg_files_'+valFile+'.npy')
-    val_bkg_event_batches = np.load(batchDir+'bkg_events_'+valFile+'.npy')
+    val_e_file_batches = np.load(batchDir+'e_files_valBatches.npy')
+    val_e_event_batches = np.load(batchDir+'e_events_valBatches.npy')
+    val_bkg_file_batches = np.load(batchDir+'bkg_files_valBatches.npy')
+    val_bkg_event_batches = np.load(batchDir+'bkg_events_valBatches.npy')
 
     validatedE, validatedBkg = 0,0
     iBatch=0
@@ -27,7 +27,7 @@ def validate(model, valFile, batchDir, dataDir, tag, plotDir):
         files.sort()
         for iFile, file in enumerate(files):
             if(file == -1): 
-                e_images = []
+                e_images = np.array([])
                 continue
 
             if(iFile == 0 and iFile != lastFile):
@@ -78,6 +78,9 @@ def validate(model, valFile, batchDir, dataDir, tag, plotDir):
     true = np.concatenate((np.ones(len(predictionsE)), np.zeros(len(predictionsB))))
     #y_test = keras.utils.to_categorical(true, num_classes=2)
 
+    print(predictions)
+    sys.exit(0)
+    
     utils.metrics(true, predictions, plotDir, threshold=0.5)
 
     print()
@@ -88,9 +91,9 @@ def validate(model, valFile, batchDir, dataDir, tag, plotDir):
 
 if __name__ == "__main__":
 
-	dataDir = "/data/disappearingTracks/electron_selectionV2/"
-	batchDir = "/home/llavezzo/outputFiles/cnn/"
-	plotDir = "/home/llavezzo/plots/cnn/"
+	dataDir = "/store/user/llavezzo/disappearingTracks/electron_selectionV2/"
+	batchDir = "cnn_results/outputFiles/"
+	plotDir = "cnn_results/plots/"
 	valFile = "valBatches"
 	tag = "0p25_tanh_"
 
@@ -99,4 +102,4 @@ if __name__ == "__main__":
 	model = cnn.build_model(input_shape = input_shape, 
 						layers = 5, filters = 64, opt='adam')
 
-	validate(model, valFile, batchDir, dataDir, tag, plotDir)
+	validate(model, batchDir, dataDir, tag, plotDir)
