@@ -162,7 +162,9 @@ if __name__ == "__main__":
 
     # limit CPU usage
     config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
-                                    intra_op_parallelism_threads = 0)
+                                    intra_op_parallelism_threads = 4,
+                                    allow_soft_placement = True,
+                                    device_count={'CPU': 4})
     tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
     # suppress warnings
@@ -173,8 +175,9 @@ if __name__ == "__main__":
         print(utils.bcolors.YELLOW+"No output directory specified, printing to cnn_results/"+utils.bcolors.ENDC)
         print(utils.bcolors.YELLOW+"\tRun 'python3 flow.py dir' to create and output to specific directory"+utils.bcolors.ENDC)
         workDir = 'cnn_results'
-    if(len(sys.argv) == 2):
-        workDir = sys.argv[1]
+    if(len(sys.argv) > 1):
+        if(len(sys.argv) == 2): workDir = sys.argv[1]
+        if(len(sys.argv) == 3): workDir = sys.argv[1]+"_"+str(sys.argv[2])
         cnt=0
         while(os.path.isdir(workDir)):
             cnt+=1
@@ -186,6 +189,10 @@ if __name__ == "__main__":
     outputDir = workDir + '/outputFiles/'
     weightsFile = 'weights'
 
+    # params (optional)
+    if(len(sys.argv) == 3): params = np.load('params.npy')[int(sys.argv[2])]
+    else: params = []
+   
     ################config parameters################
     """
     nTotE:
@@ -212,15 +219,15 @@ if __name__ == "__main__":
     run_validate = True
     nTotE = 12500
     val_size = 0.2
-    undersample_bkg = 0.9     
+    undersample_bkg = 0.8    
     oversample_e = -1   
 
     v = 1
-    batch_size = 256
-    epochs = 40
+    batch_size = 512
+    epochs = 5
     patience_count = 10
     monitor = 'val_loss'
-    class_weights = True  
+    class_weights = False  
     metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
     #################################################
 
@@ -230,6 +237,13 @@ if __name__ == "__main__":
     os.system('mkdir '+str(plotDir))
     os.system('mkdir '+str(weightsDir))
     os.system('mkdir '+str(outputDir))
+
+    # load params (optional)
+    if(len(params) > 0):
+        class_weights = bool(params[0])
+        undersample_bkg = float(params[1])
+        epochs = int(params[2])
+        print(utils.bcolors.YELLOW+"Using params"+utils.bcolors.ENDC,params)
 
     # import count dicts
     with open(dataDir+'eCounts.json') as json_file:
@@ -322,7 +336,7 @@ if __name__ == "__main__":
     filler_events = [[0,0]]*nBatchesAdded
     filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
     val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
-    val_bkg_file_batches = np.concatenate((val_bkg_file_batches,bkg_file_batches_added))
+    val_bkg_file_batches = val_bkg_file_batches + bkg_file_batches_added
     val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
     val_e_file_batches = val_e_file_batches + filler_files
 
@@ -347,11 +361,11 @@ if __name__ == "__main__":
     np.save(outputDir+"bkg_events_valBatches", val_bkg_event_batches)
 
     # FIXME: not implemented yet
-    # # oversample the training electron files if oversample_e != -1
-    # nElectronsPerBatchOversampled = int(np.ceil(batch_size*oversample_e))
-    # ovsFiles = list([file for batch in trainBatchesE for file in batch])
+    # oversample the training electron files if oversample_e != -1
+    # nElectronsOversampled = int(np.ceil(nSavedETrain*oversample_e)) - nSavedETrain
+    # ovsFiles = list([file for batch in train_e_file_batches for file in batch])
     # random.shuffle(ovsFiles)
-    # for i,batch in enumerate(trainBatchesE):
+    # for i,batch in enumerate(train_e_file_batches):
     #     nElectronsThisBatch = 0
     #     for file in batch: nElectronsThisBatch+=eCounts[file]
     #     while nElectronsThisBatch < nElectronsPerBatchOversampled:

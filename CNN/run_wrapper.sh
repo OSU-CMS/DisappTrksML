@@ -8,12 +8,13 @@ scramv1 project CMSSW_11_1_2_patch1
 cp flow.py CMSSW_11_1_2_patch1/src/flow.py
 cp utils.py CMSSW_11_1_2_patch1/src/utils.py
 cp validate.py CMSSW_11_1_2_patch1/src/validate.py
+cp params.npy CMSSW_11_1_2_patch1/src/params.npy
 
 cd CMSSW_11_1_2_patch1/src/
 eval `scramv1 runtime -sh`
 
-python3 flow.py $1
-mv $1 /data/users/llavezzo/cnn/
+python3 flow.py $1 $2
+mv $1_$2 /data/users/llavezzo/cnn/
 
 cd ..
 cd ..
