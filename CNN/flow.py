@@ -1,6 +1,7 @@
 import os
 import tensorflow as tf
 from tensorflow import keras
+from keras import backend as K
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -11,30 +12,35 @@ import json
 import random
 import sys
 import pickle
+import datetime
+
 import utils
 import validate
-import datetime
 
 def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kernels=(1,1),output_bias=0,metrics=['accuracy']):
     
     model = keras.Sequential()
-    model.add(keras.layers.Conv2D(filters, kernel_size=(3, 3),
-                    activation='relu',
-                    input_shape=input_shape))
-    for _ in range(layers-1):
-        model.add(keras.layers.Conv2D(filters, (3, 3), activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
-        if(_%2 == 0):
-            model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
-            model.add(keras.layers.Dropout(0.2))
+
+    model.add(keras.layers.Conv2D(256, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
+    model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
+    model.add(keras.layers.BatchNormalization())
+    model.add(keras.layers.Dropout(0.2))   
+
+    model.add(keras.layers.Conv2D(512, (3, 3), activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
+    model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
+    model.add(keras.layers.BatchNormalization())
+    model.add(keras.layers.Dropout(0.2))
+
     model.add(keras.layers.Flatten())
     model.add(keras.layers.Dense(128, activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
     model.add(keras.layers.Dropout(0.5))
+
     model.add(keras.layers.Dense(1, activation='sigmoid',bias_initializer=keras.initializers.Constant(output_bias)))
-    model.compile(loss=keras.losses.binary_crossentropy,
+    model.compile(loss=keras.losses.BinaryCrossentropy(),
               optimizer=opt,
               metrics=metrics)
-    #print(model.summary())
-    
+    print(model.summary())
+
     return model
   
 def build_VGG19(input_shape):
@@ -56,29 +62,11 @@ def build_VGG19(input_shape):
     #     layer.trainable = False
 
     # compile the model (should be done *after* setting layers to non-trainable)
-    model.compile(loss=keras.losses.BinaryCrossentropy(),
+    model.compile(loss=tf.keras.losses.BinaryCrossentropy(),
                 optimizer='adam',
                 metrics=metrics)
 
     return model
-
-def Recall(y_true, y_pred):
-    true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
-    possible_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true, 0, 1)))
-    return true_positives / (possible_positives + tf.keras.backend.epsilon())
-
-def Precision(y_true, y_pred):
-    true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
-    predicted_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_pred, 0, 1)))
-    return true_positives / (predicted_positives + tf.keras.backend.epsilon())
-
-def F1(y_true,y_pred):
-    true_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
-    possible_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true, 0, 1)))
-    recall = true_positives / (possible_positives + tf.keras.backend.epsilon())
-    predicted_positives = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_pred, 0, 1)))
-    precision = true_positives / (predicted_positives + tf.keras.backend.epsilon())
-    return 2.0*recall*precision/(precision+recall)
 
 # generate batches of images from files
 class generator(keras.utils.Sequence):
@@ -173,9 +161,9 @@ class generator(keras.utils.Sequence):
 if __name__ == "__main__":
 
     # limit CPU usage
-    config = tf.ConfigProto(inter_op_parallelism_threads = 4,   
-                            intra_op_parallelism_threads = 0)
-    tf.keras.backend.set_session(tf.Session(config=config))
+    config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
+                                    intra_op_parallelism_threads = 0)
+    tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
     # suppress warnings
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
@@ -216,26 +204,24 @@ if __name__ == "__main__":
 
     dataDir = "/store/user/llavezzo/disappearingTracks/electron_selectionV2/"
     tag = '0p25_tanh_'
-    log_dir = "/share/scratch0/llavezzo/CMSSW_10_2_20/src/DisappTrksML/CNN/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_dir = "/share/scratch0/llavezzo/CMSSW_11_1_2_patch1/src/work/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    img_rows, img_cols = 40, 40
+    channels = 3
+    input_shape = (img_rows,img_cols,channels)
 
     run_validate = True
-
     nTotE = 12500
     val_size = 0.2
     undersample_bkg = 0.9     
     oversample_e = -1   
 
-    v = 2
+    v = 1
     batch_size = 256
-    epochs = 20
-    patience_count = 5
+    epochs = 40
+    patience_count = 10
     monitor = 'val_loss'
     class_weights = True  
-    metrics = [Precision, Recall, F1]
-
-    img_rows, img_cols = 40, 40
-    channels = 3
-    input_shape = (img_rows,img_cols,channels)
+    metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
     #################################################
 
     
@@ -333,12 +319,12 @@ if __name__ == "__main__":
         nAddedBkg = utils.count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
 
     # add the bkg and e events to rebalance val data
-    # filler_events = [[0,0]]*nBatchesAdded
-    # filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
-    # val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
-    # val_bkg_file_batches = np.concatenate((val_bkg_file_batches,bkg_file_batches_added))
-    # val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
-    # val_e_file_batches = val_e_file_batches + filler_files
+    filler_events = [[0,0]]*nBatchesAdded
+    filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
+    val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
+    val_bkg_file_batches = np.concatenate((val_bkg_file_batches,bkg_file_batches_added))
+    val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
+    val_e_file_batches = val_e_file_batches + filler_files
 
     # re count
     nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
@@ -382,22 +368,24 @@ if __name__ == "__main__":
     val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir)
 
     # initialize output bias
-    if(oversample_e == -1): output_bias = np.log(nTotE/nTotBkg)
-    else: output_bias = np.log(1.0*oversample_e/(1-oversample_e))
+    output_bias = np.log(nSavedETrain/nSavedBkgTrain)
 
     model = build_model(input_shape = input_shape, 
-                        layers = 5, filters = 64, opt='adam',
+                        layers = 3, filters = 64, opt='adam',
                         output_bias=output_bias,
                         metrics=metrics)
 
     callbacks = [
-    keras.callbacks.EarlyStopping(patience=patience_count),
-    keras.callbacks.ModelCheckpoint(filepath=weightsDir+weightsFile+'.h5',
-                                    save_weights_only=True,
-                                    monitor=monitor,
-                                    mode='auto',
-                                    save_best_only=True),
-    tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0)
+        keras.callbacks.EarlyStopping(patience=patience_count),
+        keras.callbacks.ModelCheckpoint(filepath=weightsDir+weightsFile+'.h5',
+                                        save_weights_only=True,
+                                        monitor=monitor,
+                                        mode='auto',
+                                        save_best_only=True),
+        tf.keras.callbacks.TensorBoard(log_dir=log_dir, 
+                                        histogram_freq=0,
+                                        write_graph=False,
+                                        write_images=False)
     ]
 
     if(class_weights):
@@ -407,7 +395,7 @@ if __name__ == "__main__":
         weight_for_1 = (1/nSavedETrain)*(nSavedBkgTrain+nSavedETrain)/2.0
         class_weight = {0: weight_for_0, 1: weight_for_1}
 
-        history = model.fit_generator(train_generator, 
+        history = model.fit(train_generator, 
                             epochs = epochs,
                             verbose= v,
                             validation_data=val_generator,
@@ -430,7 +418,7 @@ if __name__ == "__main__":
     with open(outputDir+'history.pkl', 'wb') as f:
         pickle.dump(history.history, f)
     print(utils.bcolors.GREEN+"Saved history, train and validation files to "+outputDir+utils.bcolors.ENDC)
-    utils.plot_history(history, plotDir, ['loss','Recall','Precision'])
+    utils.plot_history(history, plotDir, ['loss','Recall','Precision','AUC'])
     print(utils.bcolors.YELLOW+"Plotted history to "+plotDir+utils.bcolors.ENDC) 
 
     if(run_validate): validate.validate(model, outputDir, dataDir, tag, plotDir)

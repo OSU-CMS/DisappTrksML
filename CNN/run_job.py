@@ -9,7 +9,7 @@ from itertools import product
 
 if __name__=="__main__":
 
-    folder = "undersample"
+    folder = "undersample_filters_256_512"
 
     f = open('run.sub', 'w')
     submitLines = """
@@ -31,7 +31,7 @@ if __name__=="__main__":
     getenv = true
     queue 1
 
-    """.format(folder, "/share/scratch0/llavezzo/CMSSW_10_2_20/src/DisappTrksML/CNN/")
+    """.format(folder, "/share/scratch0/llavezzo/CMSSW_11_1_2_patch1/src/DisappTrksML/CNN/")
 
     f.write(submitLines)
     f.close()
