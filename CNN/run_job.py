@@ -10,13 +10,10 @@ import numpy as np
 
 if __name__=="__main__":
 
-    folder = "weights_undersample_study"
+    folder = "undersample_study"
     params = [
-        [False, -1, 5],
-        [False, 0.7, 40],
-        [True, -1, 5],
-        [True, 0.8, 20],
-        [True, 0.9, 10]
+        [False, 0.7, 20],
+        [False, 0.9, 20],
     ]
     np.save('params',params)
     njobs = len(params)
@@ -33,7 +30,7 @@ if __name__=="__main__":
     request_memory = 2GB
     request_cpus = 4
     executable              = run_wrapper.sh
-    arguments               = {0}, $(PROCESS)
+    arguments               = {0} $(PROCESS)
     log                     = /data/users/llavezzo/Logs/{0}/log_$(PROCESS).log
     output                  = /data/users/llavezzo/Logs/{0}/out_$(PROCESS).txt
     error                   = /data/users/llavezzo/Logs/{0}/error_$(PROCESS).txt

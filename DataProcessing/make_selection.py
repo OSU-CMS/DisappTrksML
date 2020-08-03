@@ -2,14 +2,15 @@ import os
 import numpy as np
 import sys
 import json
+import math
 
-dataDir = "/data/disappearingTracks/converted_DYJetsToLL_M50/"
-outDataDir = "/data/disappearingTracks/muon_selection_DYJetsToll_M50/"
+dataDir = "/store/user/llavezzo/disappearingTracks/converted_DYJetsToLL_M50/"
+outDataDir = "/store/user/llavezzo/disappearingTracks/electron_selection/"
 tag = "0p25_"
-signal = "m"					#choose: e, m, bkg
+signal = "e"					#choose: e, m, bkg
 
 """
-infos:
+infos:	
 
 0: ID
 1: matched track gen truth flavor (1: electrons, 2: muons, 0: everything else)
@@ -34,6 +35,8 @@ sCounts = {}
 bkgCounts = {}
 
 for i in range(4000):
+
+	if(i < 185): continue
 
 	e_fname = 'images_e_'+tag+str(i)+'.npz'
 	m_fname = 'images_m_'+tag+str(i)+'.npz'
@@ -64,16 +67,16 @@ for i in range(4000):
 	# select signal reco fail, convert to tanh
 	s_outImages, s_outInfos = [],[]
 	for info, image in zip(s_infos, s_images):
-		if(info[reco_index] < 0.15): continue
-		s_outImages.append(np.tanh(image))
-		s_outInfos.append(info)
+		if(math.fabs(info[reco_index]) > 0.15):
+			s_outImages.append(np.append(image[0],np.tanh(image[1:])))
+			s_outInfos.append(info)
 
 	# select signal reco fail, convert to tanh
 	bkg_outImages, bkg_outInfos = [],[]
 	for info, image in zip(bkg_infos, bkg_images):
-		if(info[reco_index] < 0.15): continue
-		bkg_outImages.append(np.tanh(image))
-		bkg_outInfos.append(info)
+		if(math.fabs(info[reco_index]) > 0.15):
+			bkg_outImages.append(np.append(image[0],np.tanh(image[1:])))
+			bkg_outInfos.append(info)
 
 	# some checks before saving
 	assert len(s_outImages)==len(s_outInfos)
@@ -84,7 +87,7 @@ for i in range(4000):
 	bkgCounts.update({i : len(bkg_outImages)})
 
 	print("File",i)
-	print("Saving",len(s_outImages),len(bkg_outImages),"from",len(s_images)+len(bkg_index),"files")
+	print("Saving",len(s_outImages),len(bkg_outImages),"from",len(s_images)+len(bkg_images),"files")
 	print()
 
 
@@ -93,8 +96,12 @@ for i in range(4000):
 	f2 = 'bkg_'+tag+"tanh_"+str(i)
 	np.savez_compressed(f1,images=s_outImages,infos=s_outInfos)
 	np.savez_compressed(f2,images=bkg_outImages,infos=bkg_outInfos)
+	np.save(f1,s_outImages)
+	np.save(f2,bkg_outImages)
 	os.system("mv "+f1+".npz "+outDataDir+f1+".npz")
 	os.system("mv "+f2+".npz "+outDataDir+f2+".npz")
+	os.system("mv "+f1+".npy "+outDataDir+f1+".npy")
+	os.system("mv "+f2+".npy "+outDataDir+f2+".npy")
 
 # save the dictionaries
 with open(signal+'SignalCounts.json', 'w', encoding='utf-8') as f:

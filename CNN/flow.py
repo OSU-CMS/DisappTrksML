@@ -21,12 +21,12 @@ def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kern
     
     model = keras.Sequential()
 
-    model.add(keras.layers.Conv2D(256, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
+    model.add(keras.layers.Conv2D(128, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
     model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
     model.add(keras.layers.BatchNormalization())
     model.add(keras.layers.Dropout(0.2))   
 
-    model.add(keras.layers.Conv2D(512, (3, 3), activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
+    model.add(keras.layers.Conv2D(256, (3, 3), activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
     model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
     model.add(keras.layers.BatchNormalization())
     model.add(keras.layers.Dropout(0.2))
@@ -162,7 +162,7 @@ if __name__ == "__main__":
 
     # limit CPU usage
     config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
-                                    intra_op_parallelism_threads = 4,
+                                    intra_op_parallelism_threads = 0,
                                     allow_soft_placement = True,
                                     device_count={'CPU': 4})
     tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
@@ -432,7 +432,7 @@ if __name__ == "__main__":
     with open(outputDir+'history.pkl', 'wb') as f:
         pickle.dump(history.history, f)
     print(utils.bcolors.GREEN+"Saved history, train and validation files to "+outputDir+utils.bcolors.ENDC)
-    utils.plot_history(history, plotDir, ['loss','Recall','Precision','AUC'])
+    utils.plot_history(history, plotDir, ['loss','recall','precision','auc'])
     print(utils.bcolors.YELLOW+"Plotted history to "+plotDir+utils.bcolors.ENDC) 
 
     if(run_validate): validate.validate(model, outputDir, dataDir, tag, plotDir)
