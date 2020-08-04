@@ -130,8 +130,8 @@ class generator(keras.utils.Sequence):
     bkg_images = bkg_images[:numBkg]
 
     # shuffle and select appropriate amount of electrons, bkg
-
     indices = list(range(bkg_images.shape[0]))
+    random.shuffle(indices)
     bkg_images = bkg_images[indices,1:]
 
     if(numE != 0):
@@ -150,7 +150,6 @@ class generator(keras.utils.Sequence):
     batch_x = batch_x[indices[:self.batch_size],:]
     batch_x = np.reshape(batch_x,(batch_size,40,40,4))
     batch_x = batch_x[:,:,:,[0,2,3]]
-
 
     batch_y = batch_y[indices[:self.batch_size]]
     #batch_y = keras.utils.to_categorical(batch_y, num_classes=2)
@@ -209,17 +208,17 @@ if __name__ == "__main__":
     what fraction of train events to be bkg, set to -1 if it's not needed
     """
 
-    dataDir = "/store/user/llavezzo/disappearingTracks/electron_selectionV2/"
+    dataDir = "/store/user/llavezzo/disappearingTracks/electron_selection/"
     tag = '0p25_tanh_'
     log_dir = "/share/scratch0/llavezzo/CMSSW_11_1_2_patch1/src/work/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     img_rows, img_cols = 40, 40
     channels = 3
     input_shape = (img_rows,img_cols,channels)
 
-    run_validate = True
+    run_validate = False
     nTotE = 12500
     val_size = 0.2
-    undersample_bkg = 0.8    
+    undersample_bkg = -1 
     oversample_e = -1   
 
     v = 1
@@ -246,9 +245,9 @@ if __name__ == "__main__":
         print(utils.bcolors.YELLOW+"Using params"+utils.bcolors.ENDC,params)
 
     # import count dicts
-    with open(dataDir+'eCounts.json') as json_file:
+    with open(dataDir+'eSignalCounts.json') as json_file:
         eCounts = json.load(json_file)
-    with open(dataDir+'bkgCounts.json') as json_file:
+    with open(dataDir+'eBackgroundCounts.json') as json_file:
         bkgCounts = json.load(json_file)
 
     # count how many events are in the files for each class
@@ -332,17 +331,18 @@ if __name__ == "__main__":
 
         nAddedBkg = utils.count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
 
-    # add the bkg and e events to rebalance val data
-    filler_events = [[0,0]]*nBatchesAdded
-    filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
-    val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
-    val_bkg_file_batches = val_bkg_file_batches + bkg_file_batches_added
-    val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
-    val_e_file_batches = val_e_file_batches + filler_files
+        # add the bkg and e events to rebalance val data
+        filler_events = [[0,0]]*nBatchesAdded
+        filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
+        val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
+        val_bkg_file_batches = val_bkg_file_batches + bkg_file_batches_added
+        val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
+        val_e_file_batches = val_e_file_batches + filler_files
 
-    # re count
-    nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
-    nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
+        # re count
+        nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
+        nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
+
 
     print("\t\tElectrons\tBackground\te/(e+bkg)")
     print("Requested:\t"+str(nTotE)+"\t\t"+str(nTotBkg)+"\t\t"+str(round(nTotE*1.0/(nTotE+nTotBkg),5)))

@@ -100,11 +100,11 @@ def validate(model, batchDir, dataDir, tag, plotDir):
 if __name__ == "__main__":
 
 	dataDir = "/store/user/llavezzo/disappearingTracks/electron_selectionV2/"
-	batchDir = "/data/users/llavezzo/cnn/weights_undersample_study_1/outputFiles/"
-	plotDir = "/data/users/llavezzo/cnn/weights_undersample_study_1/plots/"
+	batchDir = "/data/users/llavezzo/cnn/undersample_study_1/outputFiles/"
+	plotDir = "/data/users/llavezzo/cnn/undersample_study_1/plots2/"
 	valFile = "valBatches"
 	tag = "0p25_tanh_"
-	weights = "/data/users/llavezzo/cnn/weights_undersample_study_1/weights/weights_lastEpoch.h5"
+	weights = "/data/users/llavezzo/cnn/undersample_study_1/weights/weights_lastEpoch.h5"
 
 	input_shape = (40,40,3)
 

@@ -174,7 +174,7 @@ def plot_confusion_matrix(confusion_matrix, target_names, f='cm.png', title='Con
     tick_marks = np.arange(len(target_names))
     plt.xticks(tick_marks, target_names, rotation=45)
     plt.yticks(tick_marks, target_names)
-    plt.tight_layout()
+    #plt.tight_layout()
 
     width, height = cm.shape
 
