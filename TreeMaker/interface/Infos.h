@@ -14,6 +14,11 @@ struct TrackInfo {
       double d0, dz;
 
       bool inGap;
+      bool isCloseToBadEcalChannel;
+
+      bool passesProbeSelection;
+      bool isTagProbeElectron;
+      bool isTagProbeTauToElectron;
 };
 
 struct RecHitInfo {
