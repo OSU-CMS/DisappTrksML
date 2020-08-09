@@ -122,7 +122,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   trackInfos_.clear();
 
   for(const auto &track : *tracks) {
-    if(minTrackPt_ > 0 && track.pt() < minTrackPt_) continue;
+    if(minTrackPt_ > 0 && track.pt() <= minTrackPt_) continue;
 
     TrackInfo info = getTrackInfo(track, *tracks, pv, *jets, *electrons, *muons, *taus, genParticles);
 
@@ -200,7 +200,7 @@ TrackImageProducerMINIAOD::getTrackInfo(const CandidateTrack &track,
   bool inCSCTransitionRegion = (fabs(track.eta()) >= 1.55 && fabs(track.eta()) <= 1.85);
   info.inGap = (inTOBCrack || inECALCrack || inDTWheelGap || inCSCTransitionRegion);
 
-  info.isCloseToBadEcalChannel = !isCloseToBadEcalChannel(track);
+  info.dRMinBadEcalChannel = minDRBadEcalChannel(track);
 
   info.trackIso = 0.0;
   for(const auto &t : tracks) {
@@ -422,18 +422,18 @@ TrackImageProducerMINIAOD::getTagElectrons(const edm::Event &event,
 const bool
 TrackImageProducerMINIAOD::isProbeTrack(const CandidateTrack &track, const TrackInfo info) const
 {
-  if(track.pt() < 30 ||
+  if(track.pt() <= 30 ||
      fabs(track.eta()) >= 2.1 ||
      // skip fiducial selections
      info.nValidPixelHits < 4 ||
      info.nValidHits < 4 ||
      info.missingInnerHits != 0 ||
      info.missingMiddleHits != 0 ||
-     info.trackIso / track.pt() < 0.05 ||
-     info.d0 >= 0.02 ||
-     info.dz >= 0.5 ||
+     info.trackIso / track.pt() >= 0.05 ||
+     fabs(info.d0) >= 0.02 ||
+     fabs(info.dz) >= 0.5 ||
      // skip lepton vetoes
-     info.dRMinJet <= 0.5) {
+     fabs(info.dRMinJet) <= 0.5) {
     return false;
   }
 
@@ -480,12 +480,12 @@ TrackImageProducerMINIAOD::isTagProbeTauToElePair(const CandidateTrack &probe,
   return true;
 }
 
-const bool
-TrackImageProducerMINIAOD::isCloseToBadEcalChannel(const CandidateTrack &track, const double &deltaRCut) const
+const double
+TrackImageProducerMINIAOD::minDRBadEcalChannel(const CandidateTrack &track) const
 {
    double trackEta = track.eta(), trackPhi = track.phi();
 
-   double min_dist = 999;
+   double min_dist = -1;
    DetId min_detId;
 
    map<DetId, vector<int> >::const_iterator bitItor;
@@ -500,15 +500,13 @@ TrackImageProducerMINIAOD::isCloseToBadEcalChannel(const CandidateTrack &track, 
       double eta = (valItor->second)[0], phi = (valItor->second)[1];
       double dist = reco::deltaR(eta, phi, trackEta, trackPhi);
 
-      if(min_dist > dist) {
+      if(min_dist > dist || min_dist < 0) {
         min_dist = dist;
         min_detId = maskedDetId;
       }
    }
 
-   if(min_dist > deltaRCut && deltaRCut > 0) return false;
-
-   return true;
+   return min_dist;
 }
 
 void
