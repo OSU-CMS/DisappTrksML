@@ -18,27 +18,29 @@ import getopt
 import utils
 import validate
 
-def build_model(input_shape = (40,40,3), layers=1,filters=64,opt='adadelta',kernels=(1,1),output_bias=0,metrics=['accuracy']):
+def build_model(input_shape=(40,40,3), batch_norm = False, filters=[128,256], 
+				output_bias=0, metrics=['accuracy']):
     
 	model = keras.Sequential()
 
-	model.add(keras.layers.Conv2D(128, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
+	model.add(keras.layers.Conv2D(filters[0], kernel_size=(3, 3), activation='relu', input_shape=input_shape))
 	model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
-	# model.add(keras.layers.BatchNormalization())
-	# model.add(keras.layers.Dropout(0.2))   
+	if(batch_norm): model.add(keras.layers.BatchNormalization())
+	model.add(keras.layers.Dropout(0.2))   
 
-	model.add(keras.layers.Conv2D(256, (3, 3), activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
-	model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
-	# model.add(keras.layers.BatchNormalization())
-	# model.add(keras.layers.Dropout(0.2))
+	for layer in range(1,len(filters)):
+		model.add(keras.layers.Conv2D(filters[layer], (3, 3), activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
+		model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
+		if(batch_norm): model.add(keras.layers.BatchNormalization())
+		model.add(keras.layers.Dropout(0.2))
 
 	model.add(keras.layers.Flatten())
 	model.add(keras.layers.Dense(128, activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
-	# model.add(keras.layers.Dropout(0.5))
+	model.add(keras.layers.Dropout(0.4))
 
 	model.add(keras.layers.Dense(1, activation='sigmoid',bias_initializer=keras.initializers.Constant(output_bias)))
 	model.compile(loss=keras.losses.BinaryCrossentropy(),
-	      optimizer=opt,
+	      optimizer="adam",
 	      metrics=metrics)
 	print(model.summary())
 
@@ -179,7 +181,7 @@ if __name__ == "__main__":
 
 	# limit CPU usage
 	config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 2,   
-									intra_op_parallelism_threads = 2,
+									intra_op_parallelism_threads = 0,
 									allow_soft_placement = True,
 									device_count={'CPU': 2})
 	tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
@@ -258,9 +260,11 @@ if __name__ == "__main__":
 	#################################################
 
 	if(len(params) > 0):
-		class_weights = bool(params[0])
-		undersample_bkg = float(params[1])
-		epochs = int(params[2])
+		filters = params[0]
+		class_weights = bool(params[1])
+		batch_norm = bool(params[2])
+		undersample_bkg = float(params[3])
+		epochs = int(params[4])
 
 	# create output directories
 	os.system('mkdir '+str(workDir))
@@ -269,7 +273,7 @@ if __name__ == "__main__":
 	os.system('mkdir '+str(outputDir))
 
 	# import count dicts
-	with open(dataDir+'sCounts.pkl', 'rb') as f:
+	with open(dataDir+'eCounts.pkl', 'rb') as f:
 		eCounts = pickle.load(f)
 	with open(dataDir+'bkgCounts.pkl', 'rb') as f:
 		bkgCounts = pickle.load(f)
@@ -374,6 +378,8 @@ if __name__ == "__main__":
 	print("Validating on:\t"+str(nSavedEVal)+"\t\t"+str(nSavedBkgVal)+"\t\t"+str(round(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal),5)))
 	print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,5)))
 
+	sys.exit(0)
+	
 	# save the train and validation batches
 	np.save(outputDir+"e_files_trainBatches", train_e_file_batches)
 	np.save(outputDir+"e_events_trainBatches", train_e_event_batches)
@@ -408,14 +414,13 @@ if __name__ == "__main__":
 	# initialize output bias
 	output_bias = np.log(nSavedETrain/nSavedBkgTrain)
 
-	model = build_model(input_shape = input_shape, 
-	                    layers = 3, filters = 64, opt='adam',
-	                    output_bias=output_bias,
-	                    metrics=metrics)
+	model = build_model(input_shape = (40,40,3), 
+	                    filters = filters, batch_norm=batch_norm,
+	                    output_bias=output_bias, metrics=metrics)
 
 	callbacks = [
 	    keras.callbacks.EarlyStopping(patience=patience_count),
-	    keras.callbacks.ModelCheckpoint(filepath=weightsDir+weightsFile+'.{epoch}.h5',
+	    keras.callbacks.ModelCheckpoint(filepath=weightsDir+'weights.{epoch}.h5',
 	                                    save_weights_only=True,
 	                                    monitor=monitor,
 	                                    mode='auto'),
@@ -456,4 +461,4 @@ if __name__ == "__main__":
 	utils.plot_history(history, plotDir, ['loss','recall','precision','auc'])
 	print(utils.bcolors.YELLOW+"Plotted history to "+plotDir+utils.bcolors.ENDC) 
 
-	if(run_validate): validate.validate(model, weightsDir+weightsFile+'.'+str(epochs)+'.h5', outputDir, dataDir, plotDir)
+	if(run_validate): validate.validate(model, weightsDir+'weights.'+str(epochs)+'.h5', outputDir, dataDir, plotDir)

@@ -13,9 +13,11 @@ cp params.npy CMSSW_11_1_2_patch1/src/params.npy
 cd CMSSW_11_1_2_patch1/src/
 eval `scramv1 runtime -sh`
 
-python3 flow.py $1 $2
-mv $1_$2 /data/users/llavezzo/cnn/
+python3 flow.py -d $1 -p params.npy -i $2
 
 cd ..
 cd ..
+
+mv CMSSW_11_1_2_patch1/src/$1_p$2 .
+
 rm -r CMSSW_11_1_2_patch1

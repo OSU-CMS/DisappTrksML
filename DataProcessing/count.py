@@ -22,6 +22,7 @@ for fileNum in range(4000):
 	if(os.path.isfile(dataDir+f1)): 
 		temp2 = np.load(dataDir+f2)
 		bkgCounts.update({fileNum:temp2.shape[0]})
+	print(fileNum)
 
 
 with open(dataDir+signal+'Counts.pkl', 'wb') as f:
