@@ -13,6 +13,7 @@ import random
 import sys
 import pickle
 import datetime
+import getopt
 
 import utils
 import validate
@@ -186,52 +187,60 @@ if __name__ == "__main__":
 	# suppress warnings
 	os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
-	# output dir
-	if(len(sys.argv) == 1):
-		print(utils.bcolors.YELLOW+"No output directory specified, printing to cnn_results/"+utils.bcolors.ENDC)
-		print(utils.bcolors.YELLOW+"\tRun 'python3 flow.py dir' to create and output to specific directory"+utils.bcolors.ENDC)
-		workDir = 'cnn_results'
-	if(len(sys.argv) > 1):
-		if(len(sys.argv) == 2): workDir = sys.argv[1]
-		if(len(sys.argv) == 3): workDir = sys.argv[1]+"_"+str(sys.argv[2])
-		cnt=0
-		while(os.path.isdir(workDir)):
-			cnt+=1
-			if(cnt==1): workDir = workDir+"_"+str(cnt)
-			else: workDir = workDir[:-1] + str(cnt)
-	print(utils.bcolors.YELLOW+"Printing to "+workDir+utils.bcolors.ENDC)      
+	try:
+		opts, args = getopt.getopt(sys.argv[1:], 
+								"d:p:i:", 
+								["dir=","params=","index="])
+	except getopt.GetoptError:
+		print(utils.bcolors.RED+"USAGE: flow.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+utils.bcolors.ENDC)
+		sys.exit(2)
+
+	workDir = 'cnn_results'
+	paramsFile = ""
+	params = []
+	paramsIndex = 0
+	for opt, arg in opts:
+		if(opt in ('-d','--dir')):
+			workDir = str(arg)
+		elif(opt in ('-p','--params')):
+			paramsFile = str(arg)
+		elif(opt in ('-i','--index')):
+			paramsIndex = int(arg)
+
+	if(len(paramsFile)>0):
+		try:
+			params = np.load(str(paramsFile))[paramsIndex]
+		except:
+			print(utils.bcolors.RED+"ERROR: Index outside range or no parameter list passed"+utils.bcolors.ENDC)
+			print(utils.bcolors.RED+"USAGE: flow.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+utils.bcolors.ENDC)
+			sys.exit(2)
+		workDir = workDir + "_p" + str(paramsIndex)
+	cnt=0
+	while(os.path.isdir(workDir)):
+		cnt+=1
+		if(cnt==1): workDir = workDir+"_"+str(cnt)
+		else: workDir = workDir[:-1] + str(cnt)
+	print(utils.bcolors.YELLOW+"Output directory: "+workDir+utils.bcolors.ENDC)
+	if(len(params) > 0): 
+		print(utils.bcolors.YELLOW+"Using params"+utils.bcolors.ENDC, params, end=" ")
+		print(utils.bcolors.YELLOW+"from file "+paramsFile+utils.bcolors.ENDC)
 	
 	plotDir = workDir + '/plots/'
 	weightsDir = workDir + '/weights/'
 	outputDir = workDir + '/outputFiles/'
-	weightsFile = 'weights'
-
-	# params (optional)
-	if(len(sys.argv) == 3): params = np.load('params.npy')[int(sys.argv[2])]
-	else: params = []
 
 	################config parameters################
 	"""
-	nTotE:
-	how many electron events to use from maximum ~17000 electron events
-	IMPORTANT: the validation set will use nTotE * val_size electrons
-	but as many background events as needed to keep the ratio between the classes
-	equal to the one in the real data
-
-	oversample_e: (NOT WORKING)
-	use to oversample electron events, fraction of electron events per batch
-	set to -1 if it's not needed
-
-	undersample_bkg:
-	what fraction of train events to be bkg, set to -1 if it's not needed
+	nTotE: number of electron events to use
+	oversample_e: (NOT WORKING) fraction of electron events per train batch, set to -1 if it's not needed
+	undersample_bkg: fraction of backgruond events per train batch, set to -1 if it's not needed
+	v: verbosity
+	patience_count: after how many epochs to stop if monitored variable doesn't improve
+	monitor: which variable to monitor with patience_count
 	"""
 
-	dataDir = "/data/disappearingTracks/electron_selection/"
-	tag = '0p25_'
-	log_dir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-	img_rows, img_cols = 40, 40
-	channels = 3
-	input_shape = (img_rows,img_cols,channels)
+	dataDir = "/store/user/llavezzo/disappearingTracks/electron_selection/"
+	logDir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 	run_validate = True
 	nTotE = 17000
@@ -248,19 +257,16 @@ if __name__ == "__main__":
 	metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
 	#################################################
 
+	if(len(params) > 0):
+		class_weights = bool(params[0])
+		undersample_bkg = float(params[1])
+		epochs = int(params[2])
 
 	# create output directories
 	os.system('mkdir '+str(workDir))
 	os.system('mkdir '+str(plotDir))
 	os.system('mkdir '+str(weightsDir))
 	os.system('mkdir '+str(outputDir))
-
-	# load params (optional)
-	if(len(params) > 0):
-		class_weights = bool(params[0])
-		undersample_bkg = float(params[1])
-		epochs = int(params[2])
-		print(utils.bcolors.YELLOW+"Using params"+utils.bcolors.ENDC,params)
 
 	# import count dicts
 	with open(dataDir+'sCounts.pkl', 'rb') as f:
@@ -413,7 +419,7 @@ if __name__ == "__main__":
 	                                    save_weights_only=True,
 	                                    monitor=monitor,
 	                                    mode='auto'),
-	    tf.keras.callbacks.TensorBoard(log_dir=log_dir, 
+	    tf.keras.callbacks.TensorBoard(log_dir=logDir, 
 	                                    histogram_freq=0,
 	                                    write_graph=False,
 	                                    write_images=False)
@@ -450,4 +456,4 @@ if __name__ == "__main__":
 	utils.plot_history(history, plotDir, ['loss','recall','precision','auc'])
 	print(utils.bcolors.YELLOW+"Plotted history to "+plotDir+utils.bcolors.ENDC) 
 
-	if(run_validate): validate.validate(model, weightsDir+weightsFile+'.'+str(epochs)+'.h5', outputDir, dataDir, tag, plotDir)
+	if(run_validate): validate.validate(model, weightsDir+weightsFile+'.'+str(epochs)+'.h5', outputDir, dataDir, plotDir)
