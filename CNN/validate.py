@@ -129,7 +129,7 @@ def validate(model, weights, batchDir, dataDir, plotDir):
 
 	batch_size = 512
 
-	val_generator = generator(val_e_file_batches[:2], val_bkg_file_batches[:2], val_e_event_batches[:2], val_bkg_event_batches[:2], batch_size, dataDir, False)
+	val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir, False, True)
 	val_generator.reset()
 	predictions = model.predict(val_generator, verbose=1)
 	true = val_generator.get_y_batches()
