@@ -12,38 +12,46 @@ import numpy as np
 import numpy.random
 from numpy.random import choice
 from numpy.random import randn
-from sklearn.model_selection import train_test_split
+import os
+import pickle
+import utils
+import random
 
-#import data
-dataDir = '/data/disappearingTracks/tracks/'
-workDir = '/home/llavezzo/'
-plotDir = workDir + 'plots/acgan/'
-weightsDir = workDir + 'weights/acgan/'
+def load_data(files, events, label, dataDir):
+    lastFile = len(files)-1
+    files.sort()
+    for iFile, file in enumerate(files):
+        if(file == -1): 
+            images = np.array([])
+            continue
+        if(iFile == 0 and iFile != lastFile):
+            images = np.load(dataDir+label+str(file)+'.npy')[events[0]:]
 
-data_e = np.load(dataDir+'e_DYJets50V3_norm_40x40.npy')
-data_bkg = np.load(dataDir+'bkg_DYJets50V3_norm_40x40.npy')
-classes = np.concatenate([np.ones(len(data_e)),np.zeros(len(data_bkg))])
-data = np.concatenate([data_e,data_bkg])
-print(data_e.shape,data_bkg.shape,data.shape)
-print(len(classes))
+        elif(iFile == lastFile and iFile != 0):
+            images = np.vstack((images,np.load(dataDir+label+str(file)+'.npy')[:events[1]+1]))
 
-x_train, x_test, y_train, y_test = train_test_split(data, classes, test_size=0.30, random_state=42)
+        elif(iFile == 0 and iFile == lastFile):
+            images = np.load(dataDir+label+str(file)+'.npy')[events[0]:events[1]+1]
+
+        elif(iFile != 0 and iFile != lastFile):
+            images = np.vstack((images,np.load(dataDir+label+str(file)+'.npy')))
+    return images
 
 def build_discriminator(img_shape,n_classes=2):
     input = Input(img_shape)
-    x = Conv2D(32*5, kernel_size=(4,4), strides=(2,2), padding="same")(input)
+    x = Conv2D(32*3, kernel_size=(4,4), strides=(2,2), padding="same")(input)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
-    x = Conv2D(64*5, kernel_size=(4,4), strides=(2,2), padding="same")(x)
+    x = Conv2D(64*3, kernel_size=(4,4), strides=(2,2), padding="same")(x)
     x = ZeroPadding2D(padding=((0, 1), (0, 1)))(x)
     x = (LeakyReLU(alpha=0.2))(x)
     x = Dropout(0.25)(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(128*5, kernel_size=(4,4), strides=(2,2), padding="same")(x)
+    x = Conv2D(128*3, kernel_size=(4,4), strides=(2,2), padding="same")(x)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(256*5, kernel_size=(4,4), strides=(1,1), padding="same")(x)
+    x = Conv2D(256*3, kernel_size=(4,4), strides=(1,1), padding="same")(x)
     x = LeakyReLU(alpha=0.2)(x)
     x = Dropout(0.25)(x)
     x = Flatten()(x)
@@ -90,7 +98,7 @@ def build_generator(latent_dim, n_classes=2):
     x = Conv2DTranspose(64, (4,4),strides=(2,2), padding='same')(x)
     x = Activation("relu")(x)
     x = BatchNormalization(momentum=0.8)(x)
-    x = Conv2D(5, kernel_size=3, padding="same")(x)
+    x = Conv2D(3, kernel_size=3, padding="same")(x)
     
     # TESTING
     out = Activation("relu")(x)
@@ -109,22 +117,18 @@ def save_imgs(generator, epoch, batch, r):
     assert len(fake_classes) == r, "length of fake classes must be equal to r"
     gen_imgs = generator.predict([noise,fake_classes])
 
-    fig, axs = plt.subplots(r, 5)
+    fig, axs = plt.subplots(r, 3)
     for i in range(r):
-        for j in range(5):
+        for j in range(3):
             axs[i, j].imshow(gen_imgs[i, :, :, j], cmap='gray')
             if(fake_classes[i]==1):
-                axs[i,0].set_title("e - None", fontsize = 9)
-                axs[i,1].set_title("e - EE,EB", fontsize = 9)
-                axs[i,2].set_title("e - ES", fontsize = 9)
-                axs[i,3].set_title("e - HCAL", fontsize = 9)
-                axs[i,4].set_title("e - CSC,DT,RPC", fontsize = 9)
+                axs[i,0].set_title("e - ECAL", fontsize = 9)
+                axs[i,1].set_title("e - HCAL", fontsize = 9)
+                axs[i,2].set_title("e - Muon System", fontsize = 9)
             if(fake_classes[i]==0):
-                axs[i,0].set_title("Bkg - None", fontsize = 9)
-                axs[i,1].set_title("Bkg - EE,EB", fontsize = 9)
-                axs[i,2].set_title("Bkg - ES", fontsize = 9)
-                axs[i,3].set_title("Bkg - HCAL", fontsize = 9)
-                axs[i,4].set_title("Bkg - CSC,DT,RPC", fontsize = 9)
+                axs[i,0].set_title("bkg - ECAL", fontsize = 9)
+                axs[i,1].set_title("bkg - HCAL", fontsize = 9)
+                axs[i,2].set_title("bkg - Muon System", fontsize = 9)
             axs[i, j].axis('off')
     plt.tight_layout()
     fig.savefig(plotDir + "acgan_%d_%d.png" % (epoch, batch))
@@ -144,15 +148,6 @@ def build_gan(g_model, d_model):
     model.summary()
     return model
     
-# size of the latent space
-latent_dim = 100
-# create the discriminator
-discriminator = build_discriminator(img_shape=(40,40,5),n_classes=2)
-# create the generator
-generator = build_generator(latent_dim)
-# create the gan
-gan_model = build_gan(generator, discriminator)
-
 def noisy_labels(y, p_flip):
     # determine the number of labels to flip
     n_select = int(p_flip * y.shape[0])
@@ -176,66 +171,135 @@ def smooth_positive_labels(y):
 def smooth_negative_labels(y):
     return y + np.random.random(y.shape) * 0.3
 
-X_train = data
-y_train = classes
+if __name__ == "__main__":
 
-epochs=10
-batch_size=64
-save_interval=1
+    dataDir = "/data/disappearingTracks/electron_selection/"
+    workDir = "acgan_results"
+    plotDir = workDir + '/plots/'
+    weightsDir = workDir + '/weights/'
 
-num_examples = X_train.shape[0]
-num_batches = int(num_examples / float(batch_size))
-print('Number of examples: ', num_examples)
-print('Number of Batches: ', num_batches)
-print('Number of epochs: ', epochs)
+    ############## config params ##############
+    epochs=10
+    batch_size=128
+    save_interval=100
+    latent_dim = 100
+    nTotE = 15000
+    nTotBkg = 15000
+    ##########################################
 
-half_batch = int(batch_size / 2)
+    # create output directories
+    os.system('mkdir '+str(workDir))
+    os.system('mkdir '+str(plotDir))
+    os.system('mkdir '+str(weightsDir))
 
-d_loss_array = []
-g_loss_array = []
+    # import count dicts
+    with open(dataDir+'eCounts.pkl', 'rb') as f:
+        eCounts = pickle.load(f)
+    with open(dataDir+'bkgCounts.pkl', 'rb') as f:
+        bkgCounts = pickle.load(f)
 
-# gan_model.load_weights(weightsDir+'G_epoch{0}.h5'.format(100))
-# discriminator.load_weights(weightsDir+'D_epoch{0}.h5'.format(100))
+    half_batch = int(batch_size / 2)
 
-for epoch in range(epochs + 1):
-    for batch in range(num_batches):
+    # batches per epoch
+    num_batches = int((nTotE + nTotBkg)*1.0/half_batch)
 
-        # noise images for the batch
-        noise = generate_latent_points(100,half_batch)
-        fake_classes = np.random.randint(0,2,size=half_batch)
-        fake_images = generator.predict([noise,fake_classes])
-        fake_labels = np.zeros((half_batch, 1))
+    # count how many e/bkg events in each batch
+    ePerBatch = np.zeros(num_batches)
+    iBatch = 0
+    while np.sum(ePerBatch) < nTotE:
+        ePerBatch[iBatch]+=1
+        iBatch+=1
+        if(iBatch == num_batches): iBatch = 0
+    bkgPerBatch = np.asarray([batch_size-np.min(ePerBatch)]*num_batches)
+    ePerBatch = ePerBatch.astype(int)
+    bkgPerBatch = bkgPerBatch.astype(int)
 
-        # real images for batch
-        idx = np.random.randint(0, X_train.shape[0], half_batch)
-        real_images = X_train[idx]
-        real_classes = y_train[idx]
-        real_labels = np.ones((half_batch, 1))
-        
-        #smooth and noisy labels
-        real_labels = noisy_labels(real_labels,0.05)
-        real_labels = smooth_positive_labels(real_labels)
-        fake_labels = smooth_negative_labels(fake_labels)
+    # fill lists of all events and files
+    b_events, b_files = [], []
+    for file, nEvents in bkgCounts.items():
+        for evt in range(nEvents):
+            b_events.append(evt)
+            b_files.append(file)
+    e_events, e_files = [], []
+    for file, nEvents in eCounts.items():
+        for evt in range(nEvents):
+            e_events.append(evt)
+            e_files.append(file)
 
-        # Train the discriminator (real classified as 1 and generated as 0)
-        d_loss_real = discriminator.train_on_batch(real_images, [real_classes,real_labels])
-        d_loss_fake = discriminator.train_on_batch(fake_images, [fake_classes,fake_labels])
+    # make batches
+    bkg_event_batches, bkg_file_batches = utils.make_batches(b_events, b_files, bkgPerBatch, num_batches)
+    e_event_batches, e_file_batches = utils.make_batches(e_events, e_files, ePerBatch, num_batches)
+   
+    
+    # create the discriminator
+    discriminator = build_discriminator(img_shape=(40,40,3),n_classes=2)
+    # create the generator
+    generator = build_generator(latent_dim)
+    # create the gan
+    gan_model = build_gan(generator, discriminator)
 
-        # Train the generator
-        labels = np.ones((batch_size, 1))
-        classes = np.random.randint(0, 2, batch_size)
-        noise = generate_latent_points(100,batch_size)
-        
-        g_loss = gan_model.train_on_batch([noise,classes], [labels,classes])
+    num_examples = num_batches*batch_size
 
-        
-        # Track the progress
-        if(batch % 50 == 0): 
-            print('epoch %d batch %d, dr[%.3f,%.3f], df[%.3f,%.3f], g[%.3f,%.3f]' % 
-              (epoch, batch, d_loss_real[1],d_loss_real[2], 
-               d_loss_fake[1],d_loss_fake[2], g_loss[1],g_loss[2]))
+    print(utils.bcolors.YELLOW+'Training on:'+utils.bcolors.ENDC)
+    print(utils.bcolors.GREEN+'Number of examples: '+utils.bcolors.ENDC, num_examples)
+    print(utils.bcolors.GREEN+'Number of Batches: '+utils.bcolors.ENDC, num_batches)
+    print(utils.bcolors.GREEN+'Number of epochs: '+utils.bcolors.ENDC, epochs)
 
-            save_imgs(generator, epoch, batch, 4)
+    d_loss_array = []
+    g_loss_array = []
 
-    gan_model.save_weights(weightsDir+'G_epoch{0}.h5'.format(epoch))
-    discriminator.save_weights(weightsDir+'D_epoch{0}.h5'.format(epoch))
+    # gan_model.load_weights(weightsDir+'G_epoch{0}.h5'.format(100))
+    # discriminator.load_weights(weightsDir+'D_epoch{0}.h5'.format(100))
+
+    for epoch in range(epochs + 1):
+        for batch in range(num_batches):
+
+            # noise images for the batch
+            noise = generate_latent_points(100,half_batch)
+            fake_classes = np.random.randint(0,2,size=half_batch)
+            fake_images = generator.predict([noise,fake_classes])
+            fake_labels = np.zeros((half_batch, 1))
+
+            # real images, classes for batch
+            idx = np.random.randint(0, num_batches)
+            e = load_data(e_file_batches[idx], e_event_batches[idx], 'e_0p25_', dataDir)
+            bkg = load_data(bkg_file_batches[idx],  bkg_event_batches[idx], 'bkg_0p25_', dataDir)
+            real_images = np.vstack((e,bkg))
+            
+            real_classes = np.concatenate((np.ones(len(e)),np.zeros(len(bkg))))
+            
+            indices = list(range(real_images.shape[0]))
+            random.shuffle(indices)
+            real_images = real_images[indices[:half_batch],1:]
+            real_images = np.reshape(real_images,(half_batch,40,40,4))
+            real_images = real_images[:,:,:,[0,2,3]]
+            real_classes = real_classes[indices[:half_batch]]
+            
+            real_labels = np.ones((half_batch, 1))
+            
+            #smooth and noisy labels
+            real_labels = noisy_labels(real_labels,0.05)
+            real_labels = smooth_positive_labels(real_labels)
+            fake_labels = smooth_negative_labels(fake_labels)
+
+            # Train the discriminator (real classified as 1 and generated as 0)
+            d_loss_real = discriminator.train_on_batch(real_images, [real_classes,real_labels])
+            d_loss_fake = discriminator.train_on_batch(fake_images, [fake_classes,fake_labels])
+
+            # Train the generator
+            labels = np.ones((batch_size, 1))
+            classes = np.random.randint(0, 2, batch_size)
+            noise = generate_latent_points(100,batch_size)
+            
+            g_loss = gan_model.train_on_batch([noise,classes], [labels,classes])
+            
+            # Track the progress
+            if(batch % save_interval == 0): 
+                print('epoch %d batch %d, dr[%.3f,%.3f], df[%.3f,%.3f], g[%.3f,%.3f]' % 
+                  (epoch, batch, d_loss_real[1],d_loss_real[2], 
+                   d_loss_fake[1],d_loss_fake[2], g_loss[1],g_loss[2]))
+
+                save_imgs(generator, epoch, batch, 4)
+
+        gan_model.save_weights(weightsDir+'G_epoch{0}.h5'.format(epoch))
+        discriminator.save_weights(weightsDir+'D_epoch{0}.h5'.format(epoch))

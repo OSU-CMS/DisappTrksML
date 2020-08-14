@@ -10,10 +10,21 @@ import numpy as np
 
 if __name__=="__main__":
 
-    folder = "undersample_study"
+    folder = "hp_explore"
     params = [
-        [False, 0.7, 20],
-        [False, 0.9, 20],
+
+        #undersampling
+        [[128,256],False,False,0.5,40],        #varying layers/filters
+        [[256,512],False,False,0.5,40],
+        [[128,256,512],False,False,0.5,30],
+
+        [[128,256,512],False,True,0.5,30],     #batch norm
+
+        #no undersampling, weights
+        [[128,256],True,False,-1,20],          #varying layers/filters
+        [[128,256,512],True,False,-1,10],
+
+        [[128,256,512],True,True,-1,10]       #batch norm
     ]
     np.save('params',params)
     njobs = len(params)
@@ -36,11 +47,11 @@ if __name__=="__main__":
     error                   = /data/users/llavezzo/Logs/{0}/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = {1}run_wrapper.sh, {1}flow.py, {1}utils.py, {1}validate.py, {1}params.npy
+    transfer_input_files = run_wrapper.sh, flow.py, utils.py, validate.py, params.npy
     getenv = true
-    queue {2}
+    queue {1}
 
-    """.format(folder, "/share/scratch0/llavezzo/CMSSW_11_1_2_patch1/src/DisappTrksML/CNN/", njobs)
+    """.format(folder, njobs)
 
     f.write(submitLines)
     f.close()

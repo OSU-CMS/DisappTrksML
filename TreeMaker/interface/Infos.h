@@ -6,6 +6,7 @@ struct TrackInfo {
       double genMatchedDR, genMatchedPt;
       double deltaRToClosestElectron, deltaRToClosestMuon, deltaRToClosestTauHad;
       double dRMinJet;
+      double dRMinBadEcalChannel;
 
       double trackIso;
       double px, py, pz;
@@ -14,7 +15,6 @@ struct TrackInfo {
       double d0, dz;
 
       bool inGap;
-      bool isCloseToBadEcalChannel;
 
       bool passesProbeSelection;
       bool isTagProbeElectron;

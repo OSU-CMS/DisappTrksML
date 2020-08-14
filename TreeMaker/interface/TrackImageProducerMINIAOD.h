@@ -113,7 +113,7 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       const bool isTagProbeElePair(const CandidateTrack &, const pat::Electron &) const;
       const bool isTagProbeTauToElePair(const CandidateTrack &, const pat::Electron &, const pat::MET &) const;
 
-      const bool isCloseToBadEcalChannel(const CandidateTrack &, const double & = 0.05) const;
+      const double minDRBadEcalChannel(const CandidateTrack &) const;
       void getChannelStatusMaps();
 
       edm::InputTag triggers_;

@@ -41,7 +41,7 @@ m_fname = 'images_m_'+tag+str(fileNum)+'.npz'
 bkg_fname = 'images_bkg_'+tag+str(fileNum)+'.npz'
 
 # check if file exists
-if(not os.path.isfile(dataDir+bkg_fname)): continue
+if(not os.path.isfile(dataDir+bkg_fname)): sys.exit(0)
 
 # import e, m, bkg files containing images and infos
 temp1 = np.load(dataDir+e_fname)
@@ -84,7 +84,7 @@ print("File",fileNum)
 print("Saving",len(s_outImages),len(bkg_outImages),"from",len(s_images)+len(bkg_images),"files")
 print()
 
-# save and move to appropriate dir
+# save files	
 f1 = signal+'_'+tag+str(fileNum)
 f2 = 'bkg_'+tag+str(fileNum)
 np.save(f1,s_outImages)

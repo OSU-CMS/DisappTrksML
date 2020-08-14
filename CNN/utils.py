@@ -265,10 +265,15 @@ def plot_precision_recall(true, probas, fname, nsplits=20):
 def metrics(true, predictions, plotDir, threshold=0.5):
   class_predictions = []
   for p in predictions:
-      if(p >= threshold): class_predictions.append(1)
-      else: class_predictions.append(0)
+      if(p >= threshold): 
+        class_predictions.append(1)
+      else: 
+        class_predictions.append(0)
 
   cm = calc_cm(true, class_predictions)
+
+  print(cm)
+
   plot_confusion_matrix(cm,['bkg','e'],plotDir + 'cm.png')
   
   plot_precision_recall(true,predictions,plotDir+'precision_recall.png',nsplits=50)
@@ -315,7 +320,7 @@ def count_events(file_batches, event_batches, dict):
       lastFile = len(files)-1
       for iFile, file in enumerate(files):
           if(iFile == 0 and iFile != lastFile):
-              nSaved+=(dict[str(file)]-indices[0])
+              nSaved+=(dict[file]-indices[0])
 
           elif(iFile == lastFile and iFile != 0):
               nSaved+=(indices[1]+1)
@@ -324,5 +329,5 @@ def count_events(file_batches, event_batches, dict):
               nSaved+=(indices[1]-indices[0]+1)
 
           elif(iFile != 0 and iFile != lastFile):
-              nSaved+=dict[str(file)]
+              nSaved+=dict[file]
   return nSaved

@@ -9,7 +9,7 @@ import numpy as np
 
 if __name__=="__main__":
 
-    workDir = "/share/scratch0/llavezzo/CMSSW_11_1_2_patch1/src/DisappTrksML/DataProcessing/"
+    workDir = ""
 
     dataDir = "/store/user/llavezzo/disappearingTracks/converted_DYJetsToLL_M50/"
 
