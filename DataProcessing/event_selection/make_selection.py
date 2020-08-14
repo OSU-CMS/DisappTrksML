@@ -66,15 +66,15 @@ bkg_infos = np.vstack(bkg_infos)
 s_outImages, s_outInfos = [],[]
 for info, image in zip(s_infos, s_images):
 	if(math.fabs(info[reco_index]) > 0.15):
-		s_outImages.append(image)
-		s_outInfos.append(info)
+		s_outImages.append(np.concatenate(([fileNum],image)))
+		s_outInfos.append(np.concatenate(([fileNum],info)))
 
 # select signal reco fail, convert to tanh
 bkg_outImages, bkg_outInfos = [],[]
 for info, image in zip(bkg_infos, bkg_images):
 	if(math.fabs(info[reco_index]) > 0.15):
-		bkg_outImages.append(image)
-		bkg_outInfos.append(info)
+		bkg_outImages.append(np.concatenate(([fileNum],image)))
+		bkg_outInfos.append(np.concatenate(([fileNum],info)))
 
 # some checks before saving
 assert len(s_outImages)==len(s_outInfos)
@@ -89,3 +89,6 @@ f1 = signal+'_'+tag+str(fileNum)
 f2 = 'bkg_'+tag+str(fileNum)
 np.save(f1,s_outImages)
 np.save(f2,bkg_outImages)
+
+np.savez_compressed(f1,images=s_outImages,infos=s_outInfos)
+np.savez_compressed(f2,images=bkg_outImages,infos=bkg_outInfos)
