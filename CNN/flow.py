@@ -75,16 +75,13 @@ def build_VGG19(input_shape):
 class generator(keras.utils.Sequence):
   
 	def __init__(self, batchesE, batchesBkg, indicesE, indicesBkg, 
-				batch_size, dataDir, return_y_batches=True, shuffle=True):
+				batch_size, dataDir, shuffle=True):
 		self.batchesE = batchesE
 		self.batchesBkg = batchesBkg
 		self.indicesE = indicesE
 		self.indicesBkg = indicesBkg
 		self.batch_size = batch_size
 		self.dataDir = dataDir
-		self.y_batches = np.array([])
-		self.used_idx = []
-		self.return_y_batches = return_y_batches
 		self.shuffle = shuffle
 
 	def __len__(self):
@@ -160,14 +157,7 @@ class generator(keras.utils.Sequence):
 		batch_y = batch_y[indices[:self.batch_size]]
 		#batch_y = keras.utils.to_categorical(batch_y, num_classes=2)
 		
-		if(not self.return_y_batches):
-			if(idx not in self.used_idx):
-				self.y_batches = np.append(self.y_batches, batch_y)
-				self.used_idx.append(idx)
-			
-			return batch_x
-		else:
-			return batch_x, batch_y
+		return batch_x, batch_y
 	
 	def on_epoch_end(self):
 		if(self.shuffle):
@@ -177,14 +167,7 @@ class generator(keras.utils.Sequence):
 			self.batchesBkg = batchesBkg[indexes]
 			self.indicesE = indicesE[indexes]
 			self.indicesBkg = indicesBkg[indexes]
-
-	def reset(self):
-		self.y_batches = np.array([])
-		self.used_idx = []
-
-	def get_y_batches(self):
-		return self.y_batches
-
+			
 
 if __name__ == "__main__":
 
