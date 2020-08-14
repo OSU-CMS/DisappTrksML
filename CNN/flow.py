@@ -75,7 +75,7 @@ def build_VGG19(input_shape):
 class generator(keras.utils.Sequence):
   
 	def __init__(self, batchesE, batchesBkg, indicesE, indicesBkg, 
-				batch_size, dataDir, return_y_batches=True):
+				batch_size, dataDir, return_y_batches=True, shuffle=True):
 		self.batchesE = batchesE
 		self.batchesBkg = batchesBkg
 		self.indicesE = indicesE
@@ -85,6 +85,7 @@ class generator(keras.utils.Sequence):
 		self.y_batches = np.array([])
 		self.used_idx = []
 		self.return_y_batches = return_y_batches
+		self.shuffle = shuffle
 
 	def __len__(self):
 		return len(self.batchesE)
@@ -107,14 +108,13 @@ class generator(keras.utils.Sequence):
 				e_images = np.load(self.dataDir+'e_0p25_'+str(file)+'.npy')[indexE[0]:]
 
 			elif(iFile == lastFile and iFile != 0):
-				e_images = np.concatenate((e_images,np.load(self.dataDir+'e_0p25_'+str(file)+'.npy')[:indexE[1]+1]))
+				e_images = np.vstack((e_images,np.load(self.dataDir+'e_0p25_'+str(file)+'.npy')[:indexE[1]+1]))
 
 			elif(iFile == 0 and iFile == lastFile):
 				e_images = np.load(self.dataDir+'e_0p25_'+str(file)+'.npy')[indexE[0]:indexE[1]+1]
 
 			elif(iFile != 0 and iFile != lastFile):
-				e_images = np.concatenate((e_images,np.load(self.dataDir+'e_0p25_'+str(file)+'.npy')))
-	    
+				e_images = np.vstack((e_images,np.load(self.dataDir+'e_0p25_'+str(file)+'.npy')))
 	    
 		lastFile = len(filenamesBkg)-1
 		filenamesBkg.sort()
@@ -123,13 +123,13 @@ class generator(keras.utils.Sequence):
 				bkg_images = np.load(self.dataDir+'bkg_0p25_'+str(file)+'.npy')[indexBkg[0]:,:]
 
 			elif(iFile == lastFile and iFile != 0):
-				bkg_images = np.concatenate((bkg_images,np.load(self.dataDir+'bkg_0p25_'+str(file)+'.npy')[:indexBkg[1]+1]))
+				bkg_images = np.vstack((bkg_images,np.load(self.dataDir+'bkg_0p25_'+str(file)+'.npy')[:indexBkg[1]+1]))
 
 			elif(iFile == 0 and iFile == lastFile):
 				bkg_images = np.load(self.dataDir+'bkg_0p25_'+str(file)+'.npy')[indexBkg[0]:indexBkg[1]+1]
 
 			elif(iFile != 0 and iFile != lastFile):
-				bkg_images = np.concatenate((bkg_images,np.load(self.dataDir+'bkg_0p25_'+str(file)+'.npy')))
+				bkg_images = np.vstack((bkg_images,np.load(self.dataDir+'bkg_0p25_'+str(file)+'.npy')))
 	    
 		numE = e_images.shape[0]
 		numBkg = self.batch_size-numE
@@ -146,12 +146,12 @@ class generator(keras.utils.Sequence):
 			e_images = e_images[indices,1:]
 
 		# concatenate images and suffle them, create labels
-		if(numE != 0): batch_x = np.concatenate((e_images,bkg_images))
+		if(numE != 0): batch_x = np.vstack((e_images,bkg_images))
 		else: batch_x = bkg_images
 		batch_y = np.concatenate((np.ones(numE),np.zeros(numBkg)))
 
 		indices = list(range(batch_x.shape[0]))
-		# random.shuffle(indices)
+		random.shuffle(indices)
 
 		batch_x = batch_x[indices[:self.batch_size],:]
 		batch_x = np.reshape(batch_x,(self.batch_size,40,40,4))
@@ -168,6 +168,15 @@ class generator(keras.utils.Sequence):
 			return batch_x
 		else:
 			return batch_x, batch_y
+	
+	def on_epoch_end(self):
+		if(self.shuffle):
+			indexes = np.arange(len(self.batchesE))
+		 	np.random.shuffle(indexes)
+		 	self.batchesE = batchesE[indexes]
+			self.batchesBkg = batchesBkg[indexes]
+			self.indicesE = indicesE[indexes]
+			self.indicesBkg = indicesBkg[indexes]
 
 	def reset(self):
 		self.y_batches = np.array([])
@@ -408,8 +417,8 @@ if __name__ == "__main__":
     #     print("\t",len(trainBatchesE),"batches of files (approx.",nElectronsPerBatchOversampled*len(trainBatchesE),"electron and",(batch_size-nElectronsPerBatchOversampled)*len(trainBatchesE), "background events)")
 
 	# initialize generators
-	train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, batch_size, dataDir)
-	val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir)
+	train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, batch_size, dataDir, True, True)
+	val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir, True, True)
 
 	# initialize output bias
 	output_bias = np.log(nSavedETrain/nSavedBkgTrain)
@@ -420,8 +429,8 @@ if __name__ == "__main__":
 
 	callbacks = [
 	    keras.callbacks.EarlyStopping(patience=patience_count),
-	    keras.callbacks.ModelCheckpoint(filepath=weightsDir+'weights.{epoch}.h5',
-	                                    save_weights_only=True,
+	    keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5',
+	    								save_best_only=True,
 	                                    monitor=monitor,
 	                                    mode='auto'),
 	    tf.keras.callbacks.TensorBoard(log_dir=logDir, 
@@ -451,6 +460,7 @@ if __name__ == "__main__":
 	                        validation_data=val_generator,
 	                        callbacks=callbacks)
 	       
+	model.save_weights(weightsDir+'lastEpoch.h5')
 	print(utils.bcolors.GREEN+"Saved weights to "+weightsDir+utils.bcolors.ENDC)
 
 	# save and plot history file
@@ -461,4 +471,4 @@ if __name__ == "__main__":
 	utils.plot_history(history, plotDir, ['loss','recall','precision','auc'])
 	print(utils.bcolors.YELLOW+"Plotted history to "+plotDir+utils.bcolors.ENDC) 
 
-	if(run_validate): validate.validate(model, weightsDir+'weights.'+str(epochs)+'.h5', outputDir, dataDir, plotDir)
+	if(run_validate): validate.validate(model, weightsDir+'lastEpoch.h5', outputDir, dataDir, plotDir)
