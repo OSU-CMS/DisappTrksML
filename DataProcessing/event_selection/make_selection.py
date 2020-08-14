@@ -7,7 +7,9 @@ import math
 dataDir = "/store/user/llavezzo/disappearingTracks/converted_DYJetsToLL_M50/"
 tag = "0p25_"
 signal = "e"					#choose: e, m, bkg
-
+count = 5
+energy = 0.5
+requireThreshold = True
 """
 infos:	
 
@@ -19,6 +21,14 @@ infos:
 5: deltaRToClosestTauHaud
 
 """
+
+def thresholdEnergies(matrix, pcount, penergy):
+    aboveThreshold = False
+    nonZero = np.nonzero(matrix > penergy)
+    if len(nonZero[0]) >= pcount: aboveThreshold = True
+    print("count ", len(nonZero[0]), "passes selection ", aboveThreshold)
+    return aboveThreshold 
+
 
 if(signal == "e"):
 	signal_index = [0]
@@ -66,6 +76,8 @@ bkg_infos = np.vstack(bkg_infos)
 s_outImages, s_outInfos = [],[]
 for info, image in zip(s_infos, s_images):
 	if(math.fabs(info[reco_index]) > 0.15):
+		if(requireThreshold):
+			if(thresholdEnergies(image.flatten(), count, energy) == False): continue
 		s_outImages.append(np.concatenate(([fileNum],image)))
 		s_outInfos.append(np.concatenate(([fileNum],info)))
 
@@ -73,6 +85,8 @@ for info, image in zip(s_infos, s_images):
 bkg_outImages, bkg_outInfos = [],[]
 for info, image in zip(bkg_infos, bkg_images):
 	if(math.fabs(info[reco_index]) > 0.15):
+		if(requireThreshold):
+			if(thresholdEnergies(image.flatten(), count, energy) == False): continue
 		bkg_outImages.append(np.concatenate(([fileNum],image)))
 		bkg_outInfos.append(np.concatenate(([fileNum],info)))
 
@@ -92,3 +106,4 @@ np.save(f2,bkg_outImages)
 
 np.savez_compressed(f1,images=s_outImages,infos=s_outInfos)
 np.savez_compressed(f2,images=bkg_outImages,infos=bkg_outInfos)
+
