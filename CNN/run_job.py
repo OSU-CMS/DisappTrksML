@@ -26,7 +26,7 @@ if __name__=="__main__":
 
         [[128,256,512],True,True,-1,10]       #batch norm
     ]
-    np.save('params',params)
+    np.save('params.npy',params)
     njobs = len(params)
 
     os.system('mkdir /data/users/llavezzo/Logs/'+str(folder))

@@ -47,9 +47,9 @@ def validate(model, weights, batchDir, dataDir, plotDir):
 if __name__ == "__main__":
 
 	dataDir = "/data/disappearingTracks/electron_selection/"
-	batchDir = "undersample0p5_3/outputFiles/"
-	weights = "undersample0p5_3/weights/weights.01.h5"
-	plotDir = "undersample0p5_3/"
+	batchDir = "undersample0p5/outputFiles/"
+	weights = "undersample0p5/weights/weights.37.h5"
+	plotDir = "undersample0p5/"
 
 	model = cnn.build_model(input_shape = (40,40,3), 
 						layers = 3, filters = 64, opt='adam')
