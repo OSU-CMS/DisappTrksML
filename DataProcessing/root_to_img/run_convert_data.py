@@ -10,9 +10,9 @@ import numpy as np
 
 if __name__=="__main__":
 
-    workDir = "/home/llavezzo/CMSSW_10_2_20/src/work/"
+    workDir = "/home/mcarrigan/scratch0/disTracksML/DisappTrksML/DataProcessing/root_to_img/"
 
-    dataDir = '/store/user/bfrancis/images_DYJetsToLL_M50/'
+    dataDir = '/store/user/mcarrigan/disappearingTracks/images_DYJetsToLL_M50/'
     files = []
     for filename in os.listdir(dataDir):
         if('.root' in filename and 'hist' in filename):
@@ -34,14 +34,14 @@ if __name__=="__main__":
     request_disk = 500MB
     request_memory = 2048MB
     request_cpus = 1
-    executable              = run_wrapper.sh
+    executable              = convert_wrapper.sh
     arguments               = $(PROCESS)
-    log                     = /data/users/llavezzo/Logs/convert_data/log_$(PROCESS).log
-    output                  = /data/users/llavezzo/Logs/convert_data/out_$(PROCESS).txt
-    error                   = /data/users/llavezzo/Logs/convert_data/error_$(PROCESS).txt
+    log                     = /data/users/mcarrigan/Logs/convert_data/log_$(PROCESS).log
+    output                  = /data/users/mcarrigan/Logs/convert_data/out_$(PROCESS).txt
+    error                   = /data/users/mcarrigan/Logs/convert_data/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = {0}fileslist.npy, {0}run_wrapper.sh, {0}convert_data.py, {0}Infos.h
+    transfer_input_files = {0}fileslist.npy, {0}convert_wrapper.sh, {0}convert_data.py, {0}Infos.h
     getenv = true
     queue {1}
 

@@ -28,7 +28,7 @@ fOut = '0p25_'+str(fileNum)
 
 ##### config params #####
 scaling = False
-tanh_scaling = False
+tanh_scaling = True
 res_eta = 40
 res_phi = 40
 eta_ub,eta_lb = 0.25,-0.25
@@ -36,7 +36,7 @@ phi_ub,phi_lb = 0.25,-0.25
 #########################
 
 # import data
-dataDir = '/store/user/bfrancis/images_DYJetsToLL_M50/'
+dataDir = '/store/user/mcarrigan/disappearingTracks/images_DYJetsToLL_M50/'
 fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
 print("Opened file",fname)
