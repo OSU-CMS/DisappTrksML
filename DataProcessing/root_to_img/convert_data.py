@@ -144,7 +144,9 @@ for iEvent,event in enumerate(tree):
 	        nPV,
             track.deltaRToClosestElectron,
             track.deltaRToClosestMuon,
-            track.deltaRToClosestTauHad])
+            track.deltaRToClosestTauHad,
+            track_eta,
+            track_phi])
 
         images[genMatch].append(matrix)
         infos[genMatch].append(info)
