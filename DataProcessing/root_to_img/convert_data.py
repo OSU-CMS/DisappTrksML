@@ -139,6 +139,7 @@ for iEvent,event in enumerate(tree):
         
         genMatch = check_track(track)
         info = np.array([
+            fileNum,
             ID,
             genMatch,
 	        nPV,
