@@ -4,7 +4,7 @@ import sys
 import json
 import math
 
-dataDir = "/store/user/llavezzo/disappearingTracks/converted_DYJetsToLL_M50/"
+dataDir = "/store/user/mcarrigan/disappearingTracks/images_converted_DYJetsToLL_M50/"
 tag = "0p25_"
 signal = "e"					#choose: e, m, bkg
 count = 5
@@ -19,7 +19,8 @@ infos:
 3: deltaRToClosestElectron
 4: deltaRToClosestMuon
 5: deltaRToClosestTauHaud
-
+6: eta
+7: phi
 """
 
 def thresholdEnergies(matrix, pcount, penergy):
