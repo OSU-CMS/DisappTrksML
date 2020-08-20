@@ -50,12 +50,14 @@ def plotFile(files, index, pred, nameStart, dataDir, imageDir, saveDir):
     start_file = -1
     file_events = []
     evt_counter = 0
+    files = np.append(files, -1)
     for event in range(len(files)):
         #print(event, start_file)
         images = []
         if event == 0: start_file = int(files[event])
         if start_file == files[event]: file_events.append(index[event])
         #print(file_events)
+        ####### change this so that last event gets plotted ########
         if start_file != files[event] or event == len(files)-1:
             filename = nameStart + str(start_file) + tag + ".npz"
             data, info = utils.load_electron_data(imageDir, filename)
@@ -72,7 +74,7 @@ def plotFile(files, index, pred, nameStart, dataDir, imageDir, saveDir):
                 
                     if j != 0 and j%5 == 0: row += 1
                     col = int(j%5)
-                    print("event num ", file_events[j], " index ", j, " data size ", data.shape)
+                    print("file ", start_file, " event num ", file_events[j], " index ", j, " data size ", data.shape)
                     e_img[row, col].imshow(data[int(file_events[j]), :, :, 0])
                     e_img[row, col].set_title("prob: " + str(pred[evt_counter]))
                     print("Event counter ", evt_counter,  " pred ", pred[evt_counter]) 
@@ -80,6 +82,10 @@ def plotFile(files, index, pred, nameStart, dataDir, imageDir, saveDir):
                 this_type = nameStart.split("_")
                 this_type = this_type[0]
                 plt.savefig(saveDir + "failedImages_" + this_type + str(start_file) + ".png")
+                print("event number", event, "out of ", len(files))
+                if event == len(files)-1:
+                    print("continue hit", event) 
+                    continue
                 start_file = int(files[event])
                 file_events = [index[event]]
 
@@ -99,6 +105,9 @@ def plotFile(files, index, pred, nameStart, dataDir, imageDir, saveDir):
                     e_img[row, col].imshow(data[int(file_events[j]), :, :, 0])
                     e_img[row, col].set_title("pred: " + str(pred[j]))
                 plt.savefig(saveDir + "failedImages_" + this_type + str(start_file) +"_"+str(counter)+ ".png")
+                if event == len(files)-1:
+                    print("continue hit", event)
+                    continue
                 start_file = int(files[event])
                 file_events = [index[event]]
             
