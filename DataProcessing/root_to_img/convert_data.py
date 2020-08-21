@@ -28,7 +28,7 @@ fOut = '0p25_'+str(fileNum)
 
 ##### config params #####
 scaling = False
-tanh_scaling = True
+tanh_scaling = False
 res_eta = 40
 res_phi = 40
 eta_ub,eta_lb = 0.25,-0.25

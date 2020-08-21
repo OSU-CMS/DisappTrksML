@@ -4,23 +4,25 @@ import sys
 import json
 import math
 
-dataDir = "/store/user/mcarrigan/disappearingTracks/images_converted_DYJetsToLL_M50/"
+dataDir = "/store/user/mcarrigan/disappearingTracks/converted_DYJetsToLL_M50_V3/"
 tag = "0p25_"
 signal = "e"					#choose: e, m, bkg
 count = 5
 energy = 0.5
-requireThreshold = True
+requireThreshold = False
 """
 infos:	
-
-0: ID
-1: matched track gen truth flavor (1: electrons, 2: muons, 0: everything else)
-2: nPV
-3: deltaRToClosestElectron
-4: deltaRToClosestMuon
-5: deltaRToClosestTauHaud
-6: eta
-7: phi
+0: File
+1: ID
+2: matched track gen truth flavor (1: electrons, 2: muons, 0: everything else)
+3: nPV
+4: deltaRToClosestElectron
+5: deltaRToClosestMuon
+6: deltaRToClosestTauHaud
+7: eta
+8: phi
+9: genID
+10: genDR
 """
 
 def thresholdEnergies(matrix, pcount, penergy):
@@ -80,17 +82,15 @@ for info, image in zip(s_infos, s_images):
 		if(requireThreshold):
 			if(thresholdEnergies(image.flatten(), count, energy) == False): continue
 		s_outImages.append(np.concatenate(([fileNum],image)))
-		s_outInfos.append(np.concatenate(([fileNum],info)))
-
+		s_outInfos.append(info)
 # select signal reco fail, convert to tanh
 bkg_outImages, bkg_outInfos = [],[]
 for info, image in zip(bkg_infos, bkg_images):
 	if(math.fabs(info[reco_index]) > 0.15):
-		if(requireThreshold):
+                if(requireThreshold):
 			if(thresholdEnergies(image.flatten(), count, energy) == False): continue
 		bkg_outImages.append(np.concatenate(([fileNum],image)))
-		bkg_outInfos.append(np.concatenate(([fileNum],info)))
-
+		bkg_outInfos.append(info)
 # some checks before saving
 assert len(s_outImages)==len(s_outInfos)
 assert len(bkg_outImages)==len(bkg_outInfos)
@@ -108,3 +108,7 @@ np.save(f2,bkg_outImages)
 np.savez_compressed(f1,images=s_outImages,infos=s_outInfos)
 np.savez_compressed(f2,images=bkg_outImages,infos=bkg_outInfos)
 
+fout = open("ThresholdCounts.txt", w)
+fout.write("Signal Passing: " + len(s_outImages) + " out of " + len(s_images))
+fout.write("Background Passing: " + len(bkg_outImages) + " out of " + len(bkg_images))
+fout.close()

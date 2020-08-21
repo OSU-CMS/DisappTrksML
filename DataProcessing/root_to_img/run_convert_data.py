@@ -36,9 +36,9 @@ if __name__=="__main__":
     request_cpus = 1
     executable              = convert_wrapper.sh
     arguments               = $(PROCESS)
-    log                     = /data/users/mcarrigan/Logs/convert_data/log_$(PROCESS).log
-    output                  = /data/users/mcarrigan/Logs/convert_data/out_$(PROCESS).txt
-    error                   = /data/users/mcarrigan/Logs/convert_data/error_$(PROCESS).txt
+    log                     = /data/users/mcarrigan/Logs/root2img/log_$(PROCESS).log
+    output                  = /data/users/mcarrigan/Logs/root2img/out_$(PROCESS).txt
+    error                   = /data/users/mcarrigan/Logs/root2img/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
     transfer_input_files = {0}fileslist.npy, {0}convert_wrapper.sh, {0}convert_data.py, {0}Infos.h
