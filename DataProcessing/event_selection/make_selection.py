@@ -4,12 +4,22 @@ import sys
 import json
 import math
 
+
 dataDir = "/store/user/mcarrigan/disappearingTracks/converted_DYJetsToLL_M50_V3/"
 tag = "0p25_"
 signal = "e"					#choose: e, m, bkg
+
+# require <count> images above <energy> when requireThreshold is true
+requireThreshold = False
 count = 5
 energy = 0.5
-requireThreshold = False
+
+# require events to fail all reconstructions
+failAllRecos = True
+
+# scaling
+scale = False
+
 """
 infos:	
 0: File
@@ -32,15 +42,16 @@ def thresholdEnergies(matrix, pcount, penergy):
     print("count ", len(nonZero[0]), "passes selection ", aboveThreshold)
     return aboveThreshold 
 
-
 if(signal == "e"):
 	signal_index = [0]
 	bkg_index = [1,2]
-	reco_index = 3
+	reco_index = [4]
+	if(failAllRecos): reco_index = [4,5,6]
 if(signal == "m"):
 	signal_index = [1]
 	bkg_index = [0,2]
-	reco_index = 4
+	reco_index = [5]
+	if(failAllRecos): reco_index = [4,5,6]
 
 # script arguments
 process = int(sys.argv[1])
@@ -75,22 +86,26 @@ s_infos = np.vstack(s_infos)
 bkg_images = np.vstack(bkg_images)
 bkg_infos = np.vstack(bkg_infos)	
 
-# select signal reco fail, convert to tanh
+# apply selections to signal
 s_outImages, s_outInfos = [],[]
 for info, image in zip(s_infos, s_images):
-	if(math.fabs(info[reco_index]) > 0.15):
-		if(requireThreshold):
-			if(thresholdEnergies(image.flatten(), count, energy) == False): continue
-		s_outImages.append(np.concatenate(([fileNum],image)))
-		s_outInfos.append(info)
-# select signal reco fail, convert to tanh
+	if(not all(math.fabs(info[i]) > 0.15 for i in reco_index)): continue
+	if(requireThreshold): 
+		if(thresholdEnergies(image.flatten(), count, energy) == False): continue
+	if(scale): image = np.tanh(scale)
+	s_outImages.append(np.concatenate(([fileNum],image)))
+	s_outInfos.append(info)
+
+# apply selections to background
 bkg_outImages, bkg_outInfos = [],[]
 for info, image in zip(bkg_infos, bkg_images):
-	if(math.fabs(info[reco_index]) > 0.15):
-                if(requireThreshold):
-			if(thresholdEnergies(image.flatten(), count, energy) == False): continue
-		bkg_outImages.append(np.concatenate(([fileNum],image)))
-		bkg_outInfos.append(info)
+	if(not all(math.fabs(info[i]) > 0.15 for i in reco_index)): continue
+	if(requireThreshold): 
+		if(thresholdEnergies(image.flatten(), count, energy) == False): continue
+	if(scale): image = np.tanh(scale)
+	bkg_outImages.append(np.concatenate(([fileNum],image)))
+	bkg_outInfos.append(info)
+
 # some checks before saving
 assert len(s_outImages)==len(s_outInfos)
 assert len(bkg_outImages)==len(bkg_outInfos)
@@ -108,7 +123,7 @@ np.save(f2,bkg_outImages)
 np.savez_compressed(f1,images=s_outImages,infos=s_outInfos)
 np.savez_compressed(f2,images=bkg_outImages,infos=bkg_outInfos)
 
-fout = open("ThresholdCounts.txt", w)
-fout.write("Signal Passing: " + len(s_outImages) + " out of " + len(s_images))
-fout.write("Background Passing: " + len(bkg_outImages) + " out of " + len(bkg_images))
-fout.close()
+# fout = open("ThresholdCounts.txt", w)
+# fout.write("Signal Passing: " + len(s_outImages) + " out of " + len(s_images))
+# fout.write("Background Passing: " + len(bkg_outImages) + " out of " + len(bkg_images))
+# fout.close()
