@@ -89,7 +89,9 @@ bkg_infos = np.vstack(bkg_infos)
 # apply selections to signal
 s_outImages, s_outInfos = [],[]
 for info, image in zip(s_infos, s_images):
-	if(not all(math.fabs(info[i]) > 0.15 for i in reco_index)): continue
+	passReco = False
+	for i in reco_index: if(math.fabs(info[i]) < 0.15): passReco = True
+	if(passReco): continue
 	if(requireThreshold): 
 		if(thresholdEnergies(image.flatten(), count, energy) == False): continue
 	if(scale): image = np.tanh(scale)
@@ -99,7 +101,9 @@ for info, image in zip(s_infos, s_images):
 # apply selections to background
 bkg_outImages, bkg_outInfos = [],[]
 for info, image in zip(bkg_infos, bkg_images):
-	if(not all(math.fabs(info[i]) > 0.15 for i in reco_index)): continue
+	passReco = False
+	for i in reco_index: if(math.fabs(info[i]) < 0.15): passReco = True
+	if(passReco): continue
 	if(requireThreshold): 
 		if(thresholdEnergies(image.flatten(), count, energy) == False): continue
 	if(scale): image = np.tanh(scale)

@@ -12,7 +12,6 @@ if __name__=="__main__":
     workDir = ""
 
     dataDir = "/store/user/mcarrigan/disappearingTracks/converted_DYJetsToLL_M50_V3/"
-    saveDir = '/store/user/mcarrigan/disappearingTracks/eletron_selection_V3/'
 
     files = []
     for filename in os.listdir(dataDir):
