@@ -12,6 +12,7 @@ if __name__=="__main__":
     workDir = ""
 
     dataDir = "/store/user/mcarrigan/disappearingTracks/converted_DYJetsToLL_M50_V3/"
+    saveDir = '/store/user/mcarrigan/disappearingTracks/eletron_selection_V3/'
 
     files = []
     for filename in os.listdir(dataDir):
@@ -39,7 +40,7 @@ if __name__=="__main__":
     error                   = /data/users/mcarrigan/Logs/event_selection/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = {0}fileslist.npy, {0}selection_wrapper.sh, {0}make_selectionME.py
+    transfer_input_files = {0}fileslist.npy, {0}selection_wrapper.sh, {0}make_selection.py
     getenv = true
     queue {1}
 
