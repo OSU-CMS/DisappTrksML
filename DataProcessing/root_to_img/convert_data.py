@@ -19,8 +19,11 @@ process = int(sys.argv[1])
 print("Process",process)
 
 # name of the file to import
-files = np.load('fileslist.npy')
-fileNum = files[process]
+try:
+    files = np.load('fileslist.npy')
+    fileNum = files[process]
+except:
+    fileNum = process
 fname = "hist_"+str(fileNum)+".root"
 
 # output file tag
@@ -155,7 +158,7 @@ for iEvent,event in enumerate(tree):
         infos[genMatch].append(info)
 
         ID+=1
-            
+
 # check for errors before saving
 nEvents = 0
 for i in range(3):
