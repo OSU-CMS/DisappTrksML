@@ -182,6 +182,10 @@ TrackImageProducerMINIAOD::getTrackInfo(const CandidateTrack &track,
   info.px = track.px();
   info.py = track.py();
   info.pz = track.pz();
+  math::XYZVector momentum(info.px, info.py, info.pz);
+  info.eta = momentum.Eta();
+  info.pt = sqrt(momentum.Perp2());
+  info.phi = momentum.Phi();
 
   info.dRMinJet = -1;
   for(const auto &jet : jets) {
