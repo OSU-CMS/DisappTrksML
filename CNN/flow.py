@@ -257,6 +257,7 @@ if __name__ == "__main__":
 		class_weights = bool(params[1])
 		undersample_bkg = float(params[2])
 		epochs = int(params[3])
+		dataDir = str(params[4])
 
 	# create output directories
 	os.system('mkdir '+str(workDir))

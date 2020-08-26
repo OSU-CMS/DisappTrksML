@@ -10,21 +10,10 @@ import numpy as np
 
 if __name__=="__main__":
 
-    folder = "hp_explore"
+    folder = "cnn_debug"
+    dataDir = "/store/user/llavezzo/disappearingTracks/electron_selection_failSelection/"
     params = [
-
-        #undersampling
-        [[128,256],False,False,0.5,40],        #varying layers/filters
-        [[256,512],False,False,0.5,40],
-        [[128,256,512],False,False,0.5,30],
-
-        [[128,256,512],False,True,0.5,30],     #batch norm
-
-        #no undersampling, weights
-        [[128,256],True,False,-1,20],          #varying layers/filters
-        [[128,256,512],True,False,-1,10],
-
-        [[128,256,512],True,True,-1,10]       #batch norm
+        [[256,512,1024],False,0.8,2,dataDir],
     ]
     np.save('params.npy',params)
     njobs = len(params)
@@ -39,7 +28,7 @@ if __name__=="__main__":
     Rank = TARGET.IsLocalSlot
     request_disk = 250MB
     request_memory = 2GB
-    request_cpus = 4
+    request_cpus = 3
     executable              = run_wrapper.sh
     arguments               = {0} $(PROCESS)
     log                     = /data/users/llavezzo/Logs/{0}/log_$(PROCESS).log
