@@ -9,7 +9,8 @@ struct TrackInfo {
       double dRMinBadEcalChannel;
 
       double trackIso;
-      double px, py, pz;
+      double px, py, pz, pt;
+      double eta, phi;
       int nValidPixelHits, nValidHits;
       int missingInnerHits, missingMiddleHits, missingOuterHits, nLayersWithMeasurement;
       double d0, dz;
