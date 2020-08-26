@@ -3,7 +3,7 @@ import numpy as np
 import sys
 import pickle as pkl
 
-dataDir = "/store/user/llavezzo/disappearingTracks/electron_selection_failAllRecos_compressed/"
+dataDir = "/store/user/llavezzo/disappearingTracks/electron_selection_failSelection_compressed/"
 signal = 'e'
 tag = '0p25_'
 

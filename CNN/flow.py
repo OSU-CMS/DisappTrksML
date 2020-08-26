@@ -369,10 +369,6 @@ if __name__ == "__main__":
 	print("Training on:\t"+str(nSavedETrain)+"\t\t"+str(nSavedBkgTrain)+"\t\t"+str(round(nSavedETrain*1.0/(nSavedETrain+nSavedBkgTrain),5)))
 	print("Validating on:\t"+str(nSavedEVal)+"\t\t"+str(nSavedBkgVal)+"\t\t"+str(round(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal),5)))
 	print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,5)))
-<<<<<<< HEAD
-
-=======
->>>>>>> 0fdfc2e1b35a4f8275c2ec031838473989250f89
 	
 	# save the train and validation batches
 	np.save(outputDir+"e_files_trainBatches", train_e_file_batches)
@@ -402,13 +398,9 @@ if __name__ == "__main__":
     #     print("\t",len(trainBatchesE),"batches of files (approx.",nElectronsPerBatchOversampled*len(trainBatchesE),"electron and",(batch_size-nElectronsPerBatchOversampled)*len(trainBatchesE), "background events)")
 
 	# initialize generators
-<<<<<<< HEAD
-	train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, batch_size, dataDir)
-	val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir)
-=======
+
 	train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, batch_size, dataDir, True)
 	val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir, True)
->>>>>>> 0fdfc2e1b35a4f8275c2ec031838473989250f89
 
 	# initialize output bias
 	output_bias = np.log(nSavedETrain/nSavedBkgTrain)
