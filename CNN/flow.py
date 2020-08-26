@@ -203,7 +203,7 @@ if __name__ == "__main__":
 
 	if(len(paramsFile)>0):
 		try:
-			params = np.load(str(paramsFile))[paramsIndex]
+			params = np.load(str(paramsFile), allow_pickle=True)[paramsIndex]
 		except:
 			print(utils.bcolors.RED+"ERROR: Index outside range or no parameter list passed"+utils.bcolors.ENDC)
 			print(utils.bcolors.RED+"USAGE: flow.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+utils.bcolors.ENDC)
