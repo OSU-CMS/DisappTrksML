@@ -18,7 +18,7 @@ import getopt
 import utils
 import validate
 
-def build_model(input_shape=(40,40,3), batch_norm = False, filters=[128,256], 
+def build_model(input_shape=(40,40,3), batch_norm = False, filters=[256,512], 
 				output_bias=0, metrics=['accuracy']):
     
 	model = keras.Sequential()
@@ -135,12 +135,12 @@ class generator(keras.utils.Sequence):
 		# shuffle and select appropriate amount of electrons, bkg
 		indices = list(range(bkg_images.shape[0]))
 		random.shuffle(indices)
-		bkg_images = bkg_images[indices,1:]
+		bkg_images = bkg_images[indices,2:]
 
 		if(numE != 0):
 			indices = list(range(e_images.shape[0]))
 			random.shuffle(indices)
-			e_images = e_images[indices,1:]
+			e_images = e_images[indices,2:]
 
 		# concatenate images and suffle them, create labels
 		if(numE != 0): batch_x = np.vstack((e_images,bkg_images))
@@ -162,8 +162,8 @@ class generator(keras.utils.Sequence):
 	def on_epoch_end(self):
 		if(self.shuffle):
 			indexes = np.arange(len(self.batchesE))
-		 	np.random.shuffle(indexes)
-		 	self.batchesE = batchesE[indexes]
+			np.random.shuffle(indexes)
+			self.batchesE = batchesE[indexes]
 			self.batchesBkg = batchesBkg[indexes]
 			self.indicesE = indicesE[indexes]
 			self.indicesBkg = indicesBkg[indexes]
@@ -189,7 +189,7 @@ if __name__ == "__main__":
 		print(utils.bcolors.RED+"USAGE: flow.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+utils.bcolors.ENDC)
 		sys.exit(2)
 
-	workDir = 'cnn_results'
+	workDir = 'cnn_test_8_26'
 	paramsFile = ""
 	params = []
 	paramsIndex = 0
@@ -233,18 +233,19 @@ if __name__ == "__main__":
 	monitor: which variable to monitor with patience_count
 	"""
 
-	dataDir = "/store/user/llavezzo/disappearingTracks/electron_selection/"
-	logDir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+	dataDir = "/store/user/mcarrigan/disappearingTracks/electron_selection_tanh_5gt0p5/"
+	#logDir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 	run_validate = True
-	nTotE = 17000
+	nTotE = 10000
 	val_size = 0.2
 	undersample_bkg = 0.5
 	oversample_e = -1   
-
+	filters=[256,512]
+	batch_norm = True
 	v = 2
-	batch_size = 512
-	epochs = 40
+	batch_size = 64
+	epochs = 5
 	patience_count = 20
 	monitor = 'val_loss'
 	class_weights = False  
@@ -370,7 +371,6 @@ if __name__ == "__main__":
 	print("Validating on:\t"+str(nSavedEVal)+"\t\t"+str(nSavedBkgVal)+"\t\t"+str(round(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal),5)))
 	print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,5)))
 
-	sys.exit(0)
 	
 	# save the train and validation batches
 	np.save(outputDir+"e_files_trainBatches", train_e_file_batches)
@@ -400,8 +400,8 @@ if __name__ == "__main__":
     #     print("\t",len(trainBatchesE),"batches of files (approx.",nElectronsPerBatchOversampled*len(trainBatchesE),"electron and",(batch_size-nElectronsPerBatchOversampled)*len(trainBatchesE), "background events)")
 
 	# initialize generators
-	train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, batch_size, dataDir, True, True)
-	val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir, True, True)
+	train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, batch_size, dataDir)
+	val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir)
 
 	# initialize output bias
 	output_bias = np.log(nSavedETrain/nSavedBkgTrain)
@@ -415,11 +415,11 @@ if __name__ == "__main__":
 	    keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5',
 	    								save_best_only=True,
 	                                    monitor=monitor,
-	                                    mode='auto'),
-	    tf.keras.callbacks.TensorBoard(log_dir=logDir, 
-	                                    histogram_freq=0,
-	                                    write_graph=False,
-	                                    write_images=False)
+	                                    mode='auto')
+	    #tf.keras.callbacks.TensorBoard(log_dir=logDir, 
+	    #                                histogram_freq=0,
+	    #                                write_graph=False,
+	    #                                write_images=False)
 	]
 
 	if(class_weights):
@@ -454,4 +454,4 @@ if __name__ == "__main__":
 	utils.plot_history(history, plotDir, ['loss','recall','precision','auc'])
 	print(utils.bcolors.YELLOW+"Plotted history to "+plotDir+utils.bcolors.ENDC) 
 
-	if(run_validate): validate.validate(model, weightsDir+'lastEpoch.h5', outputDir, dataDir, plotDir)
+	if(run_validate): validate.validate(model, weightsDir+'lastEpoch.h5', outputDir, dataDir, plotDir, batch_size)

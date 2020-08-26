@@ -91,12 +91,17 @@ class generator(keras.utils.Sequence):
         
         eOut = np.reshape(eOut, (-1,3))
         bkgOut = np.reshape(bkgOut, (-1,3))
-
+        print("eOut shape", eOut.shape)
+        print("bout shape", bkgOut.shape)
         # concatenate images and suffle them, create labels
-        if(numE != 0): batch_x = np.vstack((e_images,bkg_images))
-        else: batch_x = bkg_images
-        batch_y = np.concatenate((np.ones(numE),np.zeros(numBkg)))
-        allOut = np.concatenate((eOut, bkgOut))
+        if(numE != 0): 
+            batch_x = np.vstack((e_images,bkg_images))
+            batch_y = np.concatenate((np.ones(len(e_images)),np.zeros(len(bkg_images))))
+            allOut = np.concatenate((eOut, bkgOut))
+        else: 
+            batch_x = bkg_images
+            batch_y = np.zeros(numBkg)
+            allOut = bkgOut
         indices = list(range(batch_x.shape[0]))
         random.shuffle(indices)
 
@@ -104,11 +109,11 @@ class generator(keras.utils.Sequence):
         batch_x = batch_x[:self.batch_size]
         print(batch_x.shape)
         print(allOut.shape)
-        allOut = allOut[:self.batch_size]
+        allOut = allOut[indices[:self.batch_size], :]
         print(allOut.shape)
         batch_x = np.reshape(batch_x,(self.batch_size,40,40,4))
         batch_x = batch_x[:,:,:,[0,2,3]]
-        allOut = allOut[indices]
+        #allOut = allOut[indices]
 
         #if(os.path.exists(self.outputDir+'indexValidate.npy')):
         #    all_indices = np.load(self.outputDir+'indexValidate.npy')
@@ -155,7 +160,7 @@ class generator(keras.utils.Sequence):
         return self.indices_used
 
 
-def validate(model, weights, batchDir, dataDir, plotDir):
+def validate(model, weights, batchDir, dataDir, plotDir, batch_size):
     print("------------------STARTING VALIDATION--------------------")
     model.load_weights(weights)
 
@@ -165,7 +170,6 @@ def validate(model, weights, batchDir, dataDir, plotDir):
     val_bkg_file_batches = np.load(batchDir+'bkg_files_valBatches.npy', allow_pickle=True)
     val_bkg_event_batches = np.load(batchDir+'bkg_events_valBatches.npy', allow_pickle=True)
 
-    batch_size = 32
     print("Define Generator")
     val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir, batchDir)
     print("reset generator")
@@ -185,21 +189,14 @@ def validate(model, weights, batchDir, dataDir, plotDir):
 
     utils.metrics(true, predictions, plotDir, threshold=0.5)
 
-    #indices = np.load(batchDir+'indexValidate.npy')
-    print("indices shape", indices.shape)
-    #indices = indices[batch_size:]
     eOut = np.array([])
     bkgOut = np.array([])
-    #print(indices.shape, indices.shape[0])
     first_e = 0
     first_b = 0
     count_wrong = 0
     for ievt, event in enumerate(indices):
         if indices[ievt, 2] != true[ievt]: 
-            #print("file truth does not match ", indices[ievt, 2], true[ievt])
             count_wrong += 1
-            print("Wrong Event", count_wrong)
-        print("file output", indices[ievt, 2], "truth", true[ievt])
         if indices[ievt, 2] == 0:
             if first_b == 0:
                 bkgOut = np.array((indices[ievt, 0], indices[ievt, 1], indices[ievt, 2], predictions[ievt]))
