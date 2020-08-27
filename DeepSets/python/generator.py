@@ -27,7 +27,7 @@ class DataGenerator(keras.utils.Sequence):
 			np.random.shuffle(self.indexes)
 
 	def __data_generation(self, file_indices):
-		X = np.empty((self.batch_size, *self.dim, self.n_channels))
+		X = np.empty((self.batch_size, self.dim, self.n_channels))
 		y = np.empty((self.batch_size), dtype=int)
 
 		# generate data
