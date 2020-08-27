@@ -11,35 +11,41 @@ if len(sys.argv) > 2: filenameB = str(sys.argv[2])
 else:print("need to specify background input file")
 
 imageDir = "/store/user/mcarrigan/disappearingTracks/electron_selection_tanh_5gt0p5/"
-dataDir = "/home/mcarrigan/scratch0/disTracksML/DisappTrksML/CNN/cnn_valTest/outputFiles/"
+dataDir = "/home/mcarrigan/scratch0/disTracksML/DisappTrksML/CNN/cnn_test_8_26_quick/outputFiles/"
 nameStartE = "e_0p25_"
 nameStartB = "bkg_0p25_"
 tag = ""
-saveDir = '/home/mcarrigan/scratch0/disTracksML/plots/falseEvents/valTest_5gt0p5/'
+saveDir = '/home/mcarrigan/scratch0/disTracksML/plots/falseEvents/8_26_small/'
 
 filenameE = dataDir + filenameE
 filenameB = dataDir + filenameB
 
 events_e = np.load(filenameE, allow_pickle=True)
 events_e = np.reshape(events_e, (-1,4))
+false_indices = np.where(events_e[:,3] < 0.5)
+events_e = events_e[false_indices]
 file_e = events_e[:, 0]
 index_e = events_e[:, 1]
 truth_e = events_e[:, 2]
 pred_e = events_e[:, 3]
+pred_e = np.concatenate(pred_e).flatten()
 
 events_b = np.load(filenameB, allow_pickle=True)
 events_b = np.reshape(events_b, (-1, 4))
+false_indices = np.where(events_b[:,3] >= 0.5)
+events_b = events_b[false_indices]
 file_b = events_b[:, 0]
 index_b = events_b[:, 1]
 truth_b = events_b[:, 2]
 pred_b = events_b[:, 3]
+pred_b = np.concatenate(pred_b).flatten()
 
 fig1, hPred = plt.subplots(1,2, figsize = (20,5))
-
-hPred[0].hist(pred_e, bins = 20)
+print("Making Histograms")
+hPred[0].hist(pred_e, bins = 25)
 hPred[0].set_title("Prediction Score of Electron Events Incorrectly Reconstructed")
 hPred[0].set(xlabel = "Prediction Score")
-hPred[1].hist(pred_b, bins = 50)
+hPred[1].hist(pred_b, bins = 25)
 hPred[1].set_title("Prediction Score of Background Events Incorrectly Reconstructed")
 hPred[1].set(xlabel = "Prediction Score")
 plt.savefig(saveDir + "PredScores.png")
@@ -121,7 +127,7 @@ def plotFile(files, index, pred, nameStart, dataDir, imageDir, saveDir):
     h_etaPhi[1].set(xlabel='Phi')
     plt.savefig(saveDir + nameStart+ "failedImages_EtaPhi.png")
     plt.close()
-
+print("Saving False Events")
 plotFile(file_e, index_e, pred_e, nameStartE, dataDir, imageDir, saveDir)
 plotFile(file_b, index_b, pred_b, nameStartB, dataDir, imageDir, saveDir)
 
