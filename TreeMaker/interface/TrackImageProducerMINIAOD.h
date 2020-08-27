@@ -1,5 +1,6 @@
-#ifndef TRACK_IMAGE_PRODUCER_MINIAOD
+#ifdef DISAPP_TRKS
 
+#ifndef TRACK_IMAGE_PRODUCER_MINIAOD
 #define TRACK_IMAGE_PRODUCER_MINIAOD
 
 #define M_PI_2 1.57079632679489661923
@@ -176,3 +177,5 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
 };
 
 #endif
+
+#endif // ifdef DISAPP_TRKS
