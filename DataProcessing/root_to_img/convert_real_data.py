@@ -39,11 +39,11 @@ phi_ub,phi_lb = 0.25,-0.25
 #########################
 
 # import data
-dataDir = '/data/disappearingTracks/'
+dataDir = '/store/user/bfrancis/images_SingleEle2017F/'
 fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
 print("Opened file",fname)
-nEvents = tree.GetEntries()
+nEvents = int(tree.GetEntries())
 if(nEvents == 0):
     sys.exit("0 events found in file")
 print("Added",nEvents)
@@ -70,7 +70,7 @@ def type_to_channel(hittype):
 
 # Match electrons, muons
 def check_track(track):
-    if(track.isTagProbeElectron == 1: return 1
+    if(track.isTagProbeElectron == 1): return 1
     else: return 0
 
 def passesIsolatedTrackSelection(track):
@@ -109,7 +109,8 @@ for iEvent,event in enumerate(tree):
     for iTrack,track in enumerate(event.tracks):
 
         if(not passesIsolatedTrackSelection(track)): continue
-            
+        
+        print("Event Passed Iso Cuts")           
         matrix = np.zeros([res_eta,res_phi,4])
 
         momentum = XYZVector(track.px,track.py,track.pz)
@@ -152,7 +153,7 @@ for iEvent,event in enumerate(tree):
         
         isProbe = check_track(track)
         info = np.array([
-            fileNum
+            fileNum,
             ID,
             isProbe,
             nPV,
@@ -172,7 +173,7 @@ for iEvent,event in enumerate(tree):
 
 # check for errors before saving
 nEvents = 0
-for i in range(3):
+for i in range(2):
     if(len(images[i])!=len(infos[i])): sys.exit("Images and infos don't match!")
     nEvents += len(images[i])
 if(nEvents == 0): sys.exit("The output file is empty")
