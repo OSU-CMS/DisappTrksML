@@ -96,8 +96,8 @@ def passesIsolatedTrackSelection(track):
     return True
 
 # images and infos split by gen matched type
-images = [[],[],[]]
-infos = [[],[],[]]
+images = [[],[]]
+infos = [[],[]]
 ID = 0
 
 for iEvent,event in enumerate(tree):
@@ -165,8 +165,8 @@ for iEvent,event in enumerate(tree):
             track.genMatchedID,
             track.genMatchedDR])
 
-        images.append(matrix)
-        infos.append(info)
+        images[isProbe].append(matrix)
+        infos[isProbe].append(info)
 
         ID+=1
             
