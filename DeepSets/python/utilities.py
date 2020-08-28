@@ -1,5 +1,5 @@
 import numpy as np
-import mathplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 img_max = 0.25
 img_min = -0.25
