@@ -11,12 +11,23 @@ import pandas as pd
 import sys
 
 
-gROOT.ProcessLine('.L /home/llavezzo/DisappTrksML/TreeMaker/interface/Infos.h++')
+gROOT.ProcessLine('.L Infos.h++')
 gROOT.SetBatch()
 
-# input and output files
-fname = 'images_SingleElectron2017.root'
-fOut = 'images_0p5_singleElectron2017'
+# script arguments
+process = int(sys.argv[1])
+print("Process",process)
+
+# name of the file to import
+try:
+    files = np.load('fileslist.npy')
+    fileNum = files[process]
+except:
+    fileNum = process
+fname = "hist_"+str(fileNum)+".root"
+
+# output file tag
+fOut = '0p25_'+str(fileNum)
 
 ##### config params #####
 scaling = False
@@ -57,6 +68,11 @@ def type_to_channel(hittype):
     #Muon (CSC,DT,RPC)
     if(hittype == 5 or hittype ==6 or hittype == 7): return 3
 
+# Match electrons, muons
+def check_track(track):
+    if(track.isTagProbeElectron == 1: return 1
+    else: return 0
+
 def passesIsolatedTrackSelection(track):
 
     momentum = XYZVector(track.px, track.py, track.pz)
@@ -80,13 +96,15 @@ def passesIsolatedTrackSelection(track):
     return True
 
 # images and infos split by gen matched type
-images = []
-infos = []
+images = [[],[],[]]
+infos = [[],[],[]]
 ID = 0
 
 for iEvent,event in enumerate(tree):
     
     if(iEvent%1000==0): print(iEvent)
+
+    nPV = event.nPV
         
     for iTrack,track in enumerate(event.tracks):
 
@@ -132,22 +150,33 @@ for iEvent,event in enumerate(tree):
         matrix = matrix.astype('float32')
         matrix = np.append(ID,matrix)
         
+        isProbe = check_track(track)
         info = np.array([
+            fileNum
             ID,
-            -1,
-	        -1,
+            isProbe,
+            nPV,
             track.deltaRToClosestElectron,
             track.deltaRToClosestMuon,
-            track.deltaRToClosestTauHad])
+            track.deltaRToClosestTauHad,
+            track_eta,
+            track_phi,
+            track.genMatchedID,
+            track.genMatchedDR])
 
         images.append(matrix)
         infos.append(info)
 
         ID+=1
             
+
 # check for errors before saving
-if(len(images)!=len(infos)): sys.exit("Images and infos don't match!")
-if(len(images) == 0): sys.exit("The output file is empty")
+nEvents = 0
+for i in range(3):
+    if(len(images[i])!=len(infos[i])): sys.exit("Images and infos don't match!")
+    nEvents += len(images[i])
+if(nEvents == 0): sys.exit("The output file is empty")
 
 print("Saving to",fOut)
-np.savez_compressed(fOut,images=images,infos=infos)
+np.savez_compressed("images_bkg_"+fOut,images=images[0],infos=infos[0])
+np.savez_compressed("images_e_"+fOut,images=images[1],infos=infos[1])
