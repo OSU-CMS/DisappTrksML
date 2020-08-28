@@ -14,11 +14,11 @@ model.compile(optimizer=optimizers.Adagrad(),
 			  metrics=['accuracy'])
 
 params = {
-	'dim' = (1000,4),
-	'batch_size' = 64,
-	'n_classes' = 2,
-	'n_channels' = 1,
-	'shuffle' = True,
+	'dim' : (1000,4),
+	'batch_size' : 64,
+	'n_classes' : 2,
+	'n_channels' : 1,
+	'shuffle' : True,
 }
 
 file_indexes = {
