@@ -110,7 +110,6 @@ for iEvent,event in enumerate(tree):
 
         if(not passesIsolatedTrackSelection(track)): continue
         
-        print("Event Passed Iso Cuts")           
         matrix = np.zeros([res_eta,res_phi,4])
 
         momentum = XYZVector(track.px,track.py,track.pz)
