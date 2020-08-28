@@ -91,8 +91,7 @@ class generator(keras.utils.Sequence):
         
         eOut = np.reshape(eOut, (-1,3))
         bkgOut = np.reshape(bkgOut, (-1,3))
-        print("eOut shape", eOut.shape)
-        print("bout shape", bkgOut.shape)
+
         # concatenate images and suffle them, create labels
         if(numE != 0): 
             batch_x = np.vstack((e_images,bkg_images))
@@ -107,10 +106,7 @@ class generator(keras.utils.Sequence):
 
         batch_x = batch_x[indices[:self.batch_size],:]
         batch_x = batch_x[:self.batch_size]
-        print(batch_x.shape)
-        print(allOut.shape)
         allOut = allOut[indices[:self.batch_size], :]
-        print(allOut.shape)
         batch_x = np.reshape(batch_x,(self.batch_size,40,40,4))
         batch_x = batch_x[:,:,:,[0,2,3]]
         #allOut = allOut[indices]
@@ -130,8 +126,6 @@ class generator(keras.utils.Sequence):
                 self.y_batches = np.append(self.y_batches, batch_y)
                 self.used_idx.append(idx)
                 self.indices_used = np.reshape(self.indices_used, (-1, 3))
-                print("self indices shape", self.indices_used.shape)
-                print("array shape", allOut.shape)
                 self.indices_used = np.concatenate((self.indices_used, allOut))
 
         if(self.return_y_batches):
@@ -175,7 +169,7 @@ def validate(model, weights, batchDir, dataDir, plotDir, batch_size):
     print("reset generator")
     val_generator.reset()
     print("Get predictions")
-    predictions = model.predict(val_generator, verbose=1)
+    predictions = model.predict(val_generator, verbose=2)
     true = val_generator.get_y_batches()
     indices = val_generator.get_indices_used()
 

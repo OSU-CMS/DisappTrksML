@@ -15,9 +15,13 @@ eval `scramv1 runtime -sh`
 
 python3 flow.py -d $1 -p params.npy -i $2
 
-cd ..
-cd ..
+rm *.py
+rm *.npy
 
-mv CMSSW_11_1_2_patch1/src/$1_p$2 .
+mkdir /data/users/llavezzo/$1/
+mv * /data/users/llavezzo/$1/
+
+cd ..
+cd ..
 
 rm -r CMSSW_11_1_2_patch1

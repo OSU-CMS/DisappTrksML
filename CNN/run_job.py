@@ -10,10 +10,17 @@ import numpy as np
 
 if __name__=="__main__":
 
-    folder = "cnn_debug"
-    dataDir = "/store/user/llavezzo/disappearingTracks/electron_selection_failSelection/"
+    folder = "failAllRecos"
+    dataDir = "/store/user/llavezzo/disappearingTracks/electron_selection_failAllRecos/"
     params = [
-        [[256,512,1024],False,0.8,2,dataDir],
+
+        #undersampling
+        [[128,256,512],False,0.5,10,dataDir],        #varying layers/filters
+        [[256,512,512],False,0.8,10,dataDir],
+
+        #no undersampling, weights
+        [[256,512],True,-1,5,dataDir],          #varying layers/filters
+
     ]
     np.save('params.npy',params)
     njobs = len(params)

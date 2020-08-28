@@ -10,6 +10,7 @@ from collections import Counter
 from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.metrics import roc_auc_score
+import sys
 
 class bcolors:
     HEADER = '\033[95m'
@@ -185,7 +186,7 @@ def plot_confusion_matrix(confusion_matrix, target_names, f='cm.png', title='Con
                         verticalalignment='center')
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    plt.savefig(f, bbox_inches='tight')
+    plt.savefig(f)
     plt.clf()
 
 def calc_binary_metrics(confusion_matrix):
@@ -302,13 +303,18 @@ def make_batches(events, files, nPerBatch, nBatches):
 
     event_batches, file_batches = [], []
     batches = 0
+
     for events, files in zip(event_batches_full, file_batches_full):
         if(batches == nBatches): break
-        events = list(map(int, events)) 
-        files = list(map(int, files)) 
-        files.sort()
-        event_batches.append([events[0],events[-1]])
-        file_batches.append(list(set(files)))
+        if(len(events)==0):
+          event_batches.append([])
+          file_batches.append([])
+        else:
+          events = list(map(int, events)) 
+          files = list(map(int, files)) 
+          files.sort()
+          event_batches.append([events[0],events[-1]])
+          file_batches.append(list(set(files)))
         batches+=1
 
     return np.array(event_batches), file_batches
