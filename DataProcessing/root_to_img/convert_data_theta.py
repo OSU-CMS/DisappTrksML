@@ -15,6 +15,8 @@ gROOT.ProcessLine('.L Infos.h++')
 gROOT.SetBatch()
 
 # script arguments
+if(len(sys.argv)<2):
+    sys.exit("Run with either fileNumber or processNumber as argument")
 process = int(sys.argv[1])
 print("Process",process)
 
@@ -33,9 +35,11 @@ fOut = '0p25_'+str(fileNum)
 scaling = False
 tanh_scaling = False
 res_eta = 40
+res_theta = 40
 res_phi = 40
 eta_ub,eta_lb = 0.25,-0.25
 phi_ub,phi_lb = 0.25,-0.25
+theta_ub,theta_lb = 0.15,-0.15
 #########################
 
 # import data
@@ -56,6 +60,9 @@ def convert_eta(eta):
 
 def convert_phi(phi):
     return int(round(((res_phi-1)*1.0/(phi_ub-phi_lb))*(phi-phi_lb)))
+
+def convert_theta(theta):
+    return int(round(((res_theta-1)*1.0/(theta_ub-theta_lb))*(theta-theta_lb)))
 
 def type_to_channel(hittype):
     #none
@@ -101,31 +108,36 @@ for iEvent,event in enumerate(tree):
 
         if(not passesSelection(track)): continue
             
-        matrix = np.zeros([res_eta,res_phi,4])
+        matrix = np.zeros([res_theta,res_phi,4])
 
         momentum = XYZVector(track.px,track.py,track.pz)
         track_eta = momentum.Eta()
         track_phi = momentum.Phi()
+        track_theta = 2*np.arctan(np.exp(-track_eta))
         
         for iHit,hit in enumerate(event.recHits):
         
+            hit_theta = 2*np.arctan(np.exp(-hit.eta))
+
             dEta = track_eta - hit.eta
             dPhi = track_phi - hit.phi
+            dTheta = track_theta - hit_theta
+
             # branch cut [-pi, pi)
             if abs(dPhi) > math.pi:
                 dPhi -= round(dPhi / (2. * math.pi)) * 2. * math.pi
 
             if(dPhi > phi_ub or dPhi < phi_lb): continue
-            if(dEta > eta_ub or dEta < eta_lb): continue
+            if(dTheta > theta_ub or dTheta < theta_lb): continue
 
-            dEta = convert_eta(dEta)
+            dTheta = convert_theta(dTheta)
             dPhi = convert_phi(dPhi)
 
             channel = type_to_channel(hit.detType)
             if(channel == -1): continue
 
-            if channel != 3: matrix[dEta,dPhi,channel] += hit.energy
-            else: matrix[dEta][dPhi][channel] += 1
+            if channel != 3: matrix[dTheta,dPhi,channel] += hit.energy
+            else: matrix[dTheta][dPhi][channel] += 1
 
         # scaling options
         if(scaling):
@@ -159,6 +171,7 @@ for iEvent,event in enumerate(tree):
 
         ID+=1
 
+
 # check for errors before saving
 nEvents = 0
 for i in range(3):
@@ -169,6 +182,6 @@ if(nEvents == 0): sys.exit("The output file is empty")
 print(nEvents)
 
 print("Saving to",fOut)
-np.savez_compressed("images_bkg_"+fOut,images=images[0],infos=infos[0])
-np.savez_compressed("images_e_"+fOut,images=images[1],infos=infos[1])
-np.savez_compressed("images_m_"+fOut,images=images[2],infos=infos[2])
+np.savez_compressed("images_bkg_theta_"+fOut,images=images[0],infos=infos[0])
+np.savez_compressed("images_e_theta_"+fOut,images=images[1],infos=infos[1])
+np.savez_compressed("images_m_theta_"+fOut,images=images[2],infos=infos[2])
