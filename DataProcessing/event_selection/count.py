@@ -4,6 +4,9 @@ import sys
 import pickle as pkl
 
 dataDir = "/store/user/llavezzo/disappearingTracks/electron_selection_failSelection_compressed/"
+
+if len(sys.argv) > 1: dataDir = str(sys.argv[1])
+
 signal = 'e'
 tag = '0p25_'
 

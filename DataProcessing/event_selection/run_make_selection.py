@@ -9,9 +9,12 @@ import numpy as np
 
 if __name__=="__main__":
 
-    workDir = ""
+    workDir = "/home/mcarrigan/scratch0/disTracksML/DisappTrksML/DataProcessing/event_selection/"
+    saveDir = "/store/user/mcarrigan/disappearingTracks/electron_selection_test/"
+    logDir = "/data/users/mcarrigan/Logs/event_selection/"
+    dataDir = "/store/user/mcarrigan/disappearingTracks/converted_DYJetsM50/"
 
-    dataDir = "/store/user/mcarrigan/disappearingTracks/converted_DYJetsToLL_M50_V3/"
+    if not os.path.isdir(saveDir): os.system('mkdir ' + saveDir)
 
     files = []
     for filename in os.listdir(dataDir):
@@ -33,17 +36,17 @@ if __name__=="__main__":
     request_memory = 2048MB
     request_cpus = 1
     executable              = selection_wrapper.sh
-    arguments               = $(PROCESS)
-    log                     = /data/users/llavezzo/Logs/convert_data/log_$(PROCESS).log
-    output                  = /data/users/llavezzo/Logs/convert_data/out_$(PROCESS).txt
-    error                   = /data/users/llavezzo/Logs/convert_data/error_$(PROCESS).txt
+    arguments               = $(PROCESS) {3} {4}
+    log                     = {2}log_$(PROCESS).log
+    output                  = {2}out_$(PROCESS).txt
+    error                   = {2}error_$(PROCESS).err
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
     transfer_input_files = {0}fileslist.npy, {0}selection_wrapper.sh, {0}make_selection.py
     getenv = true
     queue {1}
 
-    """.format(workDir,len(files))
+    """.format(workDir,len(files), logDir, dataDir, saveDir)
 
     f.write(submitLines)
     f.close()

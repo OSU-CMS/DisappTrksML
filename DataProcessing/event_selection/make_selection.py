@@ -8,7 +8,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
-dataDir = "/store/user/mcarrigan/disappearingTracks/converted_DYJetsToLL_M50_V3/"
+dataDir = str(sys.argv[2])
 tag = "0p25_"
 signal = "e"					#choose: e, m, bkg
 
@@ -158,7 +158,6 @@ for info, image in zip(bkg_infos, bkg_images):
 	if(scale): image = np.tanh(scale)
 	bkg_outImages.append(np.concatenate(([fileNum],image)))
 	bkg_outInfos.append(info)
-	debug.append(info[10])
 
 # some checks before saving
 assert len(s_outImages)==len(s_outInfos)
