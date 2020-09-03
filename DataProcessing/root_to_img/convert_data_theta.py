@@ -157,14 +157,15 @@ for iEvent,event in enumerate(tree):
             fileNum,
             ID,
             genMatch,
-	        nPV,
+	    nPV,
             track.deltaRToClosestElectron,
             track.deltaRToClosestMuon,
             track.deltaRToClosestTauHad,
             track_eta,
             track_phi,
             track.genMatchedID,
-            track.genMatchedDR])
+            track.genMatchedDR,
+            track.pt])
 
         images[genMatch].append(matrix)
         infos[genMatch].append(info)

@@ -162,7 +162,8 @@ for iEvent,event in enumerate(tree):
             track_eta,
             track_phi,
             track.genMatchedID,
-            track.genMatchedDR])
+            track.genMatchedDR,
+            track.pt])
 
         images[isProbe].append(matrix)
         infos[isProbe].append(info)

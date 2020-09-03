@@ -8,7 +8,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
-dataDir = str(sys.argv[2])
+dataDir = "/store/user/mcarrigan/disappearingTracks/converted_singleEle2017F/"
 tag = "0p25_"
 signal = "e"					#choose: e, m, bkg
 
@@ -89,14 +89,14 @@ def passesSelection(img):
 
 if(signal == "e"):
 	signal_index = [0]
-	bkg_index = [1,2]
+	bkg_index = [1]
 	reco_index = [4]
 	if(failAllRecos): reco_index = [4,5,6]
-if(signal == "m"):
-	signal_index = [1]
-	bkg_index = [0,2]
-	reco_index = [5]
-	if(failAllRecos): reco_index = [4,5,6]
+#if(signal == "m"):
+#	signal_index = [1]
+#	bkg_index = [0,2]
+#	reco_index = [5]
+#	if(failAllRecos): reco_index = [4,5,6]
 
 # script arguments
 process = int(sys.argv[1])
@@ -106,7 +106,7 @@ files = np.load('fileslist.npy')
 fileNum = files[process]
 
 e_fname = 'images_e_'+tag+str(fileNum)+'.npz'
-m_fname = 'images_m_'+tag+str(fileNum)+'.npz'
+#m_fname = 'images_m_'+tag+str(fileNum)+'.npz'
 bkg_fname = 'images_bkg_'+tag+str(fileNum)+'.npz'
 
 # check if file exists
@@ -114,11 +114,11 @@ if(not os.path.isfile(dataDir+bkg_fname)): sys.exit(0)
 
 # import e, m, bkg files containing images and infos
 temp1 = np.load(dataDir+e_fname)
-temp2 = np.load(dataDir+m_fname)
-temp3 = np.load(dataDir+bkg_fname)
+#temp2 = np.load(dataDir+m_fname)
+temp2 = np.load(dataDir+bkg_fname)
 
-infos = np.asarray([temp1['infos'],temp2['infos'],temp3['infos']])
-images = np.asarray([temp1['images'],temp2['images'],temp3['images']])
+infos = np.asarray([temp1['infos'],temp2['infos']])
+images = np.asarray([temp1['images'],temp2['images']])
 
 # join the files based on classification 
 s_images = images[signal_index]
@@ -159,6 +159,7 @@ for info, image in zip(bkg_infos, bkg_images):
 	if(scale): image = np.tanh(scale)
 	bkg_outImages.append(np.concatenate(([fileNum],image)))
 	bkg_outInfos.append(info)
+	debug.append(info[10])
 
 # some checks before saving
 assert len(s_outImages)==len(s_outInfos)
