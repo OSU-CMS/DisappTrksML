@@ -252,6 +252,8 @@ if __name__ == "__main__":
 	metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
 	#################################################
 
+	print("Total Signal Events: " + str(nTotE) + ' , Batch Size: ' + str(batch_size))
+	
 	if(len(params) > 0):
 		filters = params[0]
 		class_weights = bool(params[1])

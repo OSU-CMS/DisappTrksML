@@ -38,8 +38,8 @@ def build_cnn(input_shape=(40,40,3), batch_norm = False, filters=[128,256],
 	model.add(keras.layers.Dense(128, activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
 	model.add(keras.layers.Dropout(0.4))
 
-	model.add(keras.layers.Dense(1, activation='sigmoid',bias_initializer=keras.initializers.Constant(output_bias)))
-
+	#model.add(keras.layers.Dense(1, activation='sigmoid',bias_initializer=keras.initializers.Constant(output_bias)))
+	model.add(keras.layers.Dense(4, activation='relu', bias_initializer=keras.initializers.Constant(output_bias)))
 	print(model.summary())
 
 	return model
@@ -222,7 +222,7 @@ if __name__ == "__main__":
 		print(utils.bcolors.RED+"USAGE: flow_mlp.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+utils.bcolors.ENDC)
 		sys.exit(2)
 
-	workDir = 'mlp_results_9_1_small'
+	workDir = 'mlp_9_3_Dense4'
 	paramsFile = ""
 	params = []
 	paramsIndex = 0
@@ -271,7 +271,7 @@ if __name__ == "__main__":
 	#logDir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 	run_validate = True
-	nTotE = 1000
+	nTotE = 10000
 	val_size = 0.2
 	undersample_bkg = 0.5
 	oversample_e = -1   
@@ -279,12 +279,14 @@ if __name__ == "__main__":
 	batch_norm = True
 	v = 2
 	batch_size = 256
-	epochs = 2
+	epochs = 5
 	patience_count = 20
 	monitor = 'val_loss'
 	class_weights = False  
 	metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
 	#################################################
+
+	print("Total Signal Events: " + str(nTotE) + ' , Batch Size: ' + str(batch_size))
 
 	if(len(params) > 0):
 		filters = params[0]
