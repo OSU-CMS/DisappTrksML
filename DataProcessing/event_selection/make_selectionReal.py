@@ -14,7 +14,7 @@ signal = "e"					#choose: e, m, bkg
 
 if len(sys.argv) >= 2: dataDir = str(sys.argv[2])
 
-requireThreshold = True 	# require <count> images above <energy> when requireThreshold is true
+requireThreshold = False	# require <count> images above <energy> when requireThreshold is true
 count = 5
 energy = 0.5
 featureSelection = False 	# engineered features selection 
@@ -135,17 +135,18 @@ bkg_infos = np.vstack(bkg_infos)
 
 # apply selections to signal
 s_outImages, s_outInfos = [],[]
-for info, image in zip(s_infos, s_images):
-	passReco = False
-	for i in reco_index: 
-		if(math.fabs(info[i]) < 0.15): passReco = True
-	if(passReco): continue
-	if(requireThreshold): 
-		if(thresholdEnergies(image.flatten(), count, energy) == False): continue
-	if(featureSelection and not passesSelection(image)): continue
-	if(scale): image = np.tanh(scale)
-	s_outImages.append(np.concatenate(([fileNum],image)))
-	s_outInfos.append(info)
+if len(s_infos) > 0:
+	for info, image in zip(s_infos, s_images):
+		passReco = False
+		for i in reco_index: 
+			if(math.fabs(info[i]) < 0.15): passReco = True
+		if(passReco): continue
+		if(requireThreshold): 
+			if(thresholdEnergies(image[1:].flatten(), count, energy) == False): continue
+		if(featureSelection and not passesSelection(image)): continue
+		if(scale): image = np.tanh(scale)
+		s_outImages.append(np.concatenate(([fileNum],image)))
+		s_outInfos.append(info)
 
 
 # apply selections to background
@@ -156,7 +157,7 @@ for info, image in zip(bkg_infos, bkg_images):
 		if(math.fabs(info[i]) < 0.15): passReco = True
 	if(passReco): continue
 	if(requireThreshold): 
-		if(thresholdEnergies(image.flatten(), count, energy) == False): continue
+		if(thresholdEnergies(image[1:].flatten(), count, energy) == False): continue
 	if(featureSelection and not passesSelection(image)): continue
 	if(scale): image = np.tanh(scale)
 	bkg_outImages.append(np.concatenate(([fileNum],image)))
