@@ -8,11 +8,13 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
-dataDir = "/store/user/mcarrigan/disappearingTracks/converted_singleEle2017F/"
+dataDir = "/store/user/mcarrigan/disappearingTracks/AMSB/converted_600_1000_step3_tanh/"
 tag = "0p25_"
 signal = "e"					#choose: e, m, bkg
 
-requireThreshold = False 	# require <count> images above <energy> when requireThreshold is true
+if len(sys.argv) >= 2: dataDir = str(sys.argv[2])
+
+requireThreshold = True 	# require <count> images above <energy> when requireThreshold is true
 count = 5
 energy = 0.5
 featureSelection = False 	# engineered features selection 

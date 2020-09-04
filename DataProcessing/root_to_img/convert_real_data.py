@@ -31,7 +31,7 @@ fOut = '0p25_'+str(fileNum)
 
 ##### config params #####
 scaling = False
-tanh_scaling = False
+tanh_scaling = True
 res_eta = 40
 res_phi = 40
 eta_ub,eta_lb = 0.25,-0.25
@@ -39,7 +39,7 @@ phi_ub,phi_lb = 0.25,-0.25
 #########################
 
 # import data
-dataDir = '/store/user/bfrancis/images_SingleEle2017F/'
+dataDir = '/data/users/mcarrigan/condor/AMSB/images_600_1000_step3/'
 fin = r.TFile(dataDir + fname)
 tree = fin.Get('trackImageProducer/tree')
 print("Opened file",fname)
@@ -47,6 +47,8 @@ nEvents = int(tree.GetEntries())
 if(nEvents == 0):
     sys.exit("0 events found in file")
 print("Added",nEvents)
+
+if len(sys.argv) >= 2: dataDir = str(sys.argv[2])
 
 # Convert coordinates from original mapping
 # to range as specified in parameters
@@ -82,6 +84,7 @@ def passesIsolatedTrackSelection(track):
     if not abs(eta) < 2.4: return False
     if not pt > 30: return False
     if track.inGap: return False
+    if not (track.genMatchedID == 1000024 or track.genMatchedID == 1000022): return False
     if not track.nValidPixelHits >= 4: return False
     if not track.nValidHits >= 4: return False
     if not track.missingInnerHits == 0: return False
