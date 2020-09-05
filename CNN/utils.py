@@ -160,7 +160,7 @@ def plot_certainty_one_hot(y_test,predictions,f):
     plt.clf()
 
 
-def plot_confusion_matrix(confusion_matrix, target_names, f='cm.png', title='Confusion Matrix', cmap=plt.cm.Blues):
+def plot_confusion_matrix(confusion_matrix, target_names, f='cm.png', title='Confusion Matrix', cmap="Blues"):
     
     #convert to array of floats
     cm = np.zeros([2,2])
@@ -169,16 +169,16 @@ def plot_confusion_matrix(confusion_matrix, target_names, f='cm.png', title='Con
             cm[i][j] = confusion_matrix[i][j]
     cm = cm.astype(float)
 
-    plt.imshow(cm, interpolation='nearest',cmap=cmap)
+    plt.imshow(cm,cmap=cmap)
     plt.title(title)
     plt.colorbar()
     tick_marks = np.arange(len(target_names))
-    plt.xticks(tick_marks, target_names, rotation=45)
+    plt.xticks(tick_marks, target_names)
     plt.yticks(tick_marks, target_names)
-    #plt.tight_layout()
+    plt.axis('equal')
+    plt.tight_layout()
 
     width, height = cm.shape
-
     for x in range(width):
         for y in range(height):
             plt.annotate(str(cm[x][y]), xy=(y, x), 
@@ -186,7 +186,7 @@ def plot_confusion_matrix(confusion_matrix, target_names, f='cm.png', title='Con
                         verticalalignment='center')
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    plt.savefig(f)
+    plt.savefig(f, bbox_inches = "tight")
     plt.clf()
 
 def calc_binary_metrics(confusion_matrix):
