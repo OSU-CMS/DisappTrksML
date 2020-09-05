@@ -36,15 +36,21 @@ def save_event(x, dir, fname):
     plt.savefig(dir+fname)
 
 def plot_event(x):
-    
-    fig, axs = plt.subplots(1,3,figsize=(10,10))
-    
+
+    fig, axs = plt.subplots(1,4,figsize=(20,20))
+    event_img = np.zeros((40,40,4))
+    for i,row in enumerate(x):
+        for j,col in enumerate(row):
+            for k,pixel in enumerate(col):
+                if(pixel > 0): event_img[i,j,k] = np.log(pixel+1)
+        
     for i in range(4):
-        axs[i].imshow(x[:,:,i],cmap='gray')
-    
+        axs[i].imshow(event_img[:,:,i],cmap='jet')
+
     axs[0].set_title("ECAL")
-    axs[1].set_title("HCAL")
-    axs[2].set_title("Muon")
+    axs[1].set_title("ES")
+    axs[2].set_title("HCAL")
+    axs[3].set_title("Muon")
     
     plt.show()
 
