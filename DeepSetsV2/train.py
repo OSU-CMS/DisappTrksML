@@ -8,65 +8,22 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from keras import optimizers, regularizers
-#from tensorflow.keras.applications import VGG19
 import json
 import random
 import sys
 import pickle
 import datetime
 import getopt
-
-import utils
-import validate
 			
 import tensorflow as tf
 import keras
-
-from generator import generator
-
 from keras.models import Model
 from keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization
 
-def buildModel(input_shape=(100,4), phi_layers=[64, 64, 256], f_layers=[64, 64, 64]):
-	inputs = Input(shape=(input_shape[-1],))
-
-	# build phi network for each individual hit
-	phi_network = Masking()(inputs)
-	for layerSize in phi_layers[:-1]:
-		phi_network = Dense(layerSize)(phi_network)
-		phi_network = Activation('relu')(phi_network)
-		phi_network = BatchNormalization()(phi_network)
-	phi_network = Dense(phi_layers[-1])(phi_network)
-	phi_network = Activation('linear')(phi_network)
-
-	# build summed model for latent space
-	unsummed_model = Model(inputs=inputs, outputs=phi_network)
-	set_input = Input(shape=input_shape)
-	phi_set = TimeDistributed(unsummed_model)(set_input)
-	summed = Lambda(lambda x: tf.reduce_sum(x, axis=1))(phi_set)
-	phi_model = Model(inputs=set_input, outputs=summed)
-
-	# define F (rho) network evaluating in the latent space
-	f_inputs = Input(shape=(phi_layers[-1],)) # plus any other track/event-wide variable
-	f_network = Dense(f_layers[0])(f_inputs)
-	f_network = Activation('relu')(f_network)
-	for layerSize in f_layers[1:]:
-		f_network = Dense(layerSize)(f_network)
-		f_network = Activation('relu')(f_network)
-	f_network = Dense(2)(f_network)
-	f_outputs = Activation('softmax')(f_network)
-	f_model = Model(inputs=f_inputs, outputs=f_outputs)
-
-	# build the DeepSets architecture
-	deepset_inputs = Input(shape=input_shape)
-	latent_space = phi_model(deepset_inputs)
-	deepset_outputs = f_model(latent_space)
-	model = Model(inputs=deepset_inputs, outputs=deepset_outputs)
-
-	print(model.summary())
-
-	return model
-
+import utils
+import validate
+from generator import generator
+from model import buildModel
 
 # limit CPU usage
 config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 2,   
@@ -129,16 +86,16 @@ v: verbosity
 patience_count: after how many epochs to stop if monitored variable doesn't improve
 monitor: which variable to monitor with patience_count
 """
-
+dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_failAllRecos/"
 #logDir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
-nTotE = 25000
+nTotE = 10000
 val_size = 0.2
 undersample_bkg = 0.5
 v = 1
 batch_size = 64
-epochs = 2
+epochs = 1
 patience_count = 10
 monitor = 'val_loss'
 metrics = ['accuracy']
@@ -220,39 +177,39 @@ nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, b
 
 # add background events to validation data
 # to keep ratio e/bkg equal to that in original dataset
-if(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal) > fE):
-	nBkgToLoad = int(nSavedEVal*(1-fE)/fE-nSavedBkgVal)
-	lastFile = bkg_file_batches[-1][-1]
+# if(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal) > fE):
+# 	nBkgToLoad = int(nSavedEVal*(1-fE)/fE-nSavedBkgVal)
+# 	lastFile = bkg_file_batches[-1][-1]
 
-	b_events, b_files = [], []
-	reached = False
-	for file, nEvents in bkgCounts.items():
-		if(int(file) != lastFile and not reached): continue
-		else: reached = True
+# 	b_events, b_files = [], []
+# 	reached = False
+# 	for file, nEvents in bkgCounts.items():
+# 		if(int(file) != lastFile and not reached): continue
+# 		else: reached = True
 
-		for evt in range(nEvents):
-			b_events.append(evt)
-			b_files.append(file)
+# 		for evt in range(nEvents):
+# 			b_events.append(evt)
+# 			b_files.append(file)
 
-	# make batches of same size with bkg files
-	nBatchesAdded = int(nBkgToLoad*1.0/batch_size)
-	bkgPerBatch = [batch_size]*nBatchesAdded
+# 	# make batches of same size with bkg files
+# 	nBatchesAdded = int(nBkgToLoad*1.0/batch_size)
+# 	bkgPerBatch = [batch_size]*nBatchesAdded
 		   
-	bkg_event_batches_added, bkg_file_batches_added = utils.make_batches(b_events, b_files, bkgPerBatch, nBatchesAdded)
+# 	bkg_event_batches_added, bkg_file_batches_added = utils.make_batches(b_events, b_files, bkgPerBatch, nBatchesAdded)
 
-	nAddedBkg = utils.count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
+# 	nAddedBkg = utils.count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
 
-	# add the bkg and e events to rebalance val data
-	filler_events = [[0,0]]*nBatchesAdded
-	filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
-	val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
-	val_bkg_file_batches = val_bkg_file_batches + bkg_file_batches_added
-	val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
-	val_e_file_batches = val_e_file_batches + filler_files
+# 	# add the bkg and e events to rebalance val data
+# 	filler_events = [[0,0]]*nBatchesAdded
+# 	filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
+# 	val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
+# 	val_bkg_file_batches = val_bkg_file_batches + bkg_file_batches_added
+# 	val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
+# 	val_e_file_batches = val_e_file_batches + filler_files
 
-	# re count
-	nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
-	nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
+# 	# re count
+# 	nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
+# 	nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
 
 
 print("\t\tElectrons\tBackground\te/(e+bkg)")
@@ -290,8 +247,10 @@ np.save(outputDir+"bkg_events_valBatches", val_bkg_event_batches)
 
 # initialize generators
 
-train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, batch_size, dataDir, True)
-val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir, True)
+train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, 
+					batch_size, dataDir, False, True)
+val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, 
+					batch_size, dataDir, False, True)
 
 model = buildModel()
 

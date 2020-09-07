@@ -199,7 +199,7 @@ def plot_confusion_matrix(confusion_matrix, target_names, f='cm.png', title='Con
                         verticalalignment='center')
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    plt.savefig("cm.png", bbox_inches = "tight")
+    plt.savefig(f, bbox_inches = "tight")
     plt.clf()
 
 def calc_binary_metrics(confusion_matrix):

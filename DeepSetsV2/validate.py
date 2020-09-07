@@ -10,135 +10,7 @@ import random
 import sys
 import pickle
 import utils
-
-def load_data(files, events, label, dataDir):
-    lastFile = len(files)-1
-    files.sort()
-    for iFile, file in enumerate(files):
-        if(file == -1): 
-            images = np.array([])
-            continue
-        if(iFile == 0 and iFile != lastFile):
-            images = np.load(dataDir+label+str(file)+'.npy')[events[0]:]
-
-        elif(iFile == lastFile and iFile != 0):
-            images = np.vstack((images,np.load(dataDir+label+str(file)+'.npy')[:events[1]+1]))
-
-        elif(iFile == 0 and iFile == lastFile):
-            images = np.load(dataDir+label+str(file)+'.npy')[events[0]:events[1]+1]
-
-        elif(iFile != 0 and iFile != lastFile):
-            images = np.vstack((images,np.load(dataDir+label+str(file)+'.npy')))
-    return images
-
-# generate batches of images from files
-class validation_generator(keras.utils.Sequence):
-  
-    def __init__(self, batchesE, batchesBkg, indicesE, indicesBkg, 
-                batch_size, dataDir, outputDir, return_y_batches=True, save_truth_labels=True):
-        self.batchesE = batchesE
-        self.batchesBkg = batchesBkg
-        self.indicesE = indicesE
-        self.indicesBkg = indicesBkg
-        self.batch_size = batch_size
-        self.dataDir = dataDir
-        self.outputDir = outputDir
-        self.y_batches = np.array([])
-        self.indices_used = np.array([-1, -1, -1])               
-        self.used_idx = []                            # keeps count of which y batches to save
-        self.return_y_batches = return_y_batches    # set to False when validating
-        self.save_truth_labels = save_truth_labels    # call get_y_batches() to obtain them, reset() to erase them
-
-    def __len__(self):
-        return len(self.batchesE)
-
-    def __getitem__(self, idx) :
-
-        filenamesE = self.batchesE[idx]
-        filenamesBkg = self.batchesBkg[idx]
-        indexE = self.indicesE[idx]
-        indexBkg = self.indicesBkg[idx]
-
-        lastFile = len(filenamesE)-1
-        filenamesE.sort()
-        for iFile, file in enumerate(filenamesE):
-
-            fname = "images_0p5_"+str(file)+".npz"
-            if(file == -1): 
-                e_images = np.array([])
-                continue
-
-            if(iFile == 0 and iFile != lastFile):
-                e_images = np.load(self.dataDir+fname)['e'][indexE[0]:]
-
-            elif(iFile == lastFile and iFile != 0):
-                e_images = np.vstack((e_images,np.load(self.dataDir+fname)['e'][:indexE[1]+1]))
-
-            elif(iFile == 0 and iFile == lastFile):
-                e_images = np.load(self.dataDir+fname)['e'][indexE[0]:indexE[1]+1]
-
-            elif(iFile != 0 and iFile != lastFile):
-                e_images = np.vstack((e_images,np.load(self.dataDir+fname)['e']))
-        
-        lastFile = len(filenamesBkg)-1
-        filenamesBkg.sort()
-        for iFile, file in enumerate(filenamesBkg):
-
-            fname = "images_0p5_"+str(file)+".npz"
-            if(iFile == 0 and iFile != lastFile):
-                bkg_images = np.load(self.dataDir+fname)['bkg'][indexBkg[0]:,:]
-
-            elif(iFile == lastFile and iFile != 0):
-                bkg_images = np.vstack((bkg_images,np.load(self.dataDir+fname)['bkg'][:indexBkg[1]+1]))
-
-            elif(iFile == 0 and iFile == lastFile):
-                bkg_images = np.load(self.dataDir+fname)['bkg'][indexBkg[0]:indexBkg[1]+1]
-
-            elif(iFile != 0 and iFile != lastFile):
-                bkg_images = np.vstack((bkg_images,np.load(self.dataDir+fname)['bkg']))
-        
-        numE = e_images.shape[0]
-        numBkg = self.batch_size-numE
-        bkg_images = bkg_images[:numBkg]
-
-        # shuffle and select appropriate amount of electrons, bkg
-        indices = list(range(bkg_images.shape[0]))
-        random.shuffle(indices)
-        bkg_images = bkg_images[indices,2:]
-
-        if(numE != 0):
-            indices = list(range(e_images.shape[0]))
-            random.shuffle(indices)
-            e_images = e_images[indices,2:]
-
-        # concatenate images and suffle them, create labels
-        if(numE != 0): batch_x = np.vstack((e_images,bkg_images))
-        else: batch_x = bkg_images
-        batch_y = np.concatenate((np.ones(numE),np.zeros(numBkg)))
-
-        indices = list(range(batch_x.shape[0]))
-        random.shuffle(indices)
-
-        batch_x = batch_x[indices[:self.batch_size],:]
-        nEvents = int(batch_x.shape[1]*1.0/4)
-        batch_x = np.reshape(batch_x,(self.batch_size,nEvents,4))
-
-        batch_y = batch_y[indices[:self.batch_size]]
-        batch_y = keras.utils.to_categorical(batch_y, num_classes=2)
-
-        if(idx not in self.used_idx):
-            if(len(self.used_idx)==0):  self.y_batches = batch_y
-            else: self.y_batches = np.concatenate((self.y_batches, batch_y))
-            self.used_idx.append(idx)
-        
-        return batch_x
-
-    def reset(self):
-        self.y_batches = np.array([])
-        self.used_idx = []
-
-    def get_y_batches(self):
-        return self.y_batches
+from generator import generator 
 
 
 def run_validation(model, weights, batchDir, dataDir, plotDir, batch_size):
@@ -152,7 +24,8 @@ def run_validation(model, weights, batchDir, dataDir, plotDir, batch_size):
     val_bkg_event_batches = np.load(batchDir+'bkg_events_valBatches.npy', allow_pickle=True)
 
     print("Define Generator")
-    val_generator = validation_generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir, batchDir)
+    val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, 
+        batch_size, dataDir, True, False)
     print("reset generator")
     val_generator.reset()
     print("Get predictions")

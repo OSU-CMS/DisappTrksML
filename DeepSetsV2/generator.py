@@ -6,8 +6,6 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-#from tensorflow.keras.applications import VGG19
 import json
 import random
 import sys
@@ -15,11 +13,34 @@ import pickle
 import datetime
 import getopt
 
+def load_data(files, events, class_label, dataDir):
+	lastFile = len(files)-1
+	files.sort()
+	for iFile, file in enumerate(files):
+		fname = "images_0p5_"+str(file)+".npz"
+		if(file == -1): 
+			images = np.array([])
+			continue
+
+		if(iFile == 0 and iFile != lastFile):
+			images = np.load(dataDir+fname)[class_label][events[0]:]
+
+		elif(iFile == lastFile and iFile != 0):
+			images = np.vstack((images,np.load(dataDir+fname)[class_label][:events[1]+1]))
+
+		elif(iFile == 0 and iFile == lastFile):
+			images = np.load(dataDir+fname)[class_label][events[0]:events[1]+1]
+
+		elif(iFile != 0 and iFile != lastFile):
+			images = np.vstack((images,np.load(dataDir+fname)[class_label]))
+
+	return images
+
 # generate batches of images from files
 class generator(keras.utils.Sequence):
   
 	def __init__(self, batchesE, batchesBkg, indicesE, indicesBkg, 
-				batch_size, dataDir, shuffle=True):
+				batch_size, dataDir, val_mode=False,shuffle=True):
 		self.batchesE = batchesE
 		self.batchesBkg = batchesBkg
 		self.indicesE = indicesE
@@ -27,6 +48,9 @@ class generator(keras.utils.Sequence):
 		self.batch_size = batch_size
 		self.dataDir = dataDir
 		self.shuffle = shuffle
+		self.val_mode = val_mode
+		self.y_batches = np.array([])
+		self.used_idx = []
 
 	def __len__(self):
 		return len(self.batchesE)
@@ -38,44 +62,9 @@ class generator(keras.utils.Sequence):
 		indexE = self.indicesE[idx]
 		indexBkg = self.indicesBkg[idx]
 
-		lastFile = len(filenamesE)-1
-		filenamesE.sort()
-		for iFile, file in enumerate(filenamesE):
-
-			fname = "images_0p5_"+str(file)+".npz"
-			if(file == -1): 
-				e_images = np.array([])
-				continue
-
-			if(iFile == 0 and iFile != lastFile):
-				e_images = np.load(self.dataDir+fname)['e'][indexE[0]:]
-
-			elif(iFile == lastFile and iFile != 0):
-				e_images = np.vstack((e_images,np.load(self.dataDir+fname)['e'][:indexE[1]+1]))
-
-			elif(iFile == 0 and iFile == lastFile):
-				e_images = np.load(self.dataDir+fname)['e'][indexE[0]:indexE[1]+1]
-
-			elif(iFile != 0 and iFile != lastFile):
-				e_images = np.vstack((e_images,np.load(self.dataDir+fname)['e']))
-	    
-		lastFile = len(filenamesBkg)-1
-		filenamesBkg.sort()
-		for iFile, file in enumerate(filenamesBkg):
-
-			fname = "images_0p5_"+str(file)+".npz"
-			if(iFile == 0 and iFile != lastFile):
-				bkg_images = np.load(self.dataDir+fname)['bkg'][indexBkg[0]:,:]
-
-			elif(iFile == lastFile and iFile != 0):
-				bkg_images = np.vstack((bkg_images,np.load(self.dataDir+fname)['bkg'][:indexBkg[1]+1]))
-
-			elif(iFile == 0 and iFile == lastFile):
-				bkg_images = np.load(self.dataDir+fname)['bkg'][indexBkg[0]:indexBkg[1]+1]
-
-			elif(iFile != 0 and iFile != lastFile):
-				bkg_images = np.vstack((bkg_images,np.load(self.dataDir+fname)['bkg']))
-	    
+		e_images = load_data(filenamesE,indexE,'e',self.dataDir)
+		bkg_images = load_data(filenamesE,indexE,'bkg',self.dataDir)
+		
 		numE = e_images.shape[0]
 		numBkg = self.batch_size-numE
 		bkg_images = bkg_images[:numBkg]
@@ -105,8 +94,25 @@ class generator(keras.utils.Sequence):
 		batch_y = batch_y[indices[:self.batch_size]]
 		batch_y = keras.utils.to_categorical(batch_y, num_classes=2)
 		
-		return batch_x, batch_y
+		
+		if(self.val_mode):
+			if(idx not in self.used_idx):
+				if(len(self.used_idx)==0):  self.y_batches = batch_y
+				else: self.y_batches = np.concatenate((self.y_batches, batch_y))
+				self.used_idx.append(idx)
+			
+				return batch_x
+
+		else:
+			return batch_x, batch_y
 	
+	def reset(self):
+		self.y_batches = np.array([])
+		self.used_idx = []
+
+	def get_y_batches(self):
+		return self.y_batches
+
 	# def on_epoch_end(self):
 	# 	if(self.shuffle):
 	# 		indices = np.arange(len(self.batchesE)).astype(int)
