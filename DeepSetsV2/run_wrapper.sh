@@ -10,6 +10,7 @@ cp utils.py CMSSW_11_1_2_patch1/src/utils.py
 cp validate.py CMSSW_11_1_2_patch1/src/validate.py
 cp params.npy CMSSW_11_1_2_patch1/src/params.npy
 cp generator.py CMSSW_11_1_2_patch1/src/generator.py
+cp model.py CMSSW_11_1_2_patch1/src/model.py
 
 cd CMSSW_11_1_2_patch1/src/
 eval `scramv1 runtime -sh`

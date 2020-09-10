@@ -90,10 +90,10 @@ dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_failAll
 #logDir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
-nTotE = 10000
+nTotE = 25000
 val_size = 0.2
 undersample_bkg = 0.5
-v = 1
+v = 2
 batch_size = 64
 epochs = 1
 patience_count = 10
@@ -177,39 +177,39 @@ nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, b
 
 # add background events to validation data
 # to keep ratio e/bkg equal to that in original dataset
-# if(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal) > fE):
-# 	nBkgToLoad = int(nSavedEVal*(1-fE)/fE-nSavedBkgVal)
-# 	lastFile = bkg_file_batches[-1][-1]
+if(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal) > fE):
+	nBkgToLoad = int(nSavedEVal*(1-fE)/fE-nSavedBkgVal)
+	lastFile = bkg_file_batches[-1][-1]
 
-# 	b_events, b_files = [], []
-# 	reached = False
-# 	for file, nEvents in bkgCounts.items():
-# 		if(int(file) != lastFile and not reached): continue
-# 		else: reached = True
+	b_events, b_files = [], []
+	reached = False
+	for file, nEvents in bkgCounts.items():
+		if(int(file) != lastFile and not reached): continue
+		else: reached = True
 
-# 		for evt in range(nEvents):
-# 			b_events.append(evt)
-# 			b_files.append(file)
+		for evt in range(nEvents):
+			b_events.append(evt)
+			b_files.append(file)
 
-# 	# make batches of same size with bkg files
-# 	nBatchesAdded = int(nBkgToLoad*1.0/batch_size)
-# 	bkgPerBatch = [batch_size]*nBatchesAdded
+	# make batches of same size with bkg files
+	nBatchesAdded = int(nBkgToLoad*1.0/batch_size)
+	bkgPerBatch = [batch_size]*nBatchesAdded
 		   
-# 	bkg_event_batches_added, bkg_file_batches_added = utils.make_batches(b_events, b_files, bkgPerBatch, nBatchesAdded)
+	bkg_event_batches_added, bkg_file_batches_added = utils.make_batches(b_events, b_files, bkgPerBatch, nBatchesAdded)
 
-# 	nAddedBkg = utils.count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
+	nAddedBkg = utils.count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
 
-# 	# add the bkg and e events to rebalance val data
-# 	filler_events = [[0,0]]*nBatchesAdded
-# 	filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
-# 	val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
-# 	val_bkg_file_batches = val_bkg_file_batches + bkg_file_batches_added
-# 	val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
-# 	val_e_file_batches = val_e_file_batches + filler_files
+	# add the bkg and e events to rebalance val data
+	filler_events = [[0,0]]*nBatchesAdded
+	filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
+	val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
+	val_bkg_file_batches = val_bkg_file_batches + bkg_file_batches_added
+	val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
+	val_e_file_batches = val_e_file_batches + filler_files
 
-# 	# re count
-# 	nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
-# 	nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
+	# re count
+	nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
+	nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
 
 
 print("\t\tElectrons\tBackground\te/(e+bkg)")
@@ -246,7 +246,6 @@ np.save(outputDir+"bkg_events_valBatches", val_bkg_event_batches)
 #     print("\t",len(trainBatchesE),"batches of files (approx.",nElectronsPerBatchOversampled*len(trainBatchesE),"electron and",(batch_size-nElectronsPerBatchOversampled)*len(trainBatchesE), "background events)")
 
 # initialize generators
-
 train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, 
 					batch_size, dataDir, False, True)
 val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, 
@@ -264,7 +263,7 @@ callbacks = [
 									save_best_only=True,
 									monitor=monitor,
 									mode='auto')
-	#tf.keras.callbacks.TensorBoard(log_dir=logDir, 
+	# tf.keras.callbacks.TensorBoard(log_dir=logDir, 
 	#                                histogram_freq=0,
 	#                                write_graph=False,
 	#                                write_images=False)

@@ -10,11 +10,11 @@ import numpy as np
 
 if __name__=="__main__":
 
-    folder = "deepSets100_2"
+    folder = "deepSets100_3"
     dataDir = '/store/user/llavezzo/disappearingTracks/converted_deepSets100_failAllRecos/'
     params = [
         #undersampling
-        [0.8,20,dataDir],       
+        [0.9,20,dataDir],       
     ]
     np.save('params.npy',params)
     njobs = len(params)
@@ -37,7 +37,7 @@ if __name__=="__main__":
     error                   = /data/users/llavezzo/Logs/{0}/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = run_wrapper.sh, train.py, utils.py, generator.py, validate.py, params.npy
+    transfer_input_files = run_wrapper.sh, train.py, utils.py, generator.py, validate.py, params.npy, model.py
     getenv = true
     queue {1}
 

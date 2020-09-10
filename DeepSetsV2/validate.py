@@ -32,7 +32,7 @@ def run_validation(model, weights, batchDir, dataDir, plotDir, batch_size):
 	print("Reset Generator")
 	val_generator.reset()
 	print("Get Predictions")
-	predictions = model.predict(val_generator, verbose=1)
+	predictions = model.predict(val_generator, verbose=2)
 	true = val_generator.get_y_batches()
 	print("Get Indices of Events")
 	indices = val_generator.get_indices_batches()
