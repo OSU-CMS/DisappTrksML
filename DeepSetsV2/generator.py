@@ -51,6 +51,7 @@ class generator(keras.utils.Sequence):
 		self.val_mode = val_mode
 		self.y_batches = np.array([])
 		self.used_idx = []
+		self.indices_batches = np.array([])
 
 	def __len__(self):
 		return len(self.batchesE)
@@ -63,7 +64,7 @@ class generator(keras.utils.Sequence):
 		indexBkg = self.indicesBkg[idx]
 
 		e_images = load_data(filenamesE,indexE,'e',self.dataDir)
-		bkg_images = load_data(filenamesE,indexE,'bkg',self.dataDir)
+		bkg_images = load_data(filenamesBkg,indexBkg,'bkg',self.dataDir)
 		
 		numE = e_images.shape[0]
 		numBkg = self.batch_size-numE
@@ -72,16 +73,22 @@ class generator(keras.utils.Sequence):
 		# shuffle and select appropriate amount of electrons, bkg
 		indices = list(range(bkg_images.shape[0]))
 		random.shuffle(indices)
+		bkg_indices = bkg_images[indices,:2]
 		bkg_images = bkg_images[indices,2:]
 
 		if(numE != 0):
 			indices = list(range(e_images.shape[0]))
 			random.shuffle(indices)
+			e_indices = e_images[indices,:2]
 			e_images = e_images[indices,2:]
 
 		# concatenate images and suffle them, create labels
-		if(numE != 0): batch_x = np.vstack((e_images,bkg_images))
-		else: batch_x = bkg_images
+		if(numE != 0): 
+			batch_x = np.vstack((e_images,bkg_images))
+			batch_indices = np.vstack((e_indices,bkg_indices))
+		else: 
+			batch_x = bkg_images
+			batch_indices = bkg_indices
 		batch_y = np.concatenate((np.ones(numE),np.zeros(numBkg)))
 
 		indices = list(range(batch_x.shape[0]))
@@ -91,14 +98,20 @@ class generator(keras.utils.Sequence):
 		nEvents = int(batch_x.shape[1]*1.0/4)
 		batch_x = np.reshape(batch_x,(self.batch_size,nEvents,4))
 
+		batch_indices = batch_indices[indices[:self.batch_size],:]
+
 		batch_y = batch_y[indices[:self.batch_size]]
 		batch_y = keras.utils.to_categorical(batch_y, num_classes=2)
 		
 		
 		if(self.val_mode):
 			if(idx not in self.used_idx):
-				if(len(self.used_idx)==0):  self.y_batches = batch_y
-				else: self.y_batches = np.concatenate((self.y_batches, batch_y))
+				if(len(self.used_idx)==0): 
+					self.y_batches = batch_y
+					self.indices_batches = batch_indices
+				else: 
+					self.y_batches = np.concatenate((self.y_batches, batch_y))
+					self.indices_batches = np.concatenate((self.indices_batches, batch_indices))
 				self.used_idx.append(idx)
 			
 				return batch_x
@@ -112,6 +125,9 @@ class generator(keras.utils.Sequence):
 
 	def get_y_batches(self):
 		return self.y_batches
+
+	def get_indices_batches(self):
+		return self.indices_batches
 
 	# def on_epoch_end(self):
 	# 	if(self.shuffle):
