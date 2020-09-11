@@ -34,6 +34,7 @@ fOut = '0p25_'+str(fileNum)
 ##### config params #####
 scaling = False
 tanh_scaling = True
+ZtoEE = True
 res_eta = 40
 res_phi = 40
 eta_ub,eta_lb = 0.25,-0.25
@@ -88,6 +89,15 @@ def passesSelection(track):
     if not abs(track.dRMinJet) > 0.5: return False
     return True
 
+def check_ZtoEE(event):
+    count = 0
+    pass_sel = False
+    for iTrack, track in enumerate(event.tracks):
+        if(not passesSelection(track)): continue
+	if(check_track(track) == 1): count += 1
+    if count >= 2: pass_sel = True
+    return pass_sel
+
 # images and infos split by gen matched type
 images = [[],[],[]]
 infos = [[],[],[]]
@@ -99,10 +109,13 @@ for iEvent,event in enumerate(tree):
     
     nPV = event.nPV
     
+    if(ZtoEE):   
+       if(check_ZtoEE(event)==False): continue
+
     for iTrack,track in enumerate(event.tracks):
 
         if(not passesSelection(track)): continue
-            
+        
         matrix = np.zeros([res_eta,res_phi,4])
 
         momentum = XYZVector(track.px,track.py,track.pz)
@@ -137,7 +150,6 @@ for iEvent,event in enumerate(tree):
             if scale_muons > 0: matrix[:,:,3] = matrix[:,:,3]*1.0/scale_muons
         if(tanh_scaling):
             matrix = np.tanh(matrix)
-
         matrix = matrix.flatten().reshape([matrix.shape[0]*matrix.shape[1]*matrix.shape[2],])  
         matrix = matrix.astype('float32')
         matrix = np.append(ID,matrix)
