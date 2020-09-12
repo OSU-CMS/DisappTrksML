@@ -15,7 +15,7 @@ cp model.py CMSSW_11_1_2_patch1/src/model.py
 cd CMSSW_11_1_2_patch1/src/
 eval `scramv1 runtime -sh`
 
-python3 train.py -d $1 -p params.npy -i $2
+python3 train.py -d $1 -p params.npy -i $2 >> log.txt
 
 rm *.py
 rm *.npy
