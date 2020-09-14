@@ -34,6 +34,7 @@ eta_range = 0.5
 phi_range = 0.5
 dataMode = False # if true, use tagProbe selection; if false, use genmatched pdgID
 maxHitsInImages = 100
+ZtoEE = True
 ####################################################################################
 
 # combine EB+EE and muon detectors into ECAL/HCAL/MUO indices
@@ -85,6 +86,15 @@ def passesSelection(track):
 	if not abs(track.dRMinJet) > 0.5: return False
 	return True
 
+def check_ZtoEE(event):
+	count = 0
+	pass_sel = False
+	for iTrack, track in enumerate(event.tracks):
+		if(not passesSelection(track)): continue
+		if(isGenMatched(track,11)): count += 1
+	if count >= 2: pass_sel = True
+	return pass_sel
+
 fin = TFile(dataDir+fname, 'read')
 tree = fin.Get('trackImageProducer/tree')
 
@@ -95,6 +105,9 @@ IDe,IDb=0,0
 for iTrack, event in enumerate(tree):
 
 	nPV = event.nPV
+
+	if(ZtoEE):
+		if(check_ZtoEE(event)==False): continue
 
 	for track in event.tracks:
 		

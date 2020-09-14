@@ -26,10 +26,10 @@ from generator import generator
 from model import buildModel
 
 # limit CPU usage
-config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 2,   
-								intra_op_parallelism_threads = 2,
+config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
+								intra_op_parallelism_threads = 4,
 								allow_soft_placement = True,
-								device_count={'CPU': 2})
+								device_count={'CPU': 4})
 tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
 # suppress warnings
@@ -87,7 +87,7 @@ patience_count: after how many epochs to stop if monitored variable doesn't impr
 monitor: which variable to monitor with patience_count
 """
 dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_failAllRecos/"
-#logDir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
 nTotE = 25000
@@ -111,6 +111,7 @@ os.system('mkdir '+str(workDir))
 os.system('mkdir '+str(plotDir))
 os.system('mkdir '+str(weightsDir))
 os.system('mkdir '+str(outputDir))
+os.system('mkdir '+str(logDir))
 
 # import count dicts
 with open(dataDir+'eCounts.pkl', 'rb') as f:
@@ -263,10 +264,10 @@ callbacks = [
 									save_best_only=True,
 									monitor=monitor,
 									mode='auto')
-	# tf.keras.callbacks.TensorBoard(log_dir=logDir, 
-	#                                histogram_freq=0,
-	#                                write_graph=False,
-	#                                write_images=False)
+	tf.keras.callbacks.TensorBoard(log_dir=logDir, 
+	                               histogram_freq=0,
+	                               write_graph=False,
+	                               write_images=False)
 ]
 
 

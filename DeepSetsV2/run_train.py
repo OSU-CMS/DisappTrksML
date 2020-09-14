@@ -11,10 +11,12 @@ import numpy as np
 if __name__=="__main__":
 
     folder = "deepSets100_3"
-    dataDir = '/store/user/llavezzo/disappearingTracks/converted_deepSets100_failAllRecos/'
+    dataDir = '/store/user/llavezzo/disappearingTracks/converted_deepSets100_Zee_failAllRecos/'
     params = [
         #undersampling
-        [0.9,20,dataDir],       
+        [0.9,20,dataDir],
+        [0.8,20,dataDir],
+        [0.7,20,dataDir]    
     ]
     np.save('params.npy',params)
     njobs = len(params)
@@ -30,14 +32,14 @@ if __name__=="__main__":
     request_disk = 250MB
     request_memory = 2GB
     request_cpus = 4
-    executable              = run_wrapper.sh
+    executable              = train_wrapper.sh
     arguments               = {0} $(PROCESS)
     log                     = /data/users/llavezzo/Logs/{0}/log_$(PROCESS).log
     output                  = /data/users/llavezzo/Logs/{0}/out_$(PROCESS).txt
     error                   = /data/users/llavezzo/Logs/{0}/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = run_wrapper.sh, train.py, utils.py, generator.py, validate.py, params.npy, model.py
+    transfer_input_files = train_wrapper.sh, train.py, utils.py, generator.py, validate.py, params.npy, model.py
     getenv = true
     queue {1}
 
