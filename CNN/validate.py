@@ -15,6 +15,7 @@ import flow as cnn
 def load_data(files, events, label, dataDir):
     lastFile = len(files)-1
     files.sort()
+    images = np.array([])
     for iFile, file in enumerate(files):
         if(file == -1): 
             images = np.array([])
@@ -62,16 +63,18 @@ class generator(keras.utils.Sequence):
 
         e_images = load_data(filenamesE, indexE, 'e_0p25_', self.dataDir)
         bkg_images = load_data(filenamesBkg, indexBkg, 'bkg_0p25_', self.dataDir)
+
         
         numE = e_images.shape[0]
         numBkg = self.batch_size-numE
         bkg_images = bkg_images[:numBkg]
 
         # shuffle and select appropriate amount of electrons, bkg
-        indices = list(range(bkg_images.shape[0]))
-        random.shuffle(indices)
-        bkg_indices = bkg_images[indices,:2]
-        bkg_images = bkg_images[indices,2:]
+        if(numBkg != 0):
+            indices = list(range(bkg_images.shape[0]))
+            random.shuffle(indices)
+            bkg_indices = bkg_images[indices,:2]
+            bkg_images = bkg_images[indices,2:]
 
         eOut = np.array([])
         bkgOut = np.array([])
@@ -85,19 +88,24 @@ class generator(keras.utils.Sequence):
                 if ievt == 0: eOut = np.array((e_indices[ievt,0], e_indices[ievt,1], 1))
                 else: eOut = np.concatenate((eOut, np.array((e_indices[ievt,0], e_indices[ievt,1], 1))))
 
-        for ievt, event in enumerate(bkg_indices):
-            if ievt == 0: bkgOut = np.array((bkg_indices[ievt,0], bkg_indices[ievt,1], 0))
-            else: bkgOut = np.concatenate((bkgOut, np.array((bkg_indices[ievt,0], bkg_indices[ievt,1], 0))))
+        if(numBkg != 0):
+            for ievt, event in enumerate(bkg_indices):
+                if ievt == 0: bkgOut = np.array((bkg_indices[ievt,0], bkg_indices[ievt,1], 0))
+                else: bkgOut = np.concatenate((bkgOut, np.array((bkg_indices[ievt,0], bkg_indices[ievt,1], 0))))
         
         eOut = np.reshape(eOut, (-1,3))
         bkgOut = np.reshape(bkgOut, (-1,3))
 
         # concatenate images and suffle them, create labels
-        if(numE != 0): 
+        if(numE != 0 and numBkg != 0): 
             batch_x = np.vstack((e_images,bkg_images))
             batch_y = np.concatenate((np.ones(len(e_images)),np.zeros(len(bkg_images))))
             allOut = np.concatenate((eOut, bkgOut))
-        else: 
+        elif (numE != 0 and numBkg ==0):
+            batch_x = e_images
+            batch_y = np.ones(numE)
+            allOut = eOut
+        elif (numBkg != 0 and numE ==0): 
             batch_x = bkg_images
             batch_y = np.zeros(numBkg)
             allOut = bkgOut
@@ -159,10 +167,10 @@ def validate(model, weights, batchDir, dataDir, plotDir, batch_size):
     model.load_weights(weights)
 
     # load the batches used to train and validate
-    val_e_file_batches = np.load(batchDir+'e_files_valBatches.npy', allow_pickle=True)
-    val_e_event_batches = np.load(batchDir+'e_events_valBatches.npy', allow_pickle=True)
-    val_bkg_file_batches = np.load(batchDir+'bkg_files_valBatches.npy', allow_pickle=True)
-    val_bkg_event_batches = np.load(batchDir+'bkg_events_valBatches.npy', allow_pickle=True)
+    val_e_file_batches = np.load(batchDir+'e_files_testBatches.npy', allow_pickle=True)
+    val_e_event_batches = np.load(batchDir+'e_events_testBatches.npy', allow_pickle=True)
+    val_bkg_file_batches = np.load(batchDir+'bkg_files_testBatches.npy', allow_pickle=True)
+    val_bkg_event_batches = np.load(batchDir+'bkg_events_testBatches.npy', allow_pickle=True)
 
     print("Define Generator")
     val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, batch_size, dataDir, batchDir)
