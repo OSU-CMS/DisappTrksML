@@ -15,12 +15,10 @@ import getopt
 
 def load_data(files, events, class_label, dataDir):
 	lastFile = len(files)-1
-	files.sort()
+	images = np.array([])
 	for iFile, file in enumerate(files):
 		fname = "images_0p5_"+str(file)+".npz"
-		if(file == -1): 
-			images = np.array([])
-			continue
+		if(file == -1): continue
 
 		if(iFile == 0 and iFile != lastFile):
 			images = np.load(dataDir+fname)[class_label][events[0]:]
@@ -67,14 +65,20 @@ class generator(keras.utils.Sequence):
 		bkg_images = load_data(filenamesBkg,indexBkg,'bkg',self.dataDir)
 		
 		numE = e_images.shape[0]
-		numBkg = self.batch_size-numE
-		bkg_images = bkg_images[:numBkg]
+		numBkg = bkg_images.shape[0]
+		if(numE+numBkg!=self.batch_size):
+			print(filenamesE)
+			print(filenamesBkg)
+			print()
+			print(numE,numBkg)
+			print()
 
 		# shuffle and select appropriate amount of electrons, bkg
-		indices = list(range(bkg_images.shape[0]))
-		random.shuffle(indices)
-		bkg_indices = bkg_images[indices,:2]
-		bkg_images = bkg_images[indices,2:]
+		if(numBkg != 0):
+			indices = list(range(bkg_images.shape[0]))
+			random.shuffle(indices)
+			bkg_indices = bkg_images[indices,:2]
+			bkg_images = bkg_images[indices,2:]
 
 		if(numE != 0):
 			indices = list(range(e_images.shape[0]))
@@ -83,14 +87,19 @@ class generator(keras.utils.Sequence):
 			e_images = e_images[indices,2:]
 
 		# concatenate images and suffle them, create labels
-		if(numE != 0): 
+		if(numE != 0 and numBkg != 0): 
 			batch_x = np.vstack((e_images,bkg_images))
 			batch_indices = np.vstack((e_indices,bkg_indices))
-		else: 
+			batch_y = np.concatenate((np.ones(numE),np.zeros(numBkg)))
+		elif(numE == 0): 
 			batch_x = bkg_images
 			batch_indices = bkg_indices
-		batch_y = np.concatenate((np.ones(numE),np.zeros(numBkg)))
-
+			batch_y = np.zeros(numBkg)
+		elif(numBkg == 0): 
+			batch_x = e_images
+			batch_indices = e_indices
+			batch_y = np.ones(numE)
+		
 		indices = list(range(batch_x.shape[0]))
 		random.shuffle(indices)
 

@@ -14,6 +14,7 @@ import sys
 import pickle
 import datetime
 import getopt
+from collections import Counter
 			
 import tensorflow as tf
 import keras
@@ -26,11 +27,11 @@ from generator import generator
 from model import buildModel
 
 # limit CPU usage
-config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
-								intra_op_parallelism_threads = 4,
-								allow_soft_placement = True,
-								device_count={'CPU': 4})
-tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
+# config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
+# 								intra_op_parallelism_threads = 4,
+# 								allow_soft_placement = True,
+# 								device_count={'CPU': 4})
+# tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
 # suppress warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
@@ -40,7 +41,7 @@ try:
 							"d:p:i:", 
 							["dir=","params=","index="])
 except getopt.GetoptError:
-	print(utils.bcolors.RED+"USAGE: flow.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+utils.bcolors.ENDC)
+	print(utils.bcolors.RED+"USAGE: flow.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index "+utils.bcolors.ENDC)
 	sys.exit(2)
 
 workDir = 'deepSets'
@@ -86,15 +87,15 @@ v: verbosity
 patience_count: after how many epochs to stop if monitored variable doesn't improve
 monitor: which variable to monitor with patience_count
 """
-dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_failAllRecos/"
+dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_Zee/"
 logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
-nTotE = 25000
+nTotE = 350000 
 val_size = 0.2
-undersample_bkg = 0.5
-v = 2
-batch_size = 64
+undersample_bkg = -1
+v = 1
+batch_size = 512
 epochs = 1
 patience_count = 10
 monitor = 'val_loss'
@@ -107,11 +108,11 @@ if(len(params) > 0):
 	dataDir = str(params[2])
 
 # create output directories
-os.system('mkdir '+str(workDir))
-os.system('mkdir '+str(plotDir))
-os.system('mkdir '+str(weightsDir))
-os.system('mkdir '+str(outputDir))
-os.system('mkdir '+str(logDir))
+os.makedirs(workDir)
+os.makedirs(plotDir)
+os.makedirs(weightsDir)
+os.makedirs(outputDir)
+os.makedirs(logDir)
 
 # import count dicts
 with open(dataDir+'eCounts.pkl', 'rb') as f:
@@ -137,16 +138,30 @@ if(nTotE > availableE): sys.exit("ERROR: Requested more electron events than are
 if(nTotBkg > availableBkg): sys.exit("ERROR: Requested more electron events than available")
 
 # batches per epoch
-nBatches = int((nTotE + nTotBkg)*1.0/batch_size)
+nBatches = int(np.floor((nTotE + nTotBkg)*1.0/batch_size))
 
 # count how many e/bkg events in each batch
-ePerBatch = np.zeros(nBatches)
+ePerBatch, bkgPerBatch = np.zeros(nBatches), np.zeros(nBatches)
 iBatch = 0
 while np.sum(ePerBatch) < nTotE:
 	ePerBatch[iBatch]+=1
 	iBatch+=1
 	if(iBatch == nBatches): iBatch = 0
-bkgPerBatch = np.asarray([batch_size-np.min(ePerBatch)]*nBatches)
+for iBatch in range(nBatches):
+	toAdd = int(batch_size - ePerBatch[iBatch])
+	if(toAdd == 0): continue
+	for j in range(toAdd):
+		bkgPerBatch[iBatch]+=1
+		if(np.sum(bkgPerBatch) == nTotBkg): 
+			print("ERROR")
+			sys.exit(0)
+			break
+	if(np.sum(bkgPerBatch) == nTotBkg): break
+
+for iBatch in range(nBatches):
+	if(ePerBatch[iBatch]+bkgPerBatch[iBatch]!=batch_size): 
+		print("ERROR2")
+		sys.exit(0)
 ePerBatch = ePerBatch.astype(int)
 bkgPerBatch = bkgPerBatch.astype(int)
 
@@ -178,7 +193,7 @@ nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, b
 
 # add background events to validation data
 # to keep ratio e/bkg equal to that in original dataset
-if(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal) > fE):
+if(abs(1-nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal)/fE) > 0.05):
 	nBkgToLoad = int(nSavedEVal*(1-fE)/fE-nSavedBkgVal)
 	lastFile = bkg_file_batches[-1][-1]
 
@@ -229,6 +244,8 @@ np.save(outputDir+"bkg_events_trainBatches", train_bkg_event_batches)
 np.save(outputDir+"bkg_files_valBatches", val_bkg_file_batches)
 np.save(outputDir+"bkg_events_valBatches", val_bkg_event_batches)
 
+print(train_e_file_batches[0])
+
 # FIXME: not implemented yet
 # oversample the training electron files if oversample_e != -1
 # nElectronsOversampled = int(np.ceil(nSavedETrain*oversample_e)) - nSavedETrain
@@ -264,10 +281,10 @@ callbacks = [
 									save_best_only=True,
 									monitor=monitor,
 									mode='auto')
-	tf.keras.callbacks.TensorBoard(log_dir=logDir, 
-	                               histogram_freq=0,
-	                               write_graph=False,
-	                               write_images=False)
+	# tf.keras.callbacks.TensorBoard(log_dir=logDir, 
+	#                                histogram_freq=0,
+	#                                write_graph=False,
+	#                                write_images=False)
 ]
 
 
