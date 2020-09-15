@@ -191,7 +191,7 @@ if __name__ == "__main__":
 		print(utils.bcolors.RED+"USAGE: flow.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+utils.bcolors.ENDC)
 		sys.exit(2)
 
-	workDir = 'cnn_9_14'
+	workDir = 'cnn_9_15_ZtoEE'
 	paramsFile = ""
 	params = []
 	paramsIndex = 0
@@ -235,19 +235,19 @@ if __name__ == "__main__":
 	monitor: which variable to monitor with patience_count
 	"""
 
-	dataDir = "/store/user/mcarrigan/disappearingTracks/electron_selection_tanh_V2/"
+	dataDir = "/store/user/mcarrigan/disappearingTracks/electron_selection_DYJetsZtoEE_tanh/"
 	#logDir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 	run_validate = True
-	nTotE = 200
-	val_size = 0.3
+	nTotE = 2800
+	val_size = 0.4
 	undersample_bkg = -1
 	oversample_e = -1   
-	filters=[64,128]
+	filters=[64,128,64]
 	batch_norm = False
 	v = 2
 	batch_size = 32
-	epochs = 1
+	epochs = 5
 	patience_count = 20
 	monitor = 'val_loss'
 	class_weights = False  

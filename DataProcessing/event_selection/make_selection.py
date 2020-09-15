@@ -33,6 +33,9 @@ infos:
 9: genID
 10: genDR
 11: pt
+12: Total Energy 
+13: Max Hit Energy
+14: DR Max Hit to Track
 """
 
 def thresholdEnergies(matrix, pcount, penergy):

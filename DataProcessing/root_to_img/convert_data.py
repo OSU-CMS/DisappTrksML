@@ -34,7 +34,7 @@ fOut = '0p25_'+str(fileNum)
 ##### config params #####
 scaling = False
 tanh_scaling = True
-ZtoEE = True
+ZtoEE = False
 res_eta = 40
 res_phi = 40
 eta_ub,eta_lb = 0.25,-0.25
@@ -75,7 +75,9 @@ def type_to_channel(hittype):
 # Match electrons, muons
 def check_track(track):
     if(abs(track.genMatchedID)==11 and abs(track.genMatchedDR) < 0.1): return 1
+    #if(abs(track.genMatchedID)==11): return 1
     if(abs(track.genMatchedID)==13 and abs(track.genMatchedDR) < 0.1): return 2
+    #if(abs(track.genMatchedID)==13): return 2
     return 0
 
 def passesSelection(track):
@@ -93,9 +95,12 @@ def check_ZtoEE(event):
     count = 0
     pass_sel = False
     for iTrack, track in enumerate(event.tracks):
-        if(not passesSelection(track)): continue
+        print("Track ID: ", track.genMatchedID, track.genMatchedDR)
+        #if(check_track(track) == 1): count += 1
+	if(not passesSelection(track)): continue
 	if(check_track(track) == 1): count += 1
     if count >= 2: pass_sel = True
+    print("Number of electrons: ", count)
     return pass_sel
 
 # images and infos split by gen matched type
@@ -121,9 +126,18 @@ for iEvent,event in enumerate(tree):
         momentum = XYZVector(track.px,track.py,track.pz)
         track_eta = momentum.Eta()
         track_phi = momentum.Phi()
-        
+ 	
+        hit_energy = 0
+        max_hit = [-1, -10, -10]       
         for iHit,hit in enumerate(event.recHits):
         
+            if(hit.detType != 3): 
+                hit_energy += hit.energy
+		if(hit.energy > max_hit[0]):
+                    max_hit[0] = hit.energy
+                    max_hit[1] = hit.eta
+                    max_hit[2] = hit.phi
+
             dEta = track_eta - hit.eta
             dPhi = track_phi - hit.phi
             # branch cut [-pi, pi)
@@ -141,7 +155,8 @@ for iEvent,event in enumerate(tree):
 
             if channel != 3: matrix[dEta,dPhi,channel] += hit.energy
             else: matrix[dEta][dPhi][channel] += 1
-
+        
+        track_DR = math.sqrt((track_eta-max_hit[1])**2 + (track_phi-max_hit[2])**2) 
         # scaling options
         if(scaling):
             scale = matrix[:,:,:3].max()
@@ -167,7 +182,10 @@ for iEvent,event in enumerate(tree):
             track_phi,
             track.genMatchedID,
             track.genMatchedDR,
-	    track.pt])
+	    track.pt,
+            hit_energy,
+            max_hit[0], 
+            track_DR])
 
         images[genMatch].append(matrix)
         infos[genMatch].append(info)

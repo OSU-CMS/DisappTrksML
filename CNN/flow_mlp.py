@@ -18,7 +18,7 @@ import getopt
 import utils
 import validate_mlp
 
-def build_cnn(input_shape=(40,40,3), batch_norm = False, filters=[128,256], 
+def build_cnn(input_shape=(40,40,3), batch_norm = False, filters=[64, 128, 64], 
 				output_bias=0, metrics=['accuracy']):
 	
 	model = keras.Sequential()
@@ -35,7 +35,7 @@ def build_cnn(input_shape=(40,40,3), batch_norm = False, filters=[128,256],
 		model.add(keras.layers.Dropout(0.2))
 
 	model.add(keras.layers.Flatten())
-	model.add(keras.layers.Dense(128, activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
+	model.add(keras.layers.Dense(32, activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
 	model.add(keras.layers.Dropout(0.4))
 
 	#model.add(keras.layers.Dense(1, activation='sigmoid',bias_initializer=keras.initializers.Constant(output_bias)))
@@ -44,7 +44,7 @@ def build_cnn(input_shape=(40,40,3), batch_norm = False, filters=[128,256],
 
 	return model
 
-def build_mlp(input_dim = 1):
+def build_mlp(input_dim = 5):
 	model = keras.Sequential()
 	model.add(keras.layers.Dense(8, input_dim=input_dim, activation='relu'))
 	model.add(keras.layers.Dense(4, activation='relu'))
@@ -105,75 +105,75 @@ class generator(keras.utils.Sequence):
 			if(file == -1): 
 				e_images = np.array([])
 				continue
-			print("Loading File: " + str(file))
+			#print("Loading File: " + str(file))
 			e_file = np.load(self.dataDir+'e_0p25_'+str(file)+'.npz')
 			if(iFile == 0 and iFile != lastFile):
 				e_images = e_file['images'][indexE[0]:]
-				e_infos = e_file['infos'][indexE[0]:, 7]
+				e_infos = e_file['infos'][indexE[0]:, [7,11,12,13,14]]
 
 			elif(iFile == lastFile and iFile != 0):
 				e_images = np.vstack((e_images,e_file['images'][:indexE[1]+1]))
-				e_infos = np.concatenate((e_infos,e_file['infos'][:indexE[1]+1, 7]))
+				e_infos = np.concatenate((e_infos,e_file['infos'][:indexE[1]+1, [7,11,12,13,14]]))
 
 			elif(iFile == 0 and iFile == lastFile):
 				e_images = e_file['images'][indexE[0]:indexE[1]+1]
-				e_infos = e_file['infos'][indexE[0]:indexE[1]+1, 7]
+				e_infos = e_file['infos'][indexE[0]:indexE[1]+1, [7,11,12,13,14]]
 
 			elif(iFile != 0 and iFile != lastFile):
 				e_images = np.vstack((e_images,e_file['images']))
-				e_infos = np.concatenate((e_infos, e_file['infos'][:,7]))
+				e_infos = np.concatenate((e_infos, e_file['infos'][:,[7,11,12,13,14]]))
 		
 		lastFile = len(filenamesBkg)-1
 		filenamesBkg.sort()
 		for iFile, file in enumerate(filenamesBkg):
 
 			bkg_file = np.load(self.dataDir+'bkg_0p25_'+str(file)+'.npz')
-			print("Loading File: " + str(file))
+			#print("Loading File: " + str(file))
 
 			if(iFile == 0 and iFile != lastFile):
 				bkg_images = bkg_file['images'][indexBkg[0]:,:]
-				bkg_infos = bkg_file['infos'][indexBkg[0]:,7]
+				bkg_infos = bkg_file['infos'][indexBkg[0]:,[7,11,12,13,14]]
 
 			elif(iFile == lastFile and iFile != 0):
 				bkg_images = np.vstack((bkg_images,bkg_file['images'][:indexBkg[1]+1]))
-				bkg_infos = np.concatenate((bkg_infos,bkg_file['infos'][:indexBkg[1]+1, 7]))
+				bkg_infos = np.concatenate((bkg_infos,bkg_file['infos'][:indexBkg[1]+1, [7,11,12,13,14]]))
 
 			elif(iFile == 0 and iFile == lastFile):
 				bkg_images = bkg_file['images'][indexBkg[0]:indexBkg[1]+1]
-				bkg_infos = bkg_file['infos'][indexBkg[0]:indexBkg[1]+1, 7]
+				bkg_infos = bkg_file['infos'][indexBkg[0]:indexBkg[1]+1, [7,11,12,13,14]]
 
 			elif(iFile != 0 and iFile != lastFile):
 				bkg_images = np.vstack((bkg_images,bkg_file['images']))
-				bkg_infos = np.concatenate((bkg_infos, bkg_file['infos'][:, 7]))
+				bkg_infos = np.concatenate((bkg_infos, bkg_file['infos'][:, [7,11,12,13,14]]))
 		
 		numE = e_images.shape[0]
 		numBkg = self.batch_size-numE
 		bkg_images = bkg_images[:numBkg]
 		#bkg_eta = bkg_infos[:, 7]
-		bkg_eta = bkg_infos[:numBkg]
+		bkg_info = bkg_infos[:numBkg]
 
 		# shuffle and select appropriate amount of electrons, bkg
 		indices = list(range(bkg_images.shape[0]))
 		random.shuffle(indices)
 		bkg_images = bkg_images[indices,2:]
-		bkg_eta = bkg_eta[indices]
+		bkg_info = bkg_info[indices]
 
 		if(numE != 0):
 			indices = list(range(e_images.shape[0]))
 			random.shuffle(indices)
 			e_images = e_images[indices,2:]
 			#e_eta = e_infos[indices, 7]
-			e_eta = e_infos[indices]
+			e_info = e_infos[indices]
 
 
 
 		# concatenate images and suffle them, create labels
 		if(numE != 0): 
 			batch_x = np.vstack((e_images,bkg_images))
-			etas = np.concatenate((e_eta, bkg_eta))
+			info = np.concatenate((e_info, bkg_info))
 		else: 
 			batch_x = bkg_images
-			etas = np.array(bkg_eta)
+			info = np.array(bkg_info)
 		
 		batch_y = np.concatenate((np.ones(numE),np.zeros(numBkg)))
 
@@ -184,13 +184,11 @@ class generator(keras.utils.Sequence):
 		batch_x = np.reshape(batch_x,(self.batch_size,40,40,4))
 		batch_x = batch_x[:,:,:,[0,2,3]]
 	
-		etas = etas[indices[:self.batch_size]]	
+		info = info[indices[:self.batch_size]]	
 		
-		max_eta = np.max(np.abs(etas))
-		etas = np.abs(etas / max_eta)
 		batch_y = batch_y[indices[:self.batch_size]]
 
-		return [batch_x, etas], batch_y
+		return [batch_x, info], batch_y
 	
 	def on_epoch_end(self):
 		if(self.shuffle):
@@ -222,7 +220,7 @@ if __name__ == "__main__":
 		print(utils.bcolors.RED+"USAGE: flow_mlp.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+utils.bcolors.ENDC)
 		sys.exit(2)
 
-	workDir = 'mlp_9_3_Dense4'
+	workDir = 'mlp_9_15'
 	paramsFile = ""
 	params = []
 	paramsIndex = 0
@@ -267,16 +265,16 @@ if __name__ == "__main__":
 	monitor: which variable to monitor with patience_count
 	"""
 
-	dataDir = "/store/user/mcarrigan/disappearingTracks/electron_selection_tanh_5gt0p5/"
+	dataDir = "/store/user/mcarrigan/disappearingTracks/electron_selection_tanh_V3/"
 	#logDir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 	run_validate = True
-	nTotE = 10000
-	val_size = 0.2
-	undersample_bkg = 0.5
+	nTotE = 27000
+	val_size = 0.4
+	undersample_bkg = -1
 	oversample_e = -1   
-	filters = [128, 256]
-	batch_norm = True
+	filters = [64, 128, 64]
+	batch_norm = False
 	v = 2
 	batch_size = 256
 	epochs = 5
@@ -287,7 +285,7 @@ if __name__ == "__main__":
 	#################################################
 
 	print("Total Signal Events: " + str(nTotE) + ' , Batch Size: ' + str(batch_size))
-
+	print("Batch Norm: " + str(batch_norm))
 	if(len(params) > 0):
 		filters = params[0]
 		class_weights = bool(params[1])
@@ -399,11 +397,21 @@ if __name__ == "__main__":
 		nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
 		nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
 
+	test_e_event_batches, val_e_event_batches, test_e_file_batches, val_e_file_batches = train_test_split(val_e_event_batches, val_e_file_batches, test_size = 0.5, random_state=42)
+
+	test_bkg_event_batches, val_bkg_event_batches, test_bkg_file_batches, val_bkg_file_batches = train_test_split(val_bkg_event_batches, val_bkg_file_batches, test_size = 0.5, random_state=42)
+
+        # re count
+	nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
+	nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
+	nSavedETest = utils.count_events(test_e_file_batches, test_e_event_batches, eCounts)
+	nSavedBkgTest = utils.count_events(test_bkg_file_batches, test_bkg_event_batches, bkgCounts)
 
 	print("\t\tElectrons\tBackground\te/(e+bkg)")
 	print("Requested:\t"+str(nTotE)+"\t\t"+str(nTotBkg)+"\t\t"+str(round(nTotE*1.0/(nTotE+nTotBkg),5)))
 	print("Training on:\t"+str(nSavedETrain)+"\t\t"+str(nSavedBkgTrain)+"\t\t"+str(round(nSavedETrain*1.0/(nSavedETrain+nSavedBkgTrain),5)))
 	print("Validating on:\t"+str(nSavedEVal)+"\t\t"+str(nSavedBkgVal)+"\t\t"+str(round(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal),5)))
+	print("Testing on:\t"+str(nSavedETest)+"\t\t"+str(nSavedBkgTest)+"\t\t"+str(round(nSavedETest*1.0/(nSavedETest+nSavedBkgTest),5)))
 	print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,5)))
 	
 	# save the train and validation batches
@@ -411,11 +419,14 @@ if __name__ == "__main__":
 	np.save(outputDir+"e_events_trainBatches", train_e_event_batches)
 	np.save(outputDir+"e_files_valBatches", val_e_file_batches)
 	np.save(outputDir+"e_events_valBatches", val_e_event_batches)
+	np.save(outputDir+"e_files_testBatches", test_e_file_batches)
+	np.save(outputDir+"e_events_testBatches", test_e_event_batches)
 	np.save(outputDir+"bkg_files_trainBatches", train_bkg_file_batches)
 	np.save(outputDir+"bkg_events_trainBatches", train_bkg_event_batches)
 	np.save(outputDir+"bkg_files_valBatches", val_bkg_file_batches)
 	np.save(outputDir+"bkg_events_valBatches", val_bkg_event_batches)
-
+	np.save(outputDir+"bkg_events_testBatches", test_bkg_event_batches)
+	np.save(outputDir+"bkg_files_testBatches", test_bkg_file_batches)
 	# FIXME: not implemented yet
 	# oversample the training electron files if oversample_e != -1
 	# nElectronsOversampled = int(np.ceil(nSavedETrain*oversample_e)) - nSavedETrain
@@ -441,11 +452,11 @@ if __name__ == "__main__":
 	# initialize output bias
 	output_bias = np.log(nSavedETrain/nSavedBkgTrain)
 
-	cnn = build_cnn(input_shape = (40,40,3), filters = [128, 256], batch_norm=batch_norm, output_bias=output_bias, metrics=metrics)
-	mlp = build_mlp(input_dim=1)
+	cnn = build_cnn(input_shape = (40,40,3), filters = [64, 128, 64], batch_norm=batch_norm, output_bias=output_bias, metrics=metrics)
+	mlp = build_mlp(input_dim=5)
 
 	combinedInput = keras.layers.concatenate([cnn.output, mlp.output])
-	x = keras.layers.Dense(4, activation="relu")(combinedInput)
+	x = keras.layers.Dense(8, activation="relu")(combinedInput)
 	x = keras.layers.Dense(1, activation="sigmoid")(x)
 	model = keras.models.Model(inputs=[cnn.input, mlp.input], outputs=x)
 	model.compile(loss=keras.losses.BinaryCrossentropy(), optimizer="adam", metrics=metrics)
