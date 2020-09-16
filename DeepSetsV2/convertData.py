@@ -133,8 +133,7 @@ for event in tree:
 
 	for track in event.tracks:
 		
-		if((not dataMode) and (not passesSelection(track))): continue
-		if(dataMode and (not passesIsolatedTrackSelection(track))): continue
+		if(not passesSelection(track)): continue
 
 		imageHits = []
 		for hit in event.recHits:
@@ -162,6 +161,10 @@ for event in tree:
 			img[iHit][1] = imageHits[iHit][1]
 			img[iHit][2] = imageHits[iHit][2]
 			img[iHit][3] = imageHits[iHit][3]
+
+		if ((isReconstructed(track, 'ele')) or
+			(isReconstructed(track, 'muon')) or
+			(isReconstructed(track, 'tau'))): continue
 
 		# truth electrons
 		if((dataMode and track.isTagProbeElectron) or ((not dataMode) and isGenMatched(track,11))):
