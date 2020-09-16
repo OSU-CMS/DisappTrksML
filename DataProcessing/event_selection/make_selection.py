@@ -126,13 +126,17 @@ images = np.asarray([temp1['images'],temp2['images'],temp3['images']])
 # join the files based on classification 
 s_images = images[signal_index]
 s_infos = infos[signal_index]
+bkg_index = []
+if(images[1].shape[0] != 0): bkg_index.append(1)
+if(images[2].shape[0] != 0): bkg_index.append(2)
 bkg_images = images[bkg_index]
 bkg_infos = infos[bkg_index]
 
 s_images = np.vstack(s_images)
 s_infos = np.vstack(s_infos)
-bkg_images = np.vstack(bkg_images)
-bkg_infos = np.vstack(bkg_infos)	
+if(len(bkg_images) != 0):
+    bkg_images = np.vstack(bkg_images)
+    bkg_infos = np.vstack(bkg_infos)	
 
 # apply selections to signal
 s_outImages, s_outInfos = [],[]
