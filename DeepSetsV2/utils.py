@@ -321,19 +321,21 @@ def make_batches(events, files, nPerBatch, nBatches):
     for events, files in zip(event_batches_full, file_batches_full):
         if(batches == nBatches): break
         if(len(events)==0):
-          event_batches.append([])
-          file_batches.append([])
+          event_batches.append([-1])
+          file_batches.append([-1])
         else:
-          events = list(map(int, events)) 
-          files = list(map(int, files)) 
-          files.sort()
           event_batches.append([events[0],events[-1]])
-          file_batches.append(list(set(files)))
+          temp = []
+          for file in files:
+            if(file not in temp): temp.append(file)
+          file_batches.append(temp)
         batches+=1
+
 
     return np.array(event_batches), file_batches
 
 def count_events(file_batches, event_batches, dict):
+
   nSaved=0
   for files, indices in zip(file_batches, event_batches):
       if(len(files) == 1 and files[0] == -1): continue

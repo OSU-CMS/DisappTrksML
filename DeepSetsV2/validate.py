@@ -37,39 +37,16 @@ def run_validation(model, weights, batchDir, dataDir, plotDir, batch_size):
 	print("Get Indices of Events")
 	indices = val_generator.get_indices_batches()
 
-	etas_FP, phis_FP, etas_FN, phis_FN = [], [], [], []
 	cm = np.zeros((2,2)) 
 	for t,pred,index in zip(true,predictions, indices):
 		if(pred[1]>0.5):
 			if(t[1]>0.5): 
 				cm[1][1]+=1;
 			else: 
-				cm[1][0]+=1;
-
-				temp = np.load(dataDir+"images_0p5_"+str(int(index[0]))+".npz")['bkg_infos']
-				event = []
-				for evt in temp:
-					if(evt[1]==int(index[1])):
-						event = evt
-						break					
-				assert len(event) > 0, str(index[0])+", "+str(index[1])
-				etas_FP.append(event[7])
-				phis_FP.append(event[8])
-					
+				cm[1][0]+=1;			
 		else:
 			if(t[1]>0.5): 
 				cm[0][1]+=1;
-
-				temp = np.load(dataDir+"images_0p5_"+str(int(index[0]))+".npz")['e_infos']
-				event = []
-				for evt in temp:
-					if(evt[1]==int(index[1])):
-						event = evt
-						break
-				assert len(event) > 0, str(index[0])+", "+str(index[1]) + ", " + str(t)
-				etas_FN.append(event[7])
-				phis_FN.append(event[8])
-
 			else: cm[0][0]+=1;
 
 	print(cm)
@@ -80,11 +57,11 @@ def run_validation(model, weights, batchDir, dataDir, plotDir, batch_size):
 	print(utils.bcolors.GREEN+"Saved metrics to "+plotDir+utils.bcolors.ENDC)
 	print()
 
-	np.savez_compressed(batchDir+"etas_phis.npz",
-						etas_FP = etas_FP,
-						phis_FP = phis_FP,
-						etas_FN = etas_FN,
-						phis_FN = phis_FN)
+	np.savez_compressed("validation_outputs",
+						truth = true,
+						predicted = predictions,
+						indices = indices)
+
 
 if __name__ == "__main__":
 

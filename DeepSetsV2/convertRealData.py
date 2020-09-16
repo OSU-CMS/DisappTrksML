@@ -13,28 +13,27 @@ import time
 gROOT.ProcessLine('.L Infos.h+')
 
 # script arguments
-arg = int(sys.argv[1])
+process = int(sys.argv[1])
+print("Process",process)
 
 # name of the file to import
 try:
 	files = np.load('fileslist.npy')
-	fileNum = files[arg]
+	fileNum = files[process]
 except:
-	fileNum = arg
+	fileNum = process
 fname = "hist_"+str(fileNum)+".root"
 print("File",fname)
 
-# output file
-fOut = 'images_0p5_'+str(fileNum)
-
+# output file tag
+fOut = '_0p5_'+str(fileNum)
 
 ######## parameters ################################################################
 dataDir = '/store/user/mcarrigan/disappearingTracks/images_DYJetsToLL_M50/'
 eta_range = 0.5
 phi_range = 0.5
-dataMode = False
+dataMode = False # if true, use tagProbe selection; if false, use genmatched pdgID
 maxHitsInImages = 100
-ZtoEE = True
 ####################################################################################
 
 # combine EB+EE and muon detectors into ECAL/HCAL/MUO indices
@@ -86,36 +85,13 @@ def passesSelection(track):
 	if not abs(track.dRMinJet) > 0.5: return False
 	return True
 
-def passesIsolatedTrackSelection(track):
-
-	momentum = XYZVector(track.px, track.py, track.pz)
-	eta = momentum.Eta()
-	pt = math.sqrt(momentum.Perp2())
-
-	if not abs(eta) < 2.4: return False
-	if not pt > 30: return False
-	if track.inGap: return False
-	if not (track.genMatchedID == 1000024 or track.genMatchedID == 1000022): return False
-	if not track.nValidPixelHits >= 4: return False
-	if not track.nValidHits >= 4: return False
-	if not track.missingInnerHits == 0: return False
-	if not track.missingMiddleHits == 0: return False
-	if not track.trackIso / pt < 0.05: return False
-	if not abs(track.d0) < 0.02: return False
-	if not abs(track.dz) < 0.5: return False
-	if not abs(track.dRMinJet) > 0.5: return False
-	if not abs(track.deltaRToClosestElectron) > 0.15: return False
-	if not abs(track.deltaRToClosestMuon) > 0.15: return False
-	if not abs(track.deltaRToClosestTauHad) > 0.15: return False
-	return True
-	
 def check_ZtoEE(event):
 	count = 0
 	pass_sel = False
 	for iTrack, track in enumerate(event.tracks):
 		if(not passesSelection(track)): continue
 		if(isGenMatched(track,11)): count += 1
-	if count == 2: pass_sel = True
+	if count >= 2: pass_sel = True
 	return pass_sel
 
 fin = TFile(dataDir+fname, 'read')
@@ -125,11 +101,12 @@ e_imgs, bkg_imgs = [], []
 e_infos, bkg_infos = [], []
 IDe,IDb=0,0
 
-for event in tree:
+for iTrack, event in enumerate(tree):
 
 	nPV = event.nPV
 
-	if(ZtoEE and (check_ZtoEE(event)==False)): continue
+	if(ZtoEE):
+		if(check_ZtoEE(event)==False): continue
 
 	for track in event.tracks:
 		
@@ -155,56 +132,61 @@ for event in tree:
 		track_eta = momentum.Eta()
 		track_phi = momentum.Phi()
 
-		img = np.zeros((maxHitsInImages,4))
-		for iHit in range(min(len(imageHits), maxHitsInImages)):
-			img[iHit][0] = imageHits[iHit][0]
-			img[iHit][1] = imageHits[iHit][1]
-			img[iHit][2] = imageHits[iHit][2]
-			img[iHit][3] = imageHits[iHit][3]
+		# fail all recos
+		if ((not isReconstructed(track, 'ele')) and 
+			(not isReconstructed(track, 'muon')) and
+			(not isReconstructed(track, 'tau'))): 
 
-		if ((isReconstructed(track, 'ele')) or
-			(isReconstructed(track, 'muon')) or
-			(isReconstructed(track, 'tau'))): continue
+			# truth electron that failed electron reco
+			if((dataMode and track.isTagProbeElectron) or ((not dataMode) and isGenMatched(track,11))):
+				img = np.zeros((maxHitsInImages,4))
+				for iHit in range(min(len(imageHits), maxHitsInImages)):
+					img[iHit][0] = imageHits[iHit][0]
+					img[iHit][1] = imageHits[iHit][1]
+					img[iHit][2] = imageHits[iHit][2]
+					img[iHit][3] = imageHits[iHit][3]
+					
+				e_imgs.append(np.concatenate(([fileNum, IDe],img.flatten())))
+				e_infos.append(np.array([
+					fileNum,
+					IDe,
+					1,
+					nPV,
+					track.deltaRToClosestElectron,
+					track.deltaRToClosestMuon,
+					track.deltaRToClosestTauHad,
+					track_eta,
+					track_phi,
+					track.genMatchedID,
+					track.genMatchedDR
+				]))
+				IDe+=1
 
-		# truth electrons
-		if((dataMode and track.isTagProbeElectron) or ((not dataMode) and isGenMatched(track,11))):
-				
-			e_imgs.append(np.concatenate(([fileNum, IDe],img.flatten())))
-			e_infos.append(np.array([
-				fileNum,
-				IDe,
-				1,
-				nPV,
-				track.deltaRToClosestElectron,
-				track.deltaRToClosestMuon,
-				track.deltaRToClosestTauHad,
-				track_eta,
-				track_phi,
-				track.genMatchedID,
-				track.genMatchedDR
-			]))
-			IDe+=1
+			# truth non-electrons that failed all recos
+			elif((dataMode and (not track.isTagProbeElectron)) or ((not dataMode) and (not isGenMatched(track,11)))):
+				img = np.zeros((maxHitsInImages,4))
+				for iHit in range(min(len(imageHits), maxHitsInImages)):
+					img[iHit][0] = imageHits[iHit][0]
+					img[iHit][1] = imageHits[iHit][1]
+					img[iHit][2] = imageHits[iHit][2]
+					img[iHit][3] = imageHits[iHit][3]
+				bkg_imgs.append(np.concatenate(([fileNum, IDb],img.flatten())))
+				bkg_infos.append(np.array([
+					fileNum,
+					IDb,
+					0,
+					nPV,
+					track.deltaRToClosestElectron,
+					track.deltaRToClosestMuon,
+					track.deltaRToClosestTauHad,
+					track_eta,
+					track_phi,
+					track.genMatchedID,
+					track.genMatchedDR
+				]))
+				IDb+=1
 
-		# truth non-electrons
-		elif((dataMode and (not track.isTagProbeElectron)) or ((not dataMode) and (not isGenMatched(track,11)))):
-		
-			bkg_imgs.append(np.concatenate(([fileNum, IDb],img.flatten())))
-			bkg_infos.append(np.array([
-				fileNum,
-				IDb,
-				0,
-				nPV,
-				track.deltaRToClosestElectron,
-				track.deltaRToClosestMuon,
-				track.deltaRToClosestTauHad,
-				track_eta,
-				track_phi,
-				track.genMatchedID,
-				track.genMatchedDR
-			]))
-			IDb+=1
-
-np.savez_compressed(fOut + '.npz', 
+np.savez_compressed("images"+fOut + '.npz', 
 					e=e_imgs,
 					bkg=bkg_imgs,
 					e_infos=e_infos,
