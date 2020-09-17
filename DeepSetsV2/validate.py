@@ -16,7 +16,7 @@ from generator import generator
 from model import buildModel
 
 
-def run_validation(model, weights, batchDir, dataDir, plotDir, batch_size):
+def run_batch_validation(model, weights, batchDir, dataDir, plotDir, batch_size):
 	print("------------------STARTING VALIDATION--------------------")
 	model.load_weights(weights)
 
@@ -62,14 +62,38 @@ def run_validation(model, weights, batchDir, dataDir, plotDir, batch_size):
 						predicted = predictions,
 						indices = indices)
 
+def run_validation(model, weights, dataDir):
+	print("------------------STARTING VALIDATION--------------------")
+	model.load_weights(weights)
+
+	predictions = []
+	predictions_eReco = []
+
+	for file in os.listdir(dataDir):
+		if(".npz" not in file): continue
+		if("images_0p5" not in file): continue
+
+		data = np.load(dataDir+file)
+		events = data['e'][:,2:]
+		events = np.reshape(events,(len(events),100,4))
+		infos = data['e_infos']
+
+		predictions.append(model.predict(events))
+		predictions_eReco.append(infos[:,4])
+
+		print(file)
+
+	np.savez_compressed("validation_outputs",
+						pred = predictions,
+						pred_reco = predictions_eReco)
 
 if __name__ == "__main__":
 
-	dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_failAllRecos/"
+	dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_realEle/"
 	batchDir = "/data/users/llavezzo/deepSets100_2/deepSets100_2_p0/outputFiles/"
 	plotDir = "/data/users/llavezzo/deepSets100_2/deepSets100_2_p0/"
 
-	weights = "/data/users/llavezzo/deepSets100_2/deepSets100_2_p0/weights/lastEpoch.h5"
+	weights = "/data/users/llavezzo/deepSets100_3/deepSets100_3_p0/weights/lastEpoch.h5"
 
 	model = buildModel()
 
@@ -77,4 +101,5 @@ if __name__ == "__main__":
 				  loss='categorical_crossentropy', 
 				  metrics=['accuracy'])
 
-	run_validation(model, weights, batchDir, dataDir, plotDir, 64)
+	# run_batch_validation(model, weights, batchDir, dataDir, plotDir, 64)
+	run_validation(model,weights,dataDir)
