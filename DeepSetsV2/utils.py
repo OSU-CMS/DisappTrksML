@@ -54,6 +54,28 @@ def plot_event(x):
     
     plt.show()
 
+def save_event_deepSets(x,outf="event.png"):
+
+    if(x.shape[0] == 402): x = x[2:]
+    if(x.shape[0] == 400): x = np.reshape(x, (100,4))
+
+    fig, axs = plt.subplots(1,4,figsize=(20,5))
+        
+    for i in range(4):
+        im = x[np.where(x[:,3]==i)]
+        h = axs[i].hist2d(im[:,0],im[:,1],cmap='cubehelix',bins=(80,80))
+        axs[i].set_xlabel("Eta")
+        axs[i].set_ylabel("Phi")
+
+    axs[0].set_title("ECAL")
+    axs[1].set_title("ES")
+    axs[2].set_title("HCAL")
+    axs[3].set_title("Muon")
+    
+    fig.colorbar(h[3])
+
+    plt.savefig(outf)
+    
 # load the electron selected data
 def load_electron_data(dataDir, tag):
     data = np.load(dataDir+'electron_selection'+tag+'.npz')
