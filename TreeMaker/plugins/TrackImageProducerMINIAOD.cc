@@ -239,7 +239,6 @@ TrackImageProducerMINIAOD::getTrackInfo(const CandidateTrack &track,
   // dz wrt pv (2d) = (v_z - pv_z) - p_z * [(vertex - pv) dot p / |p|^2]
   info.dz = track.vz() - pv.z() -
     ((track.vx() - pv.x()) * track.px() + (track.vy() - pv.y()) * track.py()) * track.pz() / track.pt() / track.pt();
-  }
 
   info.deltaRToClosestElectron = -1;
   for(const auto &electron : electrons) {
