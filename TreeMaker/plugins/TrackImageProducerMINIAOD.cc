@@ -1,5 +1,3 @@
-#ifdef DISAPP_TRKS
-
 #include "DisappTrksML/TreeMaker/interface/TrackImageProducerMINIAOD.h"
 
 #include "MagneticField/Engine/interface/MagneticField.h"
@@ -120,6 +118,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   getChannelStatusMaps();
 
   vector<pat::Electron> tagElectrons = getTagElectrons(event, *triggers, *trigObjs, pv, *electrons);
+  vector<pat::Muon> tagMuons = getTagMuons(event, *triggers, *trigObjs, pv, *muons);
 
   trackInfos_.clear();
 
@@ -128,12 +127,25 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
 
     TrackInfo info = getTrackInfo(track, *tracks, pv, *jets, *electrons, *muons, *taus, genParticles);
 
-    if(maxRelTrackIso_ > 0 && info.trackIso / track.pt() >= maxRelTrackIso_) continue;
+    if(maxRelTrackIso_ > 0 && info.trackIso / info.pt >= maxRelTrackIso_) continue;
 
     if(info.passesProbeSelection) {
       for(const auto tag : tagElectrons) {
+        double thisDR = deltaR(tag, track);
+        if(info.deltaRToClosestTagElectron < 0 || thisDR < info.deltaRToClosestTagElectron) {
+          info.deltaRToClosestTagElectron = thisDR;
+        }
         if(isTagProbeElePair(track, tag)) info.isTagProbeElectron = true;
         if(isTagProbeTauToElePair(track, tag, met->at(0))) info.isTagProbeTauToElectron = true;
+      }
+
+      for(const auto tag : tagMuons) {
+        double thisDR = deltaR(tag, track);
+        if(info.deltaRToClosestTagMuon < 0 || thisDR < info.deltaRToClosestTagMuon) {
+          info.deltaRToClosestTagMuon = thisDR;
+        }
+        if(isTagProbeMuonPair(track, tag)) info.isTagProbeMuon = true;
+        if(isTagProbeTauToMuonPair(track, tag, met->at(0))) info.isTagProbeTauToMuon = true;
       }
     }
 
@@ -228,19 +240,26 @@ TrackImageProducerMINIAOD::getTrackInfo(const CandidateTrack &track,
   info.dz = track.vz() - pv.z() -
     ((track.vx() - pv.x()) * track.px() + (track.vy() - pv.y()) * track.py()) * track.pz() / track.pt() / track.pt();
 
-  info.genMatchedID = 0;
-  info.genMatchedDR = -1;
-  info.genMatchedPt = -1;
+  info.genMatchedID_promptFinalState = info.genMatchedID = 0;
+  info.genMatchedDR_promptFinalState = info.genMatchedDR = -1;
+  info.genMatchedPt_promptFinalState = info.genMatchedPt = -1;
+
   if(genParticles.isValid()) {
     for(const auto &genParticle : *genParticles) {
       if(genParticle.pt() < minGenParticlePt_) continue;
-      if(!genParticle.isPromptFinalState() && !genParticle.isDirectPromptTauDecayProductFinalState()) continue;
 
       double thisDR = deltaR(genParticle, track);
       if(info.genMatchedDR < 0 || thisDR < info.genMatchedDR) {
         info.genMatchedDR = thisDR;
         info.genMatchedID = genParticle.pdgId();
         info.genMatchedPt = genParticle.pt();
+
+        if(genParticle.isPromptFinalState() || genParticle.isDirectPromptTauDecayProductFinalState()) {
+          info.genMatchedDR_promptFinalState = thisDR;
+          info.genMatchedID_promptFinalState = genParticle.pdgId();
+          info.genMatchedPt_promptFinalState = genParticle.pt();
+        }
+
       }
     }
   }
@@ -281,10 +300,16 @@ TrackImageProducerMINIAOD::getTrackInfo(const CandidateTrack &track,
     if(info.deltaRToClosestTauHad < 0 || thisDR < info.deltaRToClosestTauHad) info.deltaRToClosestTauHad = thisDR;
   }
 
-  info.passesProbeSelection = isProbeTrack(track, info);
+  info.passesProbeSelection = isProbeTrack(info);
+
+  info.deltaRToClosestTagElectron = -1;
+  info.deltaRToClosestTagMuon = -1;
 
   info.isTagProbeElectron = false;
   info.isTagProbeTauToElectron = false;
+
+  info.isTagProbeMuon = false;
+  info.isTagProbeTauToMuon = false;
 
   return info;
 }
@@ -424,17 +449,52 @@ TrackImageProducerMINIAOD::getTagElectrons(const edm::Event &event,
   return tagElectrons;
 }
 
-const bool
-TrackImageProducerMINIAOD::isProbeTrack(const CandidateTrack &track, const TrackInfo info) const
+vector<pat::Muon>
+TrackImageProducerMINIAOD::getTagMuons(const edm::Event &event,
+                                       const edm::TriggerResults &triggers,
+                                       const vector<pat::TriggerObjectStandAlone> &trigObjs,
+                                       const reco::Vertex &vertex,
+                                       const vector<pat::Muon> &muons)
 {
-  if(track.pt() <= 30 ||
-     fabs(track.eta()) >= 2.1 ||
+  vector<pat::Muon> tagMuons;
+
+  for(const auto &muon : muons) {
+    if(muon.pt() <= (is2017_ ? 29 : 26)) continue;
+    if(fabs(muon.eta()) >= 2.1) continue;
+    if(!muon.isTightMuon(vertex)) continue;
+
+    double iso = muon.pfIsolationR04().sumNeutralHadronEt +
+                 muon.pfIsolationR04().sumPhotonEt +
+                 -0.5 * muon.pfIsolationR04().sumPUPt;
+    iso = muon.pfIsolationR04().sumChargedHadronPt + max(0.0, iso);
+    if(iso / muon.pt() >= 0.15) continue;
+
+    if(!anatools::isMatchedToTriggerObject(event,
+                                           triggers,
+                                           muon,
+                                           trigObjs,
+                                           (is2017_ ? "hltIterL3MuonCandidates::HLT" : "hltHighPtTkMuonCands::HLT"),
+                                           (is2017_ ? "hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered0p07" : "hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered0p07"))) {
+      continue; // cutMuonMatchToTrigObj
+    }
+    
+    tagMuons.push_back(muon);
+  }
+
+  return tagMuons;
+}
+
+const bool
+TrackImageProducerMINIAOD::isProbeTrack(const TrackInfo info) const
+{
+  if(info.pt <= 30 ||
+     fabs(info.eta) >= 2.1 ||
      // skip fiducial selections
      info.nValidPixelHits < 4 ||
      info.nValidHits < 4 ||
      info.missingInnerHits != 0 ||
      info.missingMiddleHits != 0 ||
-     info.trackIso / track.pt() >= 0.05 ||
+     info.trackIso / info.pt >= 0.05 ||
      fabs(info.d0) >= 0.02 ||
      fabs(info.dz) >= 0.5 ||
      // skip lepton vetoes
@@ -455,7 +515,7 @@ TrackImageProducerMINIAOD::isTagProbeElePair(const CandidateTrack &probe, const 
                    sqrt(probe.px() * probe.px() + 
                         probe.py() * probe.py() + 
                         probe.pz() * probe.pz() + 
-                        0.000510998928 * 0.000510998928));
+                        0.000510998928 * 0.000510998928)); // energyOfElectron()
 
   if(fabs((t + p).M() - 91.1876) >= 10.0 || tag.charge() * probe.charge() >= 0) return false;
 
@@ -477,7 +537,47 @@ TrackImageProducerMINIAOD::isTagProbeTauToElePair(const CandidateTrack &probe,
                    sqrt(probe.px() * probe.px() + 
                         probe.py() * probe.py() + 
                         probe.pz() * probe.pz() + 
-                        0.000510998928 * 0.000510998928));
+                        0.000510998928 * 0.000510998928)); // energyOfElectron()
+
+  double invMass = (t + p).M();
+  if(invMass <= 91.1876 - 50 || invMass >= 91.1876 - 15 || tag.charge() * probe.charge() >= 0) return false;
+
+  return true;
+}
+
+const bool
+TrackImageProducerMINIAOD::isTagProbeMuonPair(const CandidateTrack &probe, const pat::Muon &tag) const 
+{
+  TLorentzVector t(tag.px(), tag.py(), tag.pz(), tag.energy());
+  TLorentzVector p(probe.px(), 
+                   probe.py(), 
+                   probe.pz(), 
+                   sqrt(probe.px() * probe.px() + 
+                        probe.py() * probe.py() + 
+                        probe.pz() * probe.pz() + 
+                        0.1056583715 * 0.1056583715)); // energyOfMuon()
+
+  if(fabs((t + p).M() - 91.1876) >= 10.0 || tag.charge() * probe.charge() >= 0) return false;
+
+  return true;
+}
+
+const bool
+TrackImageProducerMINIAOD::isTagProbeTauToMuonPair(const CandidateTrack &probe, 
+                                                   const pat::Muon &tag, 
+                                                   const pat::MET &met) const 
+{
+  double dPhi = deltaPhi(tag.phi(), probe.phi());
+  if(sqrt(2.0 * tag.pt() * probe.pt() * (1 - cos(dPhi))) >= 40) return false; // cutMuonLowMT
+
+  TLorentzVector t(tag.px(), tag.py(), tag.pz(), tag.energy());
+  TLorentzVector p(probe.px(), 
+                   probe.py(), 
+                   probe.pz(), 
+                   sqrt(probe.px() * probe.px() + 
+                        probe.py() * probe.py() + 
+                        probe.pz() * probe.pz() + 
+                        0.1056583715 * 0.1056583715)); // energyOfMuon()
 
   double invMass = (t + p).M();
   if(invMass <= 91.1876 - 50 || invMass >= 91.1876 - 15 || tag.charge() * probe.charge() >= 0) return false;
@@ -595,5 +695,3 @@ TrackImageProducerMINIAOD::getChannelStatusMaps()
 }
 
 DEFINE_FWK_MODULE(TrackImageProducerMINIAOD);
-
-#endif // ifdef DISAPP_TRKS

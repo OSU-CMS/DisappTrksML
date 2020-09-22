@@ -19,6 +19,8 @@
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/Candidate/interface/Candidate.h"
+#include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/MuonReco/interface/Muon.h"
@@ -89,6 +91,9 @@ class TrackImageProducer : public edm::EDAnalyzer {
 
       const TrackInfo getTrackInfo(const reco::Track &, const vector<reco::Track> &, const reco::Vertex &, const vector<reco::PFJet> &) const;
       void getRecHits(const edm::Event &);
+      void getGenParticles(const reco::CandidateView &);
+
+      const bool isProbeTrack(const TrackInfo) const;
 
       const math::XYZVector getPosition(const DetId &) const;
       const math::XYZVector getPosition(const CSCSegment&) const;
@@ -111,7 +116,7 @@ class TrackImageProducer : public edm::EDAnalyzer {
       const double maxRelTrackIso_;
 
       edm::EDGetTokenT<vector<reco::Track> >       tracksToken_;
-      edm::EDGetTokenT<vector<reco::GenParticle> > genParticlesToken_;
+      edm::EDGetTokenT<reco::CandidateView>        genParticlesToken_;
       edm::EDGetTokenT<vector<reco::GsfElectron> > electronsToken_;
       edm::EDGetTokenT<vector<reco::Muon> >        muonsToken_;
       edm::EDGetTokenT<vector<reco::PFTau> >       tausToken_;
@@ -137,6 +142,7 @@ class TrackImageProducer : public edm::EDAnalyzer {
 
       vector<TrackInfo> trackInfos_;
       vector<RecHitInfo> recHitInfos_;
+      vector<GenParticleInfo> genParticleInfos_;
       int nPV_;
 };
 
