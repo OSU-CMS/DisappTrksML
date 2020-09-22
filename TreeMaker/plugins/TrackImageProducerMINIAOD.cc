@@ -239,29 +239,6 @@ TrackImageProducerMINIAOD::getTrackInfo(const CandidateTrack &track,
   // dz wrt pv (2d) = (v_z - pv_z) - p_z * [(vertex - pv) dot p / |p|^2]
   info.dz = track.vz() - pv.z() -
     ((track.vx() - pv.x()) * track.px() + (track.vy() - pv.y()) * track.py()) * track.pz() / track.pt() / track.pt();
-
-  info.genMatchedID_promptFinalState = info.genMatchedID = 0;
-  info.genMatchedDR_promptFinalState = info.genMatchedDR = -1;
-  info.genMatchedPt_promptFinalState = info.genMatchedPt = -1;
-
-  if(genParticles.isValid()) {
-    for(const auto &genParticle : *genParticles) {
-      if(genParticle.pt() < minGenParticlePt_) continue;
-
-      double thisDR = deltaR(genParticle, track);
-      if(info.genMatchedDR < 0 || thisDR < info.genMatchedDR) {
-        info.genMatchedDR = thisDR;
-        info.genMatchedID = genParticle.pdgId();
-        info.genMatchedPt = genParticle.pt();
-
-        if(genParticle.isPromptFinalState() || genParticle.isDirectPromptTauDecayProductFinalState()) {
-          info.genMatchedDR_promptFinalState = thisDR;
-          info.genMatchedID_promptFinalState = genParticle.pdgId();
-          info.genMatchedPt_promptFinalState = genParticle.pt();
-        }
-
-      }
-    }
   }
 
   info.deltaRToClosestElectron = -1;

@@ -2,8 +2,6 @@
 #define INFO_STRUCTS
 
 struct TrackInfo {
-  int genMatchedID, genMatchedID_promptFinalState;
-  double genMatchedDR, genMatchedDR_promptFinalState, genMatchedPt, genMatchedPt_promptFinalState;
   double deltaRToClosestElectron, deltaRToClosestMuon, deltaRToClosestTauHad;
   double dRMinJet;
   double dRMinBadEcalChannel;
