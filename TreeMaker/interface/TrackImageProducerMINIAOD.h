@@ -1,5 +1,3 @@
-#ifdef DISAPP_TRKS
-
 #ifndef TRACK_IMAGE_PRODUCER_MINIAOD
 #define TRACK_IMAGE_PRODUCER_MINIAOD
 
@@ -110,9 +108,18 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
                                             const reco::Vertex &,
                                             const vector<pat::Electron> &);
 
-      const bool isProbeTrack(const CandidateTrack &, const TrackInfo ) const;
+      vector<pat::Muon> getTagMuons(const edm::Event &,
+                                    const edm::TriggerResults &,
+                                    const vector<pat::TriggerObjectStandAlone> &,
+                                    const reco::Vertex &,
+                                    const vector<pat::Muon> &);
+
+      const bool isProbeTrack(const TrackInfo) const;
+
       const bool isTagProbeElePair(const CandidateTrack &, const pat::Electron &) const;
+      const bool isTagProbeMuonPair(const CandidateTrack &, const pat::Muon &) const;
       const bool isTagProbeTauToElePair(const CandidateTrack &, const pat::Electron &, const pat::MET &) const;
+      const bool isTagProbeTauToMuonPair(const CandidateTrack &, const pat::Muon &, const pat::MET &) const;
 
       const double minDRBadEcalChannel(const CandidateTrack &) const;
       void getChannelStatusMaps();
@@ -177,5 +184,3 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
 };
 
 #endif
-
-#endif // ifdef DISAPP_TRKS

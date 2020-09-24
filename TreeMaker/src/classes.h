@@ -9,5 +9,8 @@ namespace {
 
     RecHitInfo recHitInfo0;
     std::vector<RecHitInfo> recHitInfo1;
+
+    GenParticleInfo genParticleInfo0;
+    std::vector<GenParticleInfo> genParticleInfo1;
   };
 }

@@ -32,7 +32,7 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
   maxRelTrackIso_     (cfg.getParameter<double> ("maxRelTrackIso"))
 {
   tracksToken_       = consumes<vector<reco::Track> >       (tracks_);
-  genParticlesToken_ = consumes<vector<reco::GenParticle> > (genParticles_);
+  genParticlesToken_ = consumes<reco::CandidateView>        (genParticles_);
   electronsToken_    = consumes<vector<reco::GsfElectron> > (electrons_);
   muonsToken_        = consumes<vector<reco::Muon> >        (muons_);
   tausToken_         = consumes<vector<reco::PFTau> >       (taus_);
@@ -54,10 +54,12 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
 
   trackInfos_.clear();
   recHitInfos_.clear();
+  genParticleInfos_.clear();
 
   tree_ = fs_->make<TTree>("tree", "tree");
   tree_->Branch("tracks", &trackInfos_);
   tree_->Branch("recHits", &recHitInfos_);
+  tree_->Branch("genParticles", &genParticleInfos_);
   tree_->Branch("nPV", &nPV_);
 }
 
@@ -73,7 +75,7 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
   edm::Handle<vector<reco::Track> > tracks;
   event.getByToken(tracksToken_, tracks);
 
-  edm::Handle<vector<reco::GenParticle> > genParticles;
+  edm::Handle<reco::CandidateView> genParticles;
   event.getByToken(genParticlesToken_, genParticles);
 
   edm::Handle<vector<reco::GsfElectron> > electrons;
@@ -110,28 +112,11 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
   trackInfos_.clear();
 
   for(const auto &track : *tracks) {
+    if(minTrackPt_ > 0 && track.pt() < minTrackPt_) continue;
 
     TrackInfo info = getTrackInfo(track, *tracks, pv, *jets);
 
-    if(minTrackPt_ > 0 && track.pt() < minTrackPt_) continue;
-    if(maxRelTrackIso_ > 0 && info.trackIso / track.pt() >= maxRelTrackIso_) continue;
-
-    info.genMatchedID = 0;
-    info.genMatchedDR = -1;
-    info.genMatchedPt = -1;
-    if(genParticles.isValid()) {
-      for(const auto &genParticle : *genParticles) {
-        if(genParticle.pt() < minGenParticlePt_) continue;
-        if(!genParticle.isPromptFinalState() && !genParticle.isDirectPromptTauDecayProductFinalState()) continue;
-
-        double thisDR = deltaR(genParticle, track);
-        if(info.genMatchedDR < 0 || thisDR < info.genMatchedDR) {
-          info.genMatchedDR = thisDR;
-          info.genMatchedID = genParticle.pdgId();
-          info.genMatchedPt = genParticle.pt();
-        }
-      }
-    }
+    if(maxRelTrackIso_ > 0 && info.trackIso / info.pt >= maxRelTrackIso_) continue;
 
     info.deltaRToClosestElectron = -1;
     info.deltaRToClosestMuon = -1;
@@ -165,6 +150,9 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
 
   recHitInfos_.clear();
   getRecHits(event);
+
+  genParticleInfos_.clear();
+  getGenParticles(*genParticles);
 
   tree_->Fill();
 
@@ -212,10 +200,10 @@ TrackImageProducer::getTrackInfo(const reco::Track &track, const vector<reco::Tr
     }
   }
 
-  bool inTOBCrack = (fabs(track.dz()) < 0.5 && fabs(M_PI_2 - track.theta()) < 1.0e-3);
-  bool inECALCrack = (fabs(track.eta()) >= 1.42 && fabs(track.eta()) <= 1.65);
-  bool inDTWheelGap = (fabs(track.eta()) >= 0.15 && fabs(track.eta()) <= 0.35);
-  bool inCSCTransitionRegion = (fabs(track.eta()) >= 1.55 && fabs(track.eta()) <= 1.85);
+  bool inTOBCrack            = (fabs(track.dz()) < 0.5 && fabs(M_PI_2 - track.theta()) < 1.0e-3);
+  bool inECALCrack           = (fabs(info.eta) >= 1.42 && fabs(info.eta) <= 1.65);
+  bool inDTWheelGap          = (fabs(info.eta) >= 0.15 && fabs(info.eta) <= 0.35);
+  bool inCSCTransitionRegion = (fabs(info.eta) >= 1.55 && fabs(info.eta) <= 1.85);
   info.inGap = (inTOBCrack || inECALCrack || inDTWheelGap || inCSCTransitionRegion);
 
   info.trackIso = 0.0;
@@ -239,13 +227,34 @@ TrackImageProducer::getTrackInfo(const reco::Track &track, const vector<reco::Tr
   info.dz = track.vz() - pv.z() -
     ((track.vx() - pv.x()) * track.px() + (track.vy() - pv.y()) * track.py()) * track.pz() / track.pt() / track.pt();
   
-  info.passesProbeSelection = isProbeTrack(track, info);
+  info.passesProbeSelection = isProbeTrack(info);
 
   info.isTagProbeElectron = false;
   info.isTagProbeTauToElectron = false;
 
 
   return info;
+}
+
+const bool
+TrackImageProducer::isProbeTrack(const TrackInfo info) const
+{
+  if(info.pt <= 30 ||
+     fabs(info.eta) >= 2.1 ||
+     // skip fiducial selections
+     info.nValidPixelHits < 4 ||
+     info.nValidHits < 4 ||
+     info.missingInnerHits != 0 ||
+     info.missingMiddleHits != 0 ||
+     info.trackIso / info.pt >= 0.05 ||
+     fabs(info.d0) >= 0.02 ||
+     fabs(info.dz) >= 0.5 ||
+     // skip lepton vetoes
+     fabs(info.dRMinJet) <= 0.5) {
+    return false;
+  }
+
+  return true;
 }
 
 void 
@@ -300,6 +309,63 @@ TrackImageProducer::getRecHits(const edm::Event &event)
     recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, DetType::RPC));
   }
 
+}
+
+void
+TrackImageProducer::getGenParticles(const reco::CandidateView &genParticles) {
+  
+  vector<const reco::Candidate*> cands;
+  vector<const reco::Candidate*>::const_iterator found = cands.begin();
+  for(reco::CandidateView::const_iterator p = genParticles.begin(); p != genParticles.end(); ++p) cands.push_back(&*p);
+
+  for(reco::CandidateView::const_iterator p = genParticles.begin(); p != genParticles.end(); p++) {
+    GenParticleInfo info;
+    info.px = p->px();
+    info.py = p->py();
+    info.pz = p->pz();
+    info.e  = p->energy();
+
+    info.eta = p->eta();
+    info.phi = p->phi();
+    info.pt  = p->pt();
+
+    info.pdgId = p->pdgId();
+    info.status = p->status();
+
+    info.mother1_index = -1;
+    info.mother2_index = -1;
+
+    info.daughter1_index = -1;
+    info.daughter2_index = -1;
+
+    info.nMothers = p->numberOfMothers();
+    info.nDaughters = p->numberOfDaughters();
+
+    found = find(cands.begin(), cands.end(), p->mother(0));
+    if(found != cands.end()) info.mother1_index = found - cands.begin();
+
+    found = find(cands.begin(), cands.end(), p->mother(p->numberOfMothers() - 1));
+    if(found != cands.end()) info.mother2_index = found - cands.begin();
+
+    found = find(cands.begin(), cands.end(), p->daughter(0));
+    if(found != cands.end()) info.daughter1_index = found - cands.begin();
+
+    found = find(cands.begin(), cands.end(), p->daughter(p->numberOfDaughters() - 1));
+    if(found != cands.end()) info.daughter2_index = found - cands.begin();
+
+    const reco::GenParticle* gp = dynamic_cast<const reco::GenParticle*>(&*p);
+
+    info.isPromptFinalState = gp->isPromptFinalState();
+    info.isDirectPromptTauDecayProductFinalState = gp->isDirectPromptTauDecayProductFinalState();
+    info.isHardProcess = gp->isHardProcess();
+    info.fromHardProcessFinalState = gp->fromHardProcessFinalState();
+    info.fromHardProcessBeforeFSR = gp->fromHardProcessBeforeFSR();
+    info.isFirstCopy = gp->statusFlags().isFirstCopy();
+    info.isLastCopy = gp->isLastCopy();
+    info.isLastCopyBeforeFSR = gp->isLastCopyBeforeFSR();
+
+    genParticleInfos_.push_back(info);
+  }
 }
 
 const math::XYZVector 
