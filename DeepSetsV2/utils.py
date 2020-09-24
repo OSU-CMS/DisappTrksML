@@ -9,7 +9,7 @@ import os
 from collections import Counter
 from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 import sys
 
 class bcolors:
@@ -59,22 +59,29 @@ def save_event_deepSets(x,outf="event.png"):
     if(x.shape[0] == 402): x = x[2:]
     if(x.shape[0] == 400): x = np.reshape(x, (100,4))
 
-    fig, axs = plt.subplots(1,4,figsize=(20,5))
+    fig, axs = plt.subplots(2,2, figsize=(12,10))
         
-    for i in range(4):
-        im = x[np.where(x[:,3]==i)]
-        h = axs[i].hist2d(im[:,0],im[:,1],cmap='cubehelix',bins=(80,80))
-        axs[i].set_xlabel("Eta")
-        axs[i].set_ylabel("Phi")
+    i = 0
+    for col in range(2):
+        for row in range(2):
+            ax = axs[row,col]
+            im = x[np.where(x[:,3]==i)]
+            im = im[np.where(im[:,2]!=0)]
+            h = ax.hist2d(im[:,0],im[:,1],weights=im[:,2],cmap='cubehelix',bins=(80,80))
+            fig.colorbar(h[3], ax = ax)
+            ax.set_xlabel("Eta")
+            ax.set_ylabel("Phi")
+            i+=1
 
-    axs[0].set_title("ECAL")
-    axs[1].set_title("ES")
-    axs[2].set_title("HCAL")
-    axs[3].set_title("Muon")
-    
-    fig.colorbar(h[3])
+    axs[0,0].set_title("ECAL")
+    axs[0,1].set_title("ES")
+    axs[1,0].set_title("HCAL")
+    axs[1,1].set_title("Muon")
 
+    plt.tight_layout()
     plt.savefig(outf)
+    plt.cla()
+    plt.close(fig)
     
 # load the electron selected data
 def load_electron_data(dataDir, tag):
@@ -316,6 +323,14 @@ def metrics(true, predictions, plotDir, threshold=0.5):
 
   precision, recall = calc_binary_metrics(cm)
   auc = roc_auc_score(true, predictions)
+
+  fpr, tpr, thresholds = roc_curve(true, predictions)
+  plt.plot(fpr,tpr)
+  plt.title("ROC")
+  plt.xlabel('False positive rate')
+  plt.ylabel('True positive rate')
+  plt.savefig(plotDir+"roc.png")
+  plt.clf()
 
   fileOut = open(plotDir+"metrics.txt","w")
   fileOut.write("Precision = TP/(TP+FP) = fraction of predicted true actually true "+str(round(precision,5))+"\n")
