@@ -72,8 +72,8 @@ process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducer",
     tauMuonDiscriminator     = cms.InputTag("hpsPFTauDiscriminationByLooseMuonRejection3"),
 
     minGenParticlePt = cms.double (10.0),
-    minTrackPt       = cms.double (30.0),
-    maxRelTrackIso   = cms.double (0.05),
+    minTrackPt       = cms.double (25.0),
+    maxRelTrackIso   = cms.double (-1),
 )
 
 process.myPath = cms.Path (process.trackImageProducer)
