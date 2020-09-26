@@ -24,7 +24,7 @@ from keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activat
 import utils
 import validate
 from generator import generator
-from model import buildModel
+from model import buildModel, buildModelWithEventInfo
 
 # limit CPU usage
 # config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
@@ -87,7 +87,7 @@ v: verbosity
 patience_count: after how many epochs to stop if monitored variable doesn't improve
 monitor: which variable to monitor with patience_count
 """
-dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_Zee_V2/"
+dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_Zee_V3/"
 logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
@@ -96,7 +96,7 @@ val_size = 0.2
 undersample_bkg = -1
 v = 1
 batch_size = 128
-epochs = 10
+epochs = 2
 patience_count = 10
 monitor = 'val_loss'
 metrics = ['accuracy']
@@ -263,11 +263,11 @@ np.save(outputDir+"bkg_events_valBatches", val_bkg_event_batches)
 
 # initialize generators
 train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, 
-					batch_size, dataDir, False, True)
+					batch_size, dataDir, False, True, True)
 val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, 
-					batch_size, dataDir, False, True)
+					batch_size, dataDir, False, True, True)
 
-model = buildModel()
+model = buildModelWithEventInfo()
 
 model.compile(optimizer=optimizers.Adam(), 
 			  loss='categorical_crossentropy', 
