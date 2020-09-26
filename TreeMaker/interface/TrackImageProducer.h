@@ -38,6 +38,12 @@
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
 
+#include "CondFormats/EcalObjects/interface/EcalChannelStatus.h"
+#include "CondFormats/DataRecord/interface/EcalChannelStatusRcd.h"
+
+#include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
+#include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
+
 //include Cscs
 #include "DataFormats/CSCRecHit/interface/CSCSegment.h"
 #include "DataFormats/CSCRecHit/interface/CSCSegmentCollection.h"
@@ -100,6 +106,9 @@ class TrackImageProducer : public edm::EDAnalyzer {
       const math::XYZVector getPosition(const DTRecSegment4D&) const;
       const math::XYZVector getPosition(const RPCRecHit&) const;
 
+      const double minDRBadEcalChannel(const reco::Track &) const;
+      void getChannelStatusMaps();
+
       edm::InputTag tracks_;
       edm::InputTag genParticles_;
       edm::InputTag electrons_, muons_, taus_;
@@ -137,6 +146,8 @@ class TrackImageProducer : public edm::EDAnalyzer {
       edm::ESHandle<DTGeometry>   dtGeometry_;
       edm::ESHandle<RPCGeometry>  rpcGeometry_;
 
+      edm::ESHandle<EcalChannelStatus> ecalStatus_;
+
       edm::Service<TFileService> fs_;
       TTree * tree_;
 
@@ -144,6 +155,9 @@ class TrackImageProducer : public edm::EDAnalyzer {
       vector<RecHitInfo> recHitInfos_;
       vector<GenParticleInfo> genParticleInfos_;
       int nPV_;
+
+      map<DetId, vector<double> > EcalAllDeadChannelsValMap_;
+      map<DetId, vector<int> >    EcalAllDeadChannelsBitMap_;
 };
 
 #endif
