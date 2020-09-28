@@ -154,7 +154,11 @@ class TrackImageProducer : public edm::EDAnalyzer {
       vector<TrackInfo> trackInfos_;
       vector<RecHitInfo> recHitInfos_;
       vector<GenParticleInfo> genParticleInfos_;
+      
       int nPV_;
+      unsigned long long eventNumber_;
+      unsigned int lumiBlockNumber_;
+      unsigned int runNumber_;
 
       map<DetId, vector<double> > EcalAllDeadChannelsValMap_;
       map<DetId, vector<int> >    EcalAllDeadChannelsBitMap_;

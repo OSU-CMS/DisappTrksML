@@ -60,7 +60,11 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
   tree_->Branch("tracks", &trackInfos_);
   tree_->Branch("recHits", &recHitInfos_);
   tree_->Branch("genParticles", &genParticleInfos_);
+  
   tree_->Branch("nPV", &nPV_);
+  tree_->Branch("eventNumber", &eventNumber_);
+  tree_->Branch("lumiBlockNumber", &lumiBlockNumber_);
+  tree_->Branch("runNumber", &runNumber_);
 }
 
 TrackImageProducer::~TrackImageProducer()
@@ -103,6 +107,10 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
   event.getByToken(verticesToken_, vertices);
   const reco::Vertex &pv = vertices->at(0);
   nPV_ = vertices->size();
+
+  eventNumber_ = event.id().event();
+  lumiBlockNumber_ = event.id().luminosityBlock();
+  runNumber_ = event.id().run();
 
   edm::Handle<vector<reco::PFJet> > jets;
   event.getByToken(jetsToken_, jets);

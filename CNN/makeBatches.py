@@ -17,15 +17,15 @@ import getopt
 
 import utils
 
-dataDir = '/store/user/mcarrigan/disappearingTracks/AMSB/selected_600_1000_step3_tanh/'
-outputDir = '/home/mcarrigan/scratch0/disTracksML/DisappTrksML/CNN/AMSB/'
+dataDir = '/store/user/mcarrigan/disappearingTracks/electron_selection_singleElectron2017F_tanh/'
+outputDir = '/home/mcarrigan/scratch0/disTracksML/DisappTrksML/CNN/Test/singleElectron2017F/nonReco/'
 
 batch_size = 256
 
 # import count dicts
 #with open(dataDir+'eCounts.pkl', 'rb') as f:
 #	eCounts = pickle.load(f)
-with open(dataDir+'bkgCounts.pkl', 'rb') as f:
+with open(dataDir+'eCounts.pkl', 'rb') as f:
 	bkgCounts = pickle.load(f)
 
 # fill lists of all events and files
@@ -56,10 +56,11 @@ val_e_event_batches = np.array([[0,0]]*nBatches)
 print(bkg_file_batches)
 print(bkg_event_batches)
 
-np.save(outputDir + 'bkg_files_valBatches', bkg_file_batches)
-np.save(outputDir + 'bkg_events_valBatches', bkg_event_batches)
-np.save(outputDir + 'e_files_valBatches', val_e_file_batches)
-np.save(outputDir + 'e_events_valBatches', val_e_event_batches)
+#reversed to save electrons
+np.save(outputDir + 'e_files_testBatches', bkg_file_batches)
+np.save(outputDir + 'e_events_testBatches', bkg_event_batches)
+np.save(outputDir + 'bkg_files_testBatches', val_e_file_batches)
+np.save(outputDir + 'bkg_events_testBatches', val_e_event_batches)
 
 
 
