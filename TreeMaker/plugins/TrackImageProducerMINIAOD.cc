@@ -113,7 +113,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   const reco::Vertex &pv = vertices->at(0);
   nPV_ = vertices->size();
 
-  eventNumber_ = event.id().Event();
+  eventNumber_ = event.id().event();
   lumiBlockNumber_ = event.id().luminosityBlock();
   runNumber_ = event.id().run();
 
