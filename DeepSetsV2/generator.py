@@ -38,7 +38,7 @@ def load_data(files, events, class_label, dataDir):
 class generator(keras.utils.Sequence):
   
 	def __init__(self, batchesE, batchesBkg, indicesE, indicesBkg, 
-				batch_size, dataDir, val_mode=False,shuffle=True):
+				batch_size, dataDir, val_mode=False,shuffle=True, eventInfo=False):
 		self.batchesE = batchesE
 		self.batchesBkg = batchesBkg
 		self.indicesE = indicesE
@@ -50,6 +50,7 @@ class generator(keras.utils.Sequence):
 		self.y_batches = np.array([])
 		self.used_idx = []
 		self.indices_batches = np.array([])
+		self.eventInfo = eventInfo
 
 	def __len__(self):
 		return len(self.batchesE)
@@ -63,15 +64,12 @@ class generator(keras.utils.Sequence):
 
 		e_images = load_data(filenamesE,indexE,'e',self.dataDir)
 		bkg_images = load_data(filenamesBkg,indexBkg,'bkg',self.dataDir)
+		if(self.eventInfo):
+			e_info = load_data(filenamesE,indexE,'e_infos',self.dataDir)
+			bkg_info = load_data(filenamesBkg,indexBkg,'bkg_infos',self.dataDir)
 		
 		numE = e_images.shape[0]
 		numBkg = bkg_images.shape[0]
-		if(numE+numBkg!=self.batch_size):
-			print(filenamesE)
-			print(filenamesBkg)
-			print()
-			print(numE,numBkg)
-			print()
 
 		# shuffle and select appropriate amount of electrons, bkg
 		if(numBkg != 0):
@@ -79,26 +77,31 @@ class generator(keras.utils.Sequence):
 			random.shuffle(indices)
 			bkg_indices = bkg_images[indices,:2]
 			bkg_images = bkg_images[indices,2:]
+			if(self.eventInfo): bkg_info = bkg_info[indices,3:9]
 
 		if(numE != 0):
 			indices = list(range(e_images.shape[0]))
 			random.shuffle(indices)
 			e_indices = e_images[indices,:2]
 			e_images = e_images[indices,2:]
+			if(self.eventInfo): e_info = e_info[indices,3:9]
 
 		# concatenate images and suffle them, create labels
 		if(numE != 0 and numBkg != 0): 
 			batch_x = np.vstack((e_images,bkg_images))
 			batch_indices = np.vstack((e_indices,bkg_indices))
 			batch_y = np.concatenate((np.ones(numE),np.zeros(numBkg)))
+			if(self.eventInfo): batch_info = np.vstack((e_info,bkg_info))
 		elif(numE == 0): 
 			batch_x = bkg_images
 			batch_indices = bkg_indices
 			batch_y = np.zeros(numBkg)
+			if(self.eventInfo): batch_info = bkg_info
 		elif(numBkg == 0): 
 			batch_x = e_images
 			batch_indices = e_indices
 			batch_y = np.ones(numE)
+			if(self.eventInfo): batch_info = e_info
 		
 		indices = list(range(batch_x.shape[0]))
 		random.shuffle(indices)
@@ -111,6 +114,8 @@ class generator(keras.utils.Sequence):
 
 		batch_y = batch_y[indices[:self.batch_size]]
 		batch_y = keras.utils.to_categorical(batch_y, num_classes=2)
+
+		if(self.eventInfo): batch_info = batch_info[indices[:self.batch_size]]
 		
 		
 		if(self.val_mode):
@@ -124,7 +129,8 @@ class generator(keras.utils.Sequence):
 				self.used_idx.append(idx)
 			
 				return batch_x
-
+		elif(self.eventInfo):
+			return [batch_x, batch_info], batch_y
 		else:
 			return batch_x, batch_y
 	

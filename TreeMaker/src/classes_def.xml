@@ -4,4 +4,7 @@
 
   <class name="RecHitInfo"/>
   <class name="std::vector<RecHitInfo>"/>
+
+  <class name="GenParticleInfo"/>
+  <class name="std::vector<GenParticleInfo>"/>
 </lcgdict>

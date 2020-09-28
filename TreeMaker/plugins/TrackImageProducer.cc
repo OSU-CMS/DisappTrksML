@@ -32,7 +32,7 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
   maxRelTrackIso_     (cfg.getParameter<double> ("maxRelTrackIso"))
 {
   tracksToken_       = consumes<vector<reco::Track> >       (tracks_);
-  genParticlesToken_ = consumes<vector<reco::GenParticle> > (genParticles_);
+  genParticlesToken_ = consumes<reco::CandidateView>        (genParticles_);
   electronsToken_    = consumes<vector<reco::GsfElectron> > (electrons_);
   muonsToken_        = consumes<vector<reco::Muon> >        (muons_);
   tausToken_         = consumes<vector<reco::PFTau> >       (taus_);
@@ -54,10 +54,12 @@ TrackImageProducer::TrackImageProducer(const edm::ParameterSet &cfg) :
 
   trackInfos_.clear();
   recHitInfos_.clear();
+  genParticleInfos_.clear();
 
   tree_ = fs_->make<TTree>("tree", "tree");
   tree_->Branch("tracks", &trackInfos_);
   tree_->Branch("recHits", &recHitInfos_);
+  tree_->Branch("genParticles", &genParticleInfos_);
   tree_->Branch("nPV", &nPV_);
 }
 
@@ -73,7 +75,7 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
   edm::Handle<vector<reco::Track> > tracks;
   event.getByToken(tracksToken_, tracks);
 
-  edm::Handle<vector<reco::GenParticle> > genParticles;
+  edm::Handle<reco::CandidateView> genParticles;
   event.getByToken(genParticlesToken_, genParticles);
 
   edm::Handle<vector<reco::GsfElectron> > electrons;
@@ -106,32 +108,16 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
   event.getByToken(jetsToken_, jets);
 
   getGeometries(setup);
+  getChannelStatusMaps();
 
   trackInfos_.clear();
 
   for(const auto &track : *tracks) {
+    if(minTrackPt_ > 0 && track.pt() < minTrackPt_) continue;
 
     TrackInfo info = getTrackInfo(track, *tracks, pv, *jets);
 
-    if(minTrackPt_ > 0 && track.pt() < minTrackPt_) continue;
-    if(maxRelTrackIso_ > 0 && info.trackIso / track.pt() >= maxRelTrackIso_) continue;
-
-    info.genMatchedID = 0;
-    info.genMatchedDR = -1;
-    info.genMatchedPt = -1;
-    if(genParticles.isValid()) {
-      for(const auto &genParticle : *genParticles) {
-        if(genParticle.pt() < minGenParticlePt_) continue;
-        if(!genParticle.isPromptFinalState() && !genParticle.isDirectPromptTauDecayProductFinalState()) continue;
-
-        double thisDR = deltaR(genParticle, track);
-        if(info.genMatchedDR < 0 || thisDR < info.genMatchedDR) {
-          info.genMatchedDR = thisDR;
-          info.genMatchedID = genParticle.pdgId();
-          info.genMatchedPt = genParticle.pt();
-        }
-      }
-    }
+    if(maxRelTrackIso_ > 0 && info.trackIso / info.pt >= maxRelTrackIso_) continue;
 
     info.deltaRToClosestElectron = -1;
     info.deltaRToClosestMuon = -1;
@@ -166,6 +152,9 @@ TrackImageProducer::analyze(const edm::Event &event, const edm::EventSetup &setu
   recHitInfos_.clear();
   getRecHits(event);
 
+  genParticleInfos_.clear();
+  getGenParticles(*genParticles);
+
   tree_->Fill();
 
 }
@@ -186,6 +175,8 @@ void TrackImageProducer::getGeometries(const edm::EventSetup &setup) {
   setup.get<MuonGeometryRecord>().get(rpcGeometry_);
   if(!rpcGeometry_.isValid())
     throw cms::Exception("FatalError") << "Unable to find MuonGeometryRecord (RPC) in event!\n";
+
+  setup.get<EcalChannelStatusRcd>().get(ecalStatus_);
 }
 
 const TrackInfo
@@ -212,11 +203,13 @@ TrackImageProducer::getTrackInfo(const reco::Track &track, const vector<reco::Tr
     }
   }
 
-  bool inTOBCrack = (fabs(track.dz()) < 0.5 && fabs(M_PI_2 - track.theta()) < 1.0e-3);
-  bool inECALCrack = (fabs(track.eta()) >= 1.42 && fabs(track.eta()) <= 1.65);
-  bool inDTWheelGap = (fabs(track.eta()) >= 0.15 && fabs(track.eta()) <= 0.35);
-  bool inCSCTransitionRegion = (fabs(track.eta()) >= 1.55 && fabs(track.eta()) <= 1.85);
+  bool inTOBCrack            = (fabs(track.dz()) < 0.5 && fabs(M_PI_2 - track.theta()) < 1.0e-3);
+  bool inECALCrack           = (fabs(info.eta) >= 1.42 && fabs(info.eta) <= 1.65);
+  bool inDTWheelGap          = (fabs(info.eta) >= 0.15 && fabs(info.eta) <= 0.35);
+  bool inCSCTransitionRegion = (fabs(info.eta) >= 1.55 && fabs(info.eta) <= 1.85);
   info.inGap = (inTOBCrack || inECALCrack || inDTWheelGap || inCSCTransitionRegion);
+
+  info.dRMinBadEcalChannel = minDRBadEcalChannel(track);
 
   info.trackIso = 0.0;
   for(const auto &t : tracks) {
@@ -239,13 +232,34 @@ TrackImageProducer::getTrackInfo(const reco::Track &track, const vector<reco::Tr
   info.dz = track.vz() - pv.z() -
     ((track.vx() - pv.x()) * track.px() + (track.vy() - pv.y()) * track.py()) * track.pz() / track.pt() / track.pt();
   
-  info.passesProbeSelection = isProbeTrack(track, info);
+  info.passesProbeSelection = isProbeTrack(info);
 
   info.isTagProbeElectron = false;
   info.isTagProbeTauToElectron = false;
 
 
   return info;
+}
+
+const bool
+TrackImageProducer::isProbeTrack(const TrackInfo info) const
+{
+  if(info.pt <= 30 ||
+     fabs(info.eta) >= 2.1 ||
+     // skip fiducial selections
+     info.nValidPixelHits < 4 ||
+     info.nValidHits < 4 ||
+     info.missingInnerHits != 0 ||
+     info.missingMiddleHits != 0 ||
+     info.trackIso / info.pt >= 0.05 ||
+     fabs(info.d0) >= 0.02 ||
+     fabs(info.dz) >= 0.5 ||
+     // skip lepton vetoes
+     fabs(info.dRMinJet) <= 0.5) {
+    return false;
+  }
+
+  return true;
 }
 
 void 
@@ -302,6 +316,63 @@ TrackImageProducer::getRecHits(const edm::Event &event)
 
 }
 
+void
+TrackImageProducer::getGenParticles(const reco::CandidateView &genParticles) {
+  
+  vector<const reco::Candidate*> cands;
+  vector<const reco::Candidate*>::const_iterator found = cands.begin();
+  for(reco::CandidateView::const_iterator p = genParticles.begin(); p != genParticles.end(); ++p) cands.push_back(&*p);
+
+  for(reco::CandidateView::const_iterator p = genParticles.begin(); p != genParticles.end(); p++) {
+    GenParticleInfo info;
+    info.px = p->px();
+    info.py = p->py();
+    info.pz = p->pz();
+    info.e  = p->energy();
+
+    info.eta = p->eta();
+    info.phi = p->phi();
+    info.pt  = p->pt();
+
+    info.pdgId = p->pdgId();
+    info.status = p->status();
+
+    info.mother1_index = -1;
+    info.mother2_index = -1;
+
+    info.daughter1_index = -1;
+    info.daughter2_index = -1;
+
+    info.nMothers = p->numberOfMothers();
+    info.nDaughters = p->numberOfDaughters();
+
+    found = find(cands.begin(), cands.end(), p->mother(0));
+    if(found != cands.end()) info.mother1_index = found - cands.begin();
+
+    found = find(cands.begin(), cands.end(), p->mother(p->numberOfMothers() - 1));
+    if(found != cands.end()) info.mother2_index = found - cands.begin();
+
+    found = find(cands.begin(), cands.end(), p->daughter(0));
+    if(found != cands.end()) info.daughter1_index = found - cands.begin();
+
+    found = find(cands.begin(), cands.end(), p->daughter(p->numberOfDaughters() - 1));
+    if(found != cands.end()) info.daughter2_index = found - cands.begin();
+
+    const reco::GenParticle* gp = dynamic_cast<const reco::GenParticle*>(&*p);
+
+    info.isPromptFinalState = gp->isPromptFinalState();
+    info.isDirectPromptTauDecayProductFinalState = gp->isDirectPromptTauDecayProductFinalState();
+    info.isHardProcess = gp->isHardProcess();
+    info.fromHardProcessFinalState = gp->fromHardProcessFinalState();
+    info.fromHardProcessBeforeFSR = gp->fromHardProcessBeforeFSR();
+    info.isFirstCopy = gp->statusFlags().isFirstCopy();
+    info.isLastCopy = gp->isLastCopy();
+    info.isLastCopyBeforeFSR = gp->isLastCopyBeforeFSR();
+
+    genParticleInfos_.push_back(info);
+  }
+}
+
 const math::XYZVector 
 TrackImageProducer::getPosition(const DetId& id) const
 {
@@ -342,6 +413,115 @@ TrackImageProducer::getPosition(const RPCRecHit& seg) const
   const GlobalPoint idPosition = roll->toGlobal(seg.localPosition());
   math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
   return idPositionRoot;
+}
+
+const double
+TrackImageProducer::minDRBadEcalChannel(const reco::Track &track) const
+{
+   double trackEta = track.eta(), trackPhi = track.phi();
+
+   double min_dist = -1;
+   DetId min_detId;
+
+   map<DetId, vector<int> >::const_iterator bitItor;
+   for(bitItor = EcalAllDeadChannelsBitMap_.begin(); bitItor != EcalAllDeadChannelsBitMap_.end(); bitItor++) {
+      DetId maskedDetId = bitItor->first;
+      map<DetId, std::vector<double> >::const_iterator valItor = EcalAllDeadChannelsValMap_.find(maskedDetId);
+      if(valItor == EcalAllDeadChannelsValMap_.end()){ 
+        cout << "Error cannot find maskedDetId in EcalAllDeadChannelsValMap_ ?!" << endl;
+        continue;
+      }
+
+      double eta = (valItor->second)[0], phi = (valItor->second)[1];
+      double dist = reco::deltaR(eta, phi, trackEta, trackPhi);
+
+      if(min_dist > dist || min_dist < 0) {
+        min_dist = dist;
+        min_detId = maskedDetId;
+      }
+   }
+
+   return min_dist;
+}
+
+void
+TrackImageProducer::getChannelStatusMaps()
+{
+  EcalAllDeadChannelsValMap_.clear();
+  EcalAllDeadChannelsBitMap_.clear();
+
+  // Loop over EB ...
+  for(int ieta = -85; ieta <= 85; ieta++) {
+    for(int iphi = 0; iphi <= 360; iphi++) {
+      if(!EBDetId::validDetId(ieta, iphi)) continue;
+
+      const EBDetId detid = EBDetId(ieta, iphi, EBDetId::ETAPHIMODE);
+      EcalChannelStatus::const_iterator chit = ecalStatus_->find(detid);
+      // refer https://twiki.cern.ch/twiki/bin/viewauth/CMS/EcalChannelStatus
+      int status = (chit != ecalStatus_->end()) ? chit->getStatusCode() & 0x1F : -1;
+
+      const CaloSubdetectorGeometry * subGeom = caloGeometry_->getSubdetectorGeometry(detid);
+      auto cellGeom = subGeom->getGeometry(detid);
+      double eta = cellGeom->getPosition().eta();
+      double phi = cellGeom->getPosition().phi();
+      double theta = cellGeom->getPosition().theta();
+
+      if(status >= 3) { // maskedEcalChannelStatusThreshold_
+        vector<double> valVec;
+        vector<int> bitVec;
+        
+        valVec.push_back(eta);
+        valVec.push_back(phi);
+        valVec.push_back(theta);
+        
+        bitVec.push_back(1);
+        bitVec.push_back(ieta);
+        bitVec.push_back(iphi);
+        bitVec.push_back(status);
+        
+        EcalAllDeadChannelsValMap_.insert(make_pair(detid, valVec));
+        EcalAllDeadChannelsBitMap_.insert(make_pair(detid, bitVec));
+      }
+    } // end loop iphi
+  } // end loop ieta
+
+  // Loop over EE detid
+  for(int ix = 0; ix <= 100; ix++) {
+    for(int iy = 0; iy <= 100; iy++) {
+      for(int iz = -1; iz <= 1; iz++) {
+        if(iz == 0) continue;
+        if(!EEDetId::validDetId(ix, iy, iz)) continue;
+
+        const EEDetId detid = EEDetId(ix, iy, iz, EEDetId::XYMODE);
+        EcalChannelStatus::const_iterator chit = ecalStatus_->find(detid);
+        int status = (chit != ecalStatus_->end()) ? chit->getStatusCode() & 0x1F : -1;
+
+        const CaloSubdetectorGeometry * subGeom = caloGeometry_->getSubdetectorGeometry(detid);
+        auto cellGeom = subGeom->getGeometry(detid);
+        double eta = cellGeom->getPosition().eta();
+        double phi = cellGeom->getPosition().phi();
+        double theta = cellGeom->getPosition().theta();
+
+        if(status >= 3) { // maskedEcalChannelStatusThreshold_
+          vector<double> valVec;
+          vector<int> bitVec;
+          
+          valVec.push_back(eta);
+          valVec.push_back(phi);
+          valVec.push_back(theta);
+          
+          bitVec.push_back(2);
+          bitVec.push_back(ix);
+          bitVec.push_back(iy);
+          bitVec.push_back(iz);
+          bitVec.push_back(status);
+
+          EcalAllDeadChannelsValMap_.insert(make_pair(detid, valVec));
+          EcalAllDeadChannelsBitMap_.insert(make_pair(detid, bitVec));
+        }
+      } // end loop iz
+    } // end loop iy
+  } // end loop ix
 }
 
 DEFINE_FWK_MODULE(TrackImageProducer);

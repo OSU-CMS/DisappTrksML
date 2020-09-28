@@ -19,6 +19,8 @@
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/Candidate/interface/Candidate.h"
+#include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/MuonReco/interface/Muon.h"
@@ -32,6 +34,12 @@
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "Geometry/CaloGeometry/interface/CaloGeometry.h"
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
+
+#include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
+#include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
+
+#include "CondFormats/EcalObjects/interface/EcalChannelStatus.h"
+#include "CondFormats/DataRecord/interface/EcalChannelStatusRcd.h"
 
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
@@ -89,11 +97,17 @@ class TrackImageProducer : public edm::EDAnalyzer {
 
       const TrackInfo getTrackInfo(const reco::Track &, const vector<reco::Track> &, const reco::Vertex &, const vector<reco::PFJet> &) const;
       void getRecHits(const edm::Event &);
+      void getGenParticles(const reco::CandidateView &);
+
+      const bool isProbeTrack(const TrackInfo) const;
 
       const math::XYZVector getPosition(const DetId &) const;
       const math::XYZVector getPosition(const CSCSegment&) const;
       const math::XYZVector getPosition(const DTRecSegment4D&) const;
       const math::XYZVector getPosition(const RPCRecHit&) const;
+
+      const double minDRBadEcalChannel(const reco::Track &) const;
+      void getChannelStatusMaps();
 
       edm::InputTag tracks_;
       edm::InputTag genParticles_;
@@ -111,7 +125,7 @@ class TrackImageProducer : public edm::EDAnalyzer {
       const double maxRelTrackIso_;
 
       edm::EDGetTokenT<vector<reco::Track> >       tracksToken_;
-      edm::EDGetTokenT<vector<reco::GenParticle> > genParticlesToken_;
+      edm::EDGetTokenT<reco::CandidateView>        genParticlesToken_;
       edm::EDGetTokenT<vector<reco::GsfElectron> > electronsToken_;
       edm::EDGetTokenT<vector<reco::Muon> >        muonsToken_;
       edm::EDGetTokenT<vector<reco::PFTau> >       tausToken_;
@@ -132,12 +146,18 @@ class TrackImageProducer : public edm::EDAnalyzer {
       edm::ESHandle<DTGeometry>   dtGeometry_;
       edm::ESHandle<RPCGeometry>  rpcGeometry_;
 
+      edm::ESHandle<EcalChannelStatus> ecalStatus_;
+
       edm::Service<TFileService> fs_;
       TTree * tree_;
 
       vector<TrackInfo> trackInfos_;
       vector<RecHitInfo> recHitInfos_;
+      vector<GenParticleInfo> genParticleInfos_;
       int nPV_;
+
+      map<DetId, vector<double> > EcalAllDeadChannelsValMap_;
+      map<DetId, vector<int> >    EcalAllDeadChannelsBitMap_;
 };
 
 #endif

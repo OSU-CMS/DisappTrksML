@@ -95,7 +95,6 @@ def passesIsolatedTrackSelection(track):
 	if not abs(eta) < 2.4: return False
 	if not pt > 30: return False
 	if track.inGap: return False
-	if not (track.genMatchedID == 1000024 or track.genMatchedID == 1000022): return False
 	if not track.nValidPixelHits >= 4: return False
 	if not track.nValidHits >= 4: return False
 	if not track.missingInnerHits == 0: return False
@@ -104,18 +103,19 @@ def passesIsolatedTrackSelection(track):
 	if not abs(track.d0) < 0.02: return False
 	if not abs(track.dz) < 0.5: return False
 	if not abs(track.dRMinJet) > 0.5: return False
-	if not abs(track.deltaRToClosestElectron) > 0.15: return False
+	# if not abs(track.deltaRToClosestElectron) > 0.15: return False
 	if not abs(track.deltaRToClosestMuon) > 0.15: return False
 	if not abs(track.deltaRToClosestTauHad) > 0.15: return False
+
 	return True
-	
+
 def check_ZtoEE(event):
 	count = 0
 	pass_sel = False
 	for iTrack, track in enumerate(event.tracks):
 		if(not passesSelection(track)): continue
 		if(isGenMatched(track,11)): count += 1
-	if count == 2: pass_sel = True
+	if count >= 2: pass_sel = True
 	return pass_sel
 
 fin = TFile(dataDir+fname, 'read')
@@ -162,8 +162,7 @@ for event in tree:
 			img[iHit][2] = imageHits[iHit][2]
 			img[iHit][3] = imageHits[iHit][3]
 
-		if ((isReconstructed(track, 'ele')) or
-			(isReconstructed(track, 'muon')) or
+		if ((isReconstructed(track, 'muon')) or
 			(isReconstructed(track, 'tau'))): continue
 
 		# truth electrons
@@ -181,7 +180,8 @@ for event in tree:
 				track_eta,
 				track_phi,
 				track.genMatchedID,
-				track.genMatchedDR
+				track.genMatchedDR,
+				track.dRMinBadEcalChannel
 			]))
 			IDe+=1
 
@@ -200,7 +200,8 @@ for event in tree:
 				track_eta,
 				track_phi,
 				track.genMatchedID,
-				track.genMatchedDR
+				track.genMatchedDR,
+				track.dRMinBadEcalChannel
 			]))
 			IDb+=1
 

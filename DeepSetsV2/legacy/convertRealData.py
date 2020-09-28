@@ -29,7 +29,7 @@ print("File",fname)
 fOut = '_0p5_'+str(fileNum)
 
 ######## parameters ################################################################
-dataDir = '/store/user/mcarrigan/disappearingTracks/images_DYJetsToLL_M50/'
+dataDir = '/data/users/mcarrigan/condor/AMSB/images_600_1000_step3/'
 eta_range = 0.5
 phi_range = 0.5
 dataMode = False # if true, use tagProbe selection; if false, use genmatched pdgID
@@ -85,15 +85,6 @@ def passesSelection(track):
 	if not abs(track.dRMinJet) > 0.5: return False
 	return True
 
-def check_ZtoEE(event):
-	count = 0
-	pass_sel = False
-	for iTrack, track in enumerate(event.tracks):
-		if(not passesSelection(track)): continue
-		if(isGenMatched(track,11)): count += 1
-	if count >= 2: pass_sel = True
-	return pass_sel
-
 fin = TFile(dataDir+fname, 'read')
 tree = fin.Get('trackImageProducer/tree')
 
@@ -104,9 +95,6 @@ IDe,IDb=0,0
 for iTrack, event in enumerate(tree):
 
 	nPV = event.nPV
-
-	if(ZtoEE):
-		if(check_ZtoEE(event)==False): continue
 
 	for track in event.tracks:
 		
@@ -132,12 +120,10 @@ for iTrack, event in enumerate(tree):
 		track_eta = momentum.Eta()
 		track_phi = momentum.Phi()
 
-		# fail all recos
-		if ((not isReconstructed(track, 'ele')) and 
-			(not isReconstructed(track, 'muon')) and
+		if ((not isReconstructed(track, 'muon')) and
 			(not isReconstructed(track, 'tau'))): 
 
-			# truth electron that failed electron reco
+			# truth electrons
 			if((dataMode and track.isTagProbeElectron) or ((not dataMode) and isGenMatched(track,11))):
 				img = np.zeros((maxHitsInImages,4))
 				for iHit in range(min(len(imageHits), maxHitsInImages)):
@@ -162,7 +148,7 @@ for iTrack, event in enumerate(tree):
 				]))
 				IDe+=1
 
-			# truth non-electrons that failed all recos
+			# truth non-electrons
 			elif((dataMode and (not track.isTagProbeElectron)) or ((not dataMode) and (not isGenMatched(track,11)))):
 				img = np.zeros((maxHitsInImages,4))
 				for iHit in range(min(len(imageHits), maxHitsInImages)):
