@@ -21,6 +21,16 @@ bool passesSelection(TrackInfo track){
 	return true;
 }
 
+bool check_ZtoEE(vector<TrackInfo> tracks){
+	int count(0);
+	for(auto const t : tracks){
+		if(!passesSelection(track)) continue
+		if(isGenMatched(track,11)) count+=1;
+	}
+	if(count>=2) return true;
+	else return false;
+}
+
 bool isReconstructed(TrackInfo track, string flavor){
 	if(flavor == "electron") return abs(track.deltaRToClosestElectron) < 0.15;
 	else if(flavor == "muon")return abs(track.deltaRToClosestMuon) < 0.15;
@@ -55,21 +65,21 @@ void makeSelection(int file = 0, TString dataDir = "", TString outDir = ""){
 
 	for(int iE = 0; iE < oldTree->GetEntries(); iE++){
 		oldTree->GetEntry(iE);
-
-		cout << (*v_tracks).size() << endl;
+		if(iE > 100) break; //debug
 
 		// make selections
 		for(int iT = 0; iT < (*v_tracks).size(); iT++){
 
 			if(!passesSelection((*v_tracks)[iT])) continue;
 
-			if(isReconstructed(track,"muon")) continue;
-			if(isReconstructed(track,"tau")) continue;
+			if(isReconstructed((*v_tracks)[iT],"muon")) continue;
+			if(isReconstructed((*v_tracks)[iT],"tau")) continue;
 
 		}
 		newTree->Fill();
 	}
 
-	cout << "Saving file " << newFileName << " with " << newTree->GetEntries() << " events."; 
+	cout << "Saving file " << newFileName << " with " << newTree->GetEntries() << " events." << endl;
+
 	newFile->Write();
 }
