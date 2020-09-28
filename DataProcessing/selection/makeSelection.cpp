@@ -21,6 +21,13 @@ bool passesSelection(TrackInfo track){
 	return true;
 }
 
+bool isReconstructed(TrackInfo track, string flavor){
+	if(flavor == "electron") return abs(track.deltaRToClosestElectron) < 0.15;
+	else if(flavor == "muon")return abs(track.deltaRToClosestMuon) < 0.15;
+	else if(flavor == "tau")return abs(track.deltaRToClosestTauHad) < 0.15;
+	else return false;
+}
+
 void makeSelection(int file = 0, TString dataDir = "", TString outDir = ""){
 
 	dataDir = "/store/user/bfrancis/images_DYJetsToLL_v3/";
@@ -40,25 +47,29 @@ void makeSelection(int file = 0, TString dataDir = "", TString outDir = ""){
 	oldTree->SetBranchAddress("genParticles", &v_genParticles);
 	oldTree->SetBranchAddress("nPV", &nPV);
 
-	TFile * newFile = new TFile(outDir+"hist_"+int_tstring(file)+".root", "recreate");
+	TString newFileName = outDir+"hist_"+int_tstring(file)+".root";
+	TFile * newFile = new TFile(newFileName, "recreate");
 	TTree * newTree = oldTree->CloneTree(0);
 
-	// debug
-	cout << oldFileName << endl;
-	cout << oldTree->GetEntries() << endl;
+	cout << "Running over " << oldFileName << " with " << to_string(oldTree->GetEntries()) << " events." << endl;
 
 	for(int iE = 0; iE < oldTree->GetEntries(); iE++){
 		oldTree->GetEntry(iE);
-		if(iE > 50) break; // debug
 
 		cout << (*v_tracks).size() << endl;
 
 		// make selections
-		// for(int iT = 0; iT < (*v_tracks).size(); iT++){
-		// 	if(!passesSelection((*v_tracks)[iT])) continue;
-		// }
+		for(int iT = 0; iT < (*v_tracks).size(); iT++){
+
+			if(!passesSelection((*v_tracks)[iT])) continue;
+
+			if(isReconstructed(track,"muon")) continue;
+			if(isReconstructed(track,"tau")) continue;
+
+		}
 		newTree->Fill();
 	}
 
+	cout << "Saving file " << newFileName << " with " << newTree->GetEntries() << " events."; 
 	newFile->Write();
 }
