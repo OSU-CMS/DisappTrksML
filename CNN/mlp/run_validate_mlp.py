@@ -1,5 +1,5 @@
 import numpy as np
-import validate
+import validate_mlp
 import utils
 import tensorflow as tf
 from tensorflow import keras
@@ -18,11 +18,11 @@ metrics = ['Precision', 'Recall',
             'TruePositives','TrueNegatives',
             'FalsePositives', 'FalseNegatives']
 
-dataDir = "/store/user/mcarrigan/disappearingTracks/electron_selection_singleElectron2017F_tanh/"
+dataDir = "/store/user/mcarrigan/disappearingTracks/electron_selection_tanh_V2/"
 workDir = '/home/mcarrigan/scratch0/disTracksML/DisappTrksML/CNN/'
 weightsDir = '/data/users/mcarrigan/cnn_9_11_reduced/cnn_9_11_reduced_p0/weights/'
-outputDir = workDir + '/Test/singleElectron2017F/'
-plotDir = workDir + '/Test/singleElectron2017F/' 
+outputDir = workDir + '/Test/singleElectron2017F/nonReco/'
+plotDir = workDir + '/Test/singleElectron2017F/nonReco/' 
 
 # import count dicts
 #with open(dataDir+'eSignalCounts.json') as json_file:
@@ -33,7 +33,7 @@ plotDir = workDir + '/Test/singleElectron2017F/'
 # import count dicts
 with open(dataDir+'eCounts.pkl', 'rb') as f:
     eCounts = pickle.load(f)
-with open(dataDir+'recoCounts.pkl', 'rb') as f:
+with open(dataDir+'bkgCounts.pkl', 'rb') as f:
     bkgCounts = pickle.load(f)
 
 
@@ -49,7 +49,7 @@ with open(dataDir+'recoCounts.pkl', 'rb') as f:
 #else: output_bias = np.log(1.0*oversample_e/(1-oversample_e))
 
 
-def build_model(input_shape=(40,40,3), batch_norm = False, filters=[64,128,64],
+def build_cnn(input_shape=(40,40,3), batch_norm = False, filters=[64, 128, 64],
                                 output_bias=0, metrics=['accuracy']):
 
         model = keras.Sequential()
@@ -69,22 +69,30 @@ def build_model(input_shape=(40,40,3), batch_norm = False, filters=[64,128,64],
         model.add(keras.layers.Dense(32, activation='relu', kernel_regularizer=keras.regularizers.l2(0.0001)))
         model.add(keras.layers.Dropout(0.4))
 
-        model.add(keras.layers.Dense(1, activation='sigmoid',bias_initializer=keras.initializers.Constant(output_bias)))
-        model.compile(loss=keras.losses.BinaryCrossentropy(),
-              optimizer="adam",
-              metrics=metrics)
+        #model.add(keras.layers.Dense(1, activation='sigmoid',bias_initializer=keras.initializers.Constant(output_bias)))
+        model.add(keras.layers.Dense(4, activation='relu', bias_initializer=keras.initializers.Constant(output_bias)))
         print(model.summary())
 
         return model
 
+def build_mlp(input_dim = 5):
+        model = keras.Sequential()
+        model.add(keras.layers.Dense(8, input_dim=input_dim, activation='relu'))
+        model.add(keras.layers.Dense(4, activation='relu'))
+        return model
 
-model = build_model(input_shape = (40,40,3),
-                            filters = filters, batch_norm=batch_norm,
-                            #output_bias=output_bias, 
-                            metrics=metrics)
+cnn = build_cnn(input_shape = (40,40,3), filters = [64, 128, 64], batch_norm=batch_norm, output_bias=output_bias, metrics=metrics)
+
+mlp = build_mlp(input_dim=5)
+
+combinedInput = keras.layers.concatenate([cnn.output, mlp.output])
+x = keras.layers.Dense(8, activation="relu")(combinedInput)
+x = keras.layers.Dense(1, activation="sigmoid")(x)
+model = keras.models.Model(inputs=[cnn.input, mlp.input], outputs=x)
+model.compile(loss=keras.losses.BinaryCrossentropy(), optimizer="adam", metrics=metrics)
 
 
 model.load_weights(weightsDir+'lastEpoch.h5')
 
-validate.validate(model, weightsDir+'lastEpoch.h5', outputDir, dataDir, plotDir, batch_size)
+validate_mlp.validate_mlp(model, weightsDir+'lastEpoch.h5', outputDir, dataDir, plotDir, batch_size)
 
