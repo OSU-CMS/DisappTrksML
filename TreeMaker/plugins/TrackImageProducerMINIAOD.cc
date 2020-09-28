@@ -65,7 +65,11 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   tree_ = fs_->make<TTree>("tree", "tree");
   tree_->Branch("tracks", &trackInfos_);
   tree_->Branch("recHits", &recHitInfos_);
+  
   tree_->Branch("nPV", &nPV_);
+  tree_->Branch("eventNumber", &eventNumber_);
+  tree_->Branch("lumiBlockNumber", &lumiBlockNumber_);
+  tree_->Branch("runNumber", &runNumber_);
 }
 
 TrackImageProducerMINIAOD::~TrackImageProducerMINIAOD()
@@ -108,6 +112,10 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   event.getByToken(verticesToken_, vertices);
   const reco::Vertex &pv = vertices->at(0);
   nPV_ = vertices->size();
+
+  eventNumber_ = event.id().Event();
+  lumiBlockNumber_ = event.id().luminosityBlock();
+  runNumber_ = event.id().run();
 
   edm::Handle<vector<pat::Jet> > jets;
   event.getByToken(jetsToken_, jets);

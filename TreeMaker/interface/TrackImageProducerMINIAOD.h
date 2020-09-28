@@ -175,7 +175,11 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
 
       vector<TrackInfo> trackInfos_;
       vector<RecHitInfo> recHitInfos_;
+      
       int nPV_;
+      unsigned long long eventNumber_;
+      unsigned int lumiBlockNumber_;
+      unsigned int runNumber_;
 
       bool is2017_;
 
