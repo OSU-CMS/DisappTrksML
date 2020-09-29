@@ -133,7 +133,7 @@ for iEvent,event in enumerate(tree):
         
             if(hit.detType != 3): 
                 hit_energy += hit.energy
-		if(hit.energy > max_hit[0]):
+		    if(hit.energy > max_hit[0]):
                     max_hit[0] = hit.energy
                     max_hit[1] = hit.eta
                     max_hit[2] = hit.phi

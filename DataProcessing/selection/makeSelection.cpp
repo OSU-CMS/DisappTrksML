@@ -46,11 +46,17 @@ void makeSelection(int file = 0, TString dataDir = "", TString outDir = ""){
 	std::vector<RecHitInfo> * v_recHits = new std::vector<RecHitInfo>(); 
 	std::vector<GenParticleInfo> * v_genParticles = new std::vector<GenParticleInfo>(); 
 	int nPV;
+	unsigned long long eventNumber;
+	unsigned int lumiBlockNumber;
+	unsigned int runNumber;
 
 	oldTree->SetBranchAddress("tracks", &v_tracks);
 	oldTree->SetBranchAddress("recHits", &v_recHits);
 	oldTree->SetBranchAddress("genParticles", &v_genParticles);
 	oldTree->SetBranchAddress("nPV", &nPV);
+	// oldTree->SetBranchAddress("eventNumber", &eventNumber);
+	// oldTree->SetBranchAddress("lumiBlockNumber", &lumiBlockNumber);
+	// oldTree->SetBranchAddress("runNumber", &runNumber);
 
 	TString newFileName = outDir+"hist_"+int_tstring(file)+".root";
 	TFile * newFile = new TFile(newFileName, "recreate");
@@ -58,12 +64,18 @@ void makeSelection(int file = 0, TString dataDir = "", TString outDir = ""){
 	TTree * bTree = new TTree("bTree","bTree");
 	std::vector<TrackInfo> * v_tracks_e = new std::vector<TrackInfo>();
 	std::vector<TrackInfo> * v_tracks_b = new std::vector<TrackInfo>();
-	eTree->Branch("nPV",nPV);
+	eTree->Branch("nPV",&nPV);
 	eTree->Branch("recHits",&v_recHits);
 	eTree->Branch("tracks",&v_tracks_e);
-	bTree->Branch("nPV",nPV);
+	// eTree->Branch("eventNumber", &eventNumber);
+	// eTree->Branch("lumiBlockNumber", &lumiBlockNumber);
+	// eTree->Branch("runNumber", &runNumber);
+	bTree->Branch("nPV",&nPV);
 	bTree->Branch("recHits",&v_recHits);
 	bTree->Branch("tracks",&v_tracks_b);
+	// bTree->Branch("eventNumber", &eventNumber);
+	// bTree->Branch("lumiBlockNumber", &lumiBlockNumber);
+	// bTree->Branch("runNumber", &runNumber);
 
 	cout << "Running over " << oldFileName << " with " << to_string(oldTree->GetEntries()) << " events." << endl;
 
