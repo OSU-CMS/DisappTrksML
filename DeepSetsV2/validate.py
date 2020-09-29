@@ -13,7 +13,7 @@ from keras import optimizers, regularizers
 
 import utils
 from generator import generator
-from model import buildModel
+from model import buildModel, buildModelWithEventInfo
 
 
 def run_batch_validation(model, weights, batchDir, dataDir, plotDir, batch_size):
@@ -28,7 +28,7 @@ def run_batch_validation(model, weights, batchDir, dataDir, plotDir, batch_size)
 
 	print("Define Generator")
 	val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, 
-		batch_size, dataDir, True, False)
+		batch_size, dataDir, True, False, True)
 	print("Reset Generator")
 	val_generator.reset()
 	print("Get Predictions")
@@ -107,11 +107,11 @@ def run_validation(model, weights, dataDir,plotDir=""):
 if __name__ == "__main__":
 
 	dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_Zee_V3/"
-	batchDir = "deepSets_2/outputFiles/"
-	plotDir = "deepSets_2/plots/"
-	weights = "deepSets_2/weights/lastEpoch.h5"
+	batchDir = "deepSets_4/outputFiles/"
+	plotDir = "deepSets_4/plots/"
+	weights = "deepSets_4/weights/lastEpoch.h5"
 
-	model = buildModel()
+	model = buildModelWithEventInfo()
 
 	model.compile(optimizer=optimizers.Adam(), 
 				  loss='categorical_crossentropy', 

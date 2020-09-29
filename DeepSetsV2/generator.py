@@ -128,7 +128,9 @@ class generator(keras.utils.Sequence):
 					self.indices_batches = np.concatenate((self.indices_batches, batch_indices))
 				self.used_idx.append(idx)
 			
-				return batch_x
+				if(self.eventInfo): return [batch_x, batch_info]
+				else: return batch_x
+
 		elif(self.eventInfo):
 			return [batch_x, batch_info], batch_y
 		else:
