@@ -29,7 +29,7 @@ bool isReconstructed(TrackInfo track, string flavor){
 	else return false;
 }
 
-void makeSelection(int file = 0, TString dataDir = "", TString filelist = ""){
+void makeSelection(int file = 0, TString dataDir = "", TString filelist = "test.txt"){
 
 	// parameters
 	dataDir = "/store/user/bfrancis/images_DYJetsToLL_v3/";
@@ -39,11 +39,11 @@ void makeSelection(int file = 0, TString dataDir = "", TString filelist = ""){
 
 	if(filelist.Length()>0){
 		string line;
-		ifstream infile (fileList);
+		ifstream infile(filelist);
 		if (infile.is_open()) {
 			int iLine = 0;
 			while(getline(infile,line)) {
-				if(iLine == file) file = atoi(line);
+				if(iLine == file) file = std::stoi(line);
 		  		iLine += 1;
 			}
 		infile.close();
@@ -71,7 +71,7 @@ void makeSelection(int file = 0, TString dataDir = "", TString filelist = ""){
 	// oldTree->SetBranchAddress("lumiBlockNumber", &lumiBlockNumber);
 	// oldTree->SetBranchAddress("runNumber", &runNumber);
 
-	TString newFileName = outDir+"hist_"+int_tstring(file)+".root";
+	TString newFileName = "hist_"+int_tstring(file)+".root";
 	TFile * newFile = new TFile(newFileName, "recreate");
 	TTree * eTree = new TTree("eTree","eTree");
 	TTree * bTree = new TTree("bTree","bTree");
