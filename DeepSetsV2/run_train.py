@@ -32,14 +32,14 @@ if __name__=="__main__":
     request_disk = 250MB
     request_memory = 2GB
     request_cpus = 4
-    executable              = train_wrapper.sh
+    executable              = wrapper.sh
     arguments               = {0} $(PROCESS)
     log                     = /data/users/llavezzo/Logs/{0}/log_$(PROCESS).log
     output                  = /data/users/llavezzo/Logs/{0}/out_$(PROCESS).txt
     error                   = /data/users/llavezzo/Logs/{0}/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = train_wrapper.sh, train.py, utils.py, generator.py, validate.py, params.npy, model.py
+    transfer_input_files = wrapper.sh, train.py, utils.py, generator.py, validate.py, params.npy, model.py
     getenv = true
     queue {1}
 
