@@ -29,13 +29,26 @@ bool isReconstructed(TrackInfo track, string flavor){
 	else return false;
 }
 
-void makeSelection(int file = 0, TString dataDir = "", TString outDir = ""){
+void makeSelection(int file = 0, TString dataDir = "", TString filelist = ""){
 
 	// parameters
 	dataDir = "/store/user/bfrancis/images_DYJetsToLL_v3/";
 	bool Zee = false;
 
 	const double minGenParticlePt_ = 10;
+
+	if(filelist.Length()>0){
+		string line;
+		ifstream infile (fileList);
+		if (infile.is_open()) {
+			int iLine = 0;
+			while(getline(infile,line)) {
+				if(iLine == file) file = atoi(line);
+		  		iLine += 1;
+			}
+		infile.close();
+  		}
+	}
 
 	TString oldFileName = dataDir+"hist_"+int_tstring(file)+".root";
 	TFile * oldFile = TFile::Open(oldFileName, "read");
