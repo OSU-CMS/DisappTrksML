@@ -10,20 +10,22 @@ from ROOT.Math import XYZVector
 import numpy as np
 import time
 
-# script arguments
-fileNum = int(sys.argv[1])
-if(len(sys.argv) == 3): 
-	fileList = str(sys.argv[2])
-	fileNum = np.load(fileList)[fileNum]
-fname = "hist_"+str(fileNum)+".root"
-print("File",fname)
-
 ######## parameters ################################################################
 dataDir = ''
 eta_range = 0.3
 phi_range = 0.3
 maxHitsInImages = 100
 ####################################################################################
+
+# script arguments
+fileNum = int(sys.argv[1])
+if(len(sys.argv)>2): 
+	dataDir = str(sys.argv[2])
+	if(len(sys.argv)==4):
+		fileList = str(sys.argv[3])
+		fileNum = int(np.loadtxt(fileList)[fileNum])
+fname = "hist_"+str(fileNum)+".root"
+print "File "+dataDir+fname 
 
 # combine EB+EE and muon detectors into ECAL/HCAL/MUO indices
 def detectorIndex(detType):
