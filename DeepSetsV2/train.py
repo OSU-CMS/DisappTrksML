@@ -1,4 +1,4 @@
-import os
+import os, sys
 import tensorflow as tf
 from tensorflow import keras
 from keras import backend as K
@@ -7,31 +7,21 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from keras import optimizers, regularizers
-import json
 import random
-import sys
 import pickle
 import datetime
-import getopt
-from collections import Counter
 			
-import tensorflow as tf
-import keras
-from keras.models import Model
-from keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization
-
 import utils
 import validate
 from generator import generator
-from model import buildModel, buildModelWithEventInfo
+from models.deepSets import buildModel, buildModelWithEventInfo
 
 # limit CPU usage
-# config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
-# 								intra_op_parallelism_threads = 4,
-# 								allow_soft_placement = True,
-# 								device_count={'CPU': 4})
-# tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
+config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
+								intra_op_parallelism_threads = 4,
+								allow_soft_placement = True,
+								device_count={'CPU': 4})
+tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
 # suppress warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
@@ -41,10 +31,10 @@ try:
 							"d:p:i:", 
 							["dir=","params=","index="])
 except getopt.GetoptError:
-	print(utils.bcolors.RED+"USAGE: flow.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index "+utils.bcolors.ENDC)
+	print(utils.bcolors.RED+"USAGE: train.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index "+utils.bcolors.ENDC)
 	sys.exit(2)
 
-workDir = 'deepSets'
+workDir = 'train'
 paramsFile = ""
 params = []
 paramsIndex = 0
@@ -79,14 +69,6 @@ weightsDir = workDir + '/weights/'
 outputDir = workDir + '/outputFiles/'
 
 ################config parameters################
-"""
-nTotE: number of electron events to use
-oversample_e: (NOT WORKING) fraction of electron events per train batch, set to -1 if it's not needed
-undersample_bkg: fraction of backgruond events per train batch, set to -1 if it's not needed
-v: verbosity
-patience_count: after how many epochs to stop if monitored variable doesn't improve
-monitor: which variable to monitor with patience_count
-"""
 dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_Zee_V3/"
 logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
@@ -114,157 +96,22 @@ os.makedirs(weightsDir)
 os.makedirs(outputDir)
 os.makedirs(logDir)
 
-# import count dicts
-with open(dataDir+'eCounts.pkl', 'rb') as f:
-	eCounts = pickle.load(f)
-with open(dataDir+'bkgCounts.pkl', 'rb') as f:
-	bkgCounts = pickle.load(f)
-
-# count how many events are in the files for each class
-availableE = sum(list(eCounts.values()))
-availableBkg = sum(list(bkgCounts.values()))
-
-# fractions for each class for the total dataset
-fE = availableE*1.0/(availableE + availableBkg)
-fBkg = availableBkg*1.0/(availableE + availableBkg)
-
-# calculate how many total background events for the requested electrons
-# to keep the same fraction of events, or under sample
-nTotBkg = int(nTotE*1.0*availableBkg/availableE)
-if(undersample_bkg!=-1): nTotBkg = int(nTotE*1.0*undersample_bkg/(1-undersample_bkg))
-
-# can't request more events than we have
-if(nTotE > availableE): sys.exit("ERROR: Requested more electron events than are available")
-if(nTotBkg > availableBkg): sys.exit("ERROR: Requested more electron events than available")
-
-# batches per epoch
-nBatches = int(np.floor((nTotE + nTotBkg)*1.0/batch_size))
-
-# count how many e/bkg events in each batch
-ePerBatch, bkgPerBatch = np.zeros(nBatches), np.zeros(nBatches)
-iBatch = 0
-while np.sum(ePerBatch) < nTotE:
-	ePerBatch[iBatch]+=1
-	iBatch+=1
-	if(iBatch == nBatches): iBatch = 0
-for iBatch in range(nBatches):
-	toAdd = int(batch_size - ePerBatch[iBatch])
-	if(toAdd == 0): continue
-	for j in range(toAdd):
-		bkgPerBatch[iBatch]+=1
-		if(np.sum(bkgPerBatch) == nTotBkg): 
-			print("ERROR")
-			sys.exit(0)
-			break
-	if(np.sum(bkgPerBatch) == nTotBkg): break
-
-for iBatch in range(nBatches):
-	if(ePerBatch[iBatch]+bkgPerBatch[iBatch]!=batch_size): 
-		print("ERROR2")
-		sys.exit(0)
-ePerBatch = ePerBatch.astype(int)
-bkgPerBatch = bkgPerBatch.astype(int)
-
-# fill lists of all events and files
-b_events, b_files = [], []
-for file, nEvents in bkgCounts.items():
-	for evt in range(nEvents):
-		b_events.append(evt)
-		b_files.append(file)
-e_events, e_files = [], []
-for file, nEvents in eCounts.items():
-	for evt in range(nEvents):
-		e_events.append(evt)
-		e_files.append(file)
-
-# make batches
-bkg_event_batches, bkg_file_batches = utils.make_batches(b_events, b_files, bkgPerBatch, nBatches)
-e_event_batches, e_file_batches = utils.make_batches(e_events, e_files, ePerBatch, nBatches)
-
-# train/validation split
-train_e_event_batches, val_e_event_batches, train_e_file_batches, val_e_file_batches = train_test_split(e_event_batches, e_file_batches, test_size=val_size, random_state=42)
-train_bkg_event_batches, val_bkg_event_batches, train_bkg_file_batches, val_bkg_file_batches = train_test_split(bkg_event_batches, bkg_file_batches, test_size=val_size, random_state=42)
-
-# count events in each batch
-nSavedETrain = utils.count_events(train_e_file_batches, train_e_event_batches, eCounts)
-nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
-nSavedBkgTrain = utils.count_events(train_bkg_file_batches, train_bkg_event_batches, bkgCounts)
-nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
-
-# add background events to validation data
-# to keep ratio e/bkg equal to that in original dataset
-if(abs(1-nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal)/fE) > 0.05):
-	nBkgToLoad = int(nSavedEVal*(1-fE)/fE-nSavedBkgVal)
-	lastFile = bkg_file_batches[-1][-1]
-
-	b_events, b_files = [], []
-	reached = False
-	for file, nEvents in bkgCounts.items():
-		if(int(file) != lastFile and not reached): continue
-		else: reached = True
-
-		for evt in range(nEvents):
-			b_events.append(evt)
-			b_files.append(file)
-
-	# make batches of same size with bkg files
-	nBatchesAdded = int(nBkgToLoad*1.0/batch_size)
-	bkgPerBatch = [batch_size]*nBatchesAdded
-		   
-	bkg_event_batches_added, bkg_file_batches_added = utils.make_batches(b_events, b_files, bkgPerBatch, nBatchesAdded)
-
-	nAddedBkg = utils.count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
-
-	# add the bkg and e events to rebalance val data
-	filler_events = [[0,0]]*nBatchesAdded
-	filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
-	val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
-	val_bkg_file_batches = val_bkg_file_batches + bkg_file_batches_added
-	val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
-	val_e_file_batches = val_e_file_batches + filler_files
-
-	# re count
-	nSavedEVal = utils.count_events(val_e_file_batches, val_e_event_batches, eCounts)
-	nSavedBkgVal = utils.count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
-
-
-print("\t\tElectrons\tBackground\te/(e+bkg)")
-print("Requested:\t"+str(nTotE)+"\t\t"+str(nTotBkg)+"\t\t"+str(round(nTotE*1.0/(nTotE+nTotBkg),5)))
-print("Training on:\t"+str(nSavedETrain)+"\t\t"+str(nSavedBkgTrain)+"\t\t"+str(round(nSavedETrain*1.0/(nSavedETrain+nSavedBkgTrain),5)))
-print("Validating on:\t"+str(nSavedEVal)+"\t\t"+str(nSavedBkgVal)+"\t\t"+str(round(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal),5)))
-print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,5)))
+e_data, bkg_data = utils.prepare_data(dataDir, nTotE, val_size, undersample_bkg)  
 
 # save the train and validation batches
-np.save(outputDir+"e_files_trainBatches", train_e_file_batches)
-np.save(outputDir+"e_events_trainBatches", train_e_event_batches)
-np.save(outputDir+"e_files_valBatches", val_e_file_batches)
-np.save(outputDir+"e_events_valBatches", val_e_event_batches)
-np.save(outputDir+"bkg_files_trainBatches", train_bkg_file_batches)
-np.save(outputDir+"bkg_events_trainBatches", train_bkg_event_batches)
-np.save(outputDir+"bkg_files_valBatches", val_bkg_file_batches)
-np.save(outputDir+"bkg_events_valBatches", val_bkg_event_batches)
-
-# FIXME: not implemented yet
-# oversample the training electron files if oversample_e != -1
-# nElectronsOversampled = int(np.ceil(nSavedETrain*oversample_e)) - nSavedETrain
-# ovsFiles = list([file for batch in train_e_file_batches for file in batch])
-# random.shuffle(ovsFiles)
-# for i,batch in enumerate(train_e_file_batches):
-#     nElectronsThisBatch = 0
-#     for file in batch: nElectronsThisBatch+=eCounts[file]
-#     while nElectronsThisBatch < nElectronsPerBatchOversampled:
-#         randFile = ovsFiles[random.randint(0,len(ovsFiles)-1)]
-#         trainBatchesE[i].append(randFile)
-#         nElectronsThisBatch += eCounts[randFile]
-# if(oversample_e != -1):
-#     print("Oversampling:")
-#     print("\t Number of electrons per batch:",nElectronsPerBatchOversampled)
-#     print("\t",len(trainBatchesE),"batches of files (approx.",nElectronsPerBatchOversampled*len(trainBatchesE),"electron and",(batch_size-nElectronsPerBatchOversampled)*len(trainBatchesE), "background events)")
+np.save(outputDir+"e_files_trainBatches", e_data[0])
+np.save(outputDir+"e_events_trainBatches", e_data[1])
+np.save(outputDir+"e_files_valBatches", e_data[2])
+np.save(outputDir+"e_events_valBatches", e_data[3])
+np.save(outputDir+"bkg_files_trainBatches", bkg_data[0])
+np.save(outputDir+"bkg_events_trainBatches", bkg_data[1])
+np.save(outputDir+"bkg_files_valBatches", bkg_data[2])
+np.save(outputDir+"bkg_events_valBatches", bkg_data[3])
 
 # initialize generators
-train_generator = generator(train_e_file_batches, train_bkg_file_batches, train_e_event_batches, train_bkg_event_batches, 
+train_generator = generator(e_data[0], e_data[1], e_data[2], e_data[3], 
 					batch_size, dataDir, False, True, True)
-val_generator = generator(val_e_file_batches, val_bkg_file_batches, val_e_event_batches, val_bkg_event_batches, 
+val_generator = generator(bkg_data[0], bkg_data[1], bkg_data[2], bkg_data[3], 
 					batch_size, dataDir, False, True, True)
 
 model = buildModelWithEventInfo()
@@ -279,12 +126,11 @@ callbacks = [
 									save_best_only=True,
 									monitor=monitor,
 									mode='auto')
-	# tf.keras.callbacks.TensorBoard(log_dir=logDir, 
-	#                                histogram_freq=0,
-	#                                write_graph=False,
-	#                                write_images=False)
+	tf.keras.callbacks.TensorBoard(log_dir=logDir, 
+	                               histogram_freq=0,
+	                               write_graph=False,
+	                               write_images=False)
 ]
-
 
 history = model.fit(train_generator, 
 					epochs = epochs,

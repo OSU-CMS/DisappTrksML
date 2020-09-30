@@ -22,39 +22,13 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def save_event(x, dir, fname):
-    
-    fig, axs = plt.subplots(1,3,figsize=(10,10))
-    
-    for i in range(3):
-        axs[i].imshow(x[:,:,i],cmap='gray')
-    
-    axs[0].set_title("ECAL")
-    axs[1].set_title("HCAL")
-    axs[2].set_title("Muon")
-    
-    plt.savefig(dir+fname)
+def nested_defaultdict(default_factory, depth=1):
+  result = partial(defaultdict, default_factory)
+  for _ in repeat(None, depth - 1):
+      result = partial(defaultdict, result)
+  return result()
 
-def plot_event(x):
-
-    fig, axs = plt.subplots(1,4,figsize=(20,20))
-    event_img = np.zeros((40,40,4))
-    for i,row in enumerate(x):
-        for j,col in enumerate(row):
-            for k,pixel in enumerate(col):
-                if(pixel > 0): event_img[i,j,k] = np.log(pixel+1)
-        
-    for i in range(4):
-        axs[i].imshow(event_img[:,:,i],cmap='jet')
-
-    axs[0].set_title("ECAL")
-    axs[1].set_title("ES")
-    axs[2].set_title("HCAL")
-    axs[3].set_title("Muon")
-    
-    plt.show()
-
-def save_event_deepSets(x,outf="event.png"):
+def save_event(x,outf="event.png"):
 
     if(x.shape[0] == 402): x = x[2:]
     if(x.shape[0] == 400): x = np.reshape(x, (100,4))
@@ -82,75 +56,6 @@ def save_event_deepSets(x,outf="event.png"):
     plt.savefig(outf)
     plt.cla()
     plt.close(fig)
-    
-# load the electron selected data
-def load_electron_data(dataDir, tag):
-    data = np.load(dataDir+'electron_selection'+tag+'.npz')
-    print("Loaded",len(data['images']),"events from",dataDir,tag)
-    return data['images'], data['infos']
-
-# load data with the images, infos .npz structure
-def load_all_data(dataDir, tag):
-
-  full = []
-  infos = []
-
-  for filename in os.listdir(dataDir):
-    if('.npz' in filename and tag in filename and 'images' in filename):
-      temp = np.load(dataDir+filename)
-      full.append(temp['images'])
-      infos.append(temp['infos'])
-
-  full = np.vstack(full)
-  infos = np.vstack(infos)
-  assert full.shape[0] == infos.shape[0], "Full images and infos are of different sizes"
-
-  print("Loaded",full.shape[0],"events from",dataDir,tag)
-  return full, infos
-
-def nested_defaultdict(default_factory, depth=1):
-    result = partial(defaultdict, default_factory)
-    for _ in repeat(None, depth - 1):
-        result = partial(defaultdict, result)
-    return result()
-
-def apply_oversampling(x_train, y_train, oversample_val=0.1):
-  
-  counter = Counter(y_train)
-  print("Before",counter)
-  c1 = x_train.shape[1]
-  c2 = x_train.shape[2]
-  c3 = x_train.shape[3]
-  x_train = np.reshape(x_train,[x_train.shape[0],c1*c2*c3])
-
-  print("Applying oversampling with value",oversample_val)
-  oversample = RandomOverSampler(sampling_strategy=oversample_val)
-  x_train, y_train = oversample.fit_resample(x_train, y_train)
-  x_train = np.reshape(x_train,[x_train.shape[0],c1,c2,c3])
-  
-  counter = Counter(y_train)
-  print("After",counter)
-
-  return x_train, y_train
-
-def apply_undersampling(x_train, y_train, undersample_val=0.1):
- 
-  counter = Counter(y_train)
-  print("Before",counter)
-  c1 = x_train.shape[1]
-  c2 = x_train.shape[2]
-  c3 = x_train.shape[3]
-  x_train = np.reshape(x_train,[x_train.shape[0],c1*c2*c3])
-  
-  print("Applying undersampling with value",undersample_val)
-  undersample = RandomUnderSampler(sampling_strategy=undersample_val)
-  x_train, y_train = undersample.fit_resample(x_train, y_train)
-  x_train = np.reshape(x_train,[x_train.shape[0],c1,c2,c3])
-  
-  counter = Counter(y_train)
-  print("After",counter)
-
-  return x_train, y_train
 
 
 def plot_history(history, plotDir, variables=['accuracy','loss']):
@@ -200,7 +105,6 @@ def plot_certainty_one_hot(y_test,predictions,f):
     plt.legend()
     plt.savefig(f)
     plt.clf()
-
 
 def plot_confusion_matrix(confusion_matrix, target_names, f='cm.png', title='Confusion Matrix', cmap="Blues"):
     
@@ -390,3 +294,129 @@ def count_events(file_batches, event_batches, dict):
           elif(iFile != 0 and iFile != lastFile):
               nSaved+=dict[file]
   return nSaved
+
+def prepare_data(dataDir, nTotE, val_size=0.2, undersample_bkg=-1):
+
+  # import count dicts
+  with open(dataDir+'eCounts.pkl', 'rb') as f:
+    eCounts = pickle.load(f)
+  with open(dataDir+'bkgCounts.pkl', 'rb') as f:
+    bkgCounts = pickle.load(f)
+
+  # count how many events are in the files for each class
+  availableE = sum(list(eCounts.values()))
+  availableBkg = sum(list(bkgCounts.values()))
+
+  # fractions for each class for the total dataset
+  fE = availableE*1.0/(availableE + availableBkg)
+  fBkg = availableBkg*1.0/(availableE + availableBkg)
+
+  # calculate how many total background events for the requested electrons
+  # to keep the same fraction of events, or under sample
+  nTotBkg = int(nTotE*1.0*availableBkg/availableE)
+  if(undersample_bkg!=-1): nTotBkg = int(nTotE*1.0*undersample_bkg/(1-undersample_bkg))
+
+  # can't request more events than we have
+  if(nTotE > availableE): sys.exit("ERROR: Requested more electron events than are available")
+  if(nTotBkg > availableBkg): sys.exit("ERROR: Requested more electron events than available")
+
+  # batches per epoch
+  nBatches = int(np.floor((nTotE + nTotBkg)*1.0/batch_size))
+
+  # count how many e/bkg events in each batch
+  ePerBatch, bkgPerBatch = np.zeros(nBatches), np.zeros(nBatches)
+  iBatch = 0
+  while np.sum(ePerBatch) < nTotE:
+    ePerBatch[iBatch]+=1
+    iBatch+=1
+    if(iBatch == nBatches): iBatch = 0
+  for iBatch in range(nBatches):
+    toAdd = int(batch_size - ePerBatch[iBatch])
+    if(toAdd == 0): continue
+    for j in range(toAdd):
+      bkgPerBatch[iBatch]+=1
+      if(np.sum(bkgPerBatch) == nTotBkg): 
+        print("Error: not enough background events.")
+        sys.exit(0)
+    if(np.sum(bkgPerBatch) == nTotBkg): break
+
+  for iBatch in range(nBatches):
+    if(ePerBatch[iBatch]+bkgPerBatch[iBatch]!=batch_size): 
+      print("Error: batches aren't filled properly.")
+      sys.exit(0)
+  ePerBatch = ePerBatch.astype(int)
+  bkgPerBatch = bkgPerBatch.astype(int)
+
+  # fill lists of all events and files
+  b_events, b_files = [], []
+  for file, nEvents in bkgCounts.items():
+    for evt in range(nEvents):
+      b_events.append(evt)
+      b_files.append(file)
+  e_events, e_files = [], []
+  for file, nEvents in eCounts.items():
+    for evt in range(nEvents):
+      e_events.append(evt)
+      e_files.append(file)
+
+  # make batches
+  bkg_event_batches, bkg_file_batches = make_batches(b_events, b_files, bkgPerBatch, nBatches)
+  e_event_batches, e_file_batches = make_batches(e_events, e_files, ePerBatch, nBatches)
+
+  # train/validation split
+  train_e_event_batches, val_e_event_batches, train_e_file_batches, val_e_file_batches = train_test_split(e_event_batches, e_file_batches, test_size=val_size, random_state=42)
+  train_bkg_event_batches, val_bkg_event_batches, train_bkg_file_batches, val_bkg_file_batches = train_test_split(bkg_event_batches, bkg_file_batches, test_size=val_size, random_state=42)
+
+  # count events in each batch
+  nSavedETrain = count_events(train_e_file_batches, train_e_event_batches, eCounts)
+  nSavedEVal = count_events(val_e_file_batches, val_e_event_batches, eCounts)
+  nSavedBkgTrain = count_events(train_bkg_file_batches, train_bkg_event_batches, bkgCounts)
+  nSavedBkgVal = count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
+
+  # add background events to validation data
+  # to keep ratio e/bkg equal to that in original dataset
+  if(abs(1-nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal)/fE) > 0.05):
+    nBkgToLoad = int(nSavedEVal*(1-fE)/fE-nSavedBkgVal)
+    lastFile = bkg_file_batches[-1][-1]
+
+    b_events, b_files = [], []
+    reached = False
+    for file, nEvents in bkgCounts.items():
+      if(int(file) != lastFile and not reached): continue
+      else: reached = True
+
+      for evt in range(nEvents):
+        b_events.append(evt)
+        b_files.append(file)
+
+      # make batches of same size with bkg files
+      nBatchesAdded = int(nBkgToLoad*1.0/batch_size)
+      bkgPerBatch = [batch_size]*nBatchesAdded
+           
+      bkg_event_batches_added, bkg_file_batches_added = make_batches(b_events, b_files, bkgPerBatch, nBatchesAdded)
+
+      nAddedBkg = count_events(bkg_file_batches, bkg_event_batches, bkgCounts)
+
+      # add the bkg and e events to rebalance val data
+      filler_events = [[0,0]]*nBatchesAdded
+      filler_files = [list(set([-1])) for _ in range(nBatchesAdded)]
+      val_bkg_event_batches = np.concatenate((val_bkg_event_batches,bkg_event_batches_added))
+      val_bkg_file_batches = val_bkg_file_batches + bkg_file_batches_added
+      val_e_event_batches = np.concatenate((val_e_event_batches,filler_events))
+      val_e_file_batches = val_e_file_batches + filler_files
+
+      # re count
+      nSavedEVal = count_events(val_e_file_batches, val_e_event_batches, eCounts)
+      nSavedBkgVal = count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
+
+
+  print("\t\tElectrons\tBackground\te/(e+bkg)")
+  print("Requested:\t"+str(nTotE)+"\t\t"+str(nTotBkg)+"\t\t"+str(round(nTotE*1.0/(nTotE+nTotBkg),5)))
+  print("Training on:\t"+str(nSavedETrain)+"\t\t"+str(nSavedBkgTrain)+"\t\t"+str(round(nSavedETrain*1.0/(nSavedETrain+nSavedBkgTrain),5)))
+  print("Validating on:\t"+str(nSavedEVal)+"\t\t"+str(nSavedBkgVal)+"\t\t"+str(round(nSavedEVal*1.0/(nSavedEVal+nSavedBkgVal),5)))
+  print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,5)))
+
+  return [train_e_file_batches, train_e_event_batches,
+      val_e_file_batches, val_e_event_batches],
+      [train_bkg_file_batches, train_bkg_event_batches,
+      val_bkg_file_batches, val_bkg_event_batches]

@@ -83,23 +83,6 @@ def run_validation(model, weights, dataDir,plotDir=""):
 		predictions.append(preds)
 		predictions_eReco.append(recos)
 
-		# done1, done2, done3, done4 = False, False, False, False
-		# for e,i,p,reco in zip(events,indices,preds,recos):
-		# 	if(p[1] >= 0.5 and reco < 0.15 and not done1):
-		# 		utils.save_event_deepSets(e,plotDir+"e_identified_reco/"+str(i[0])+"_"+str(i[1])+".png")
-		# 		done1 = True
-		# 	if(p[1] >= 0.5 and reco >= 0.15 and not done2):
-		# 		utils.save_event_deepSets(e,plotDir+"e_identified_nonreco/"+str(i[0])+"_"+str(i[1])+".png")
-		# 		done2 = True
-		# 	if(p[1] < 0.5 and reco < 0.15 and not done3):
-		# 		utils.save_event_deepSets(e,plotDir+"e_missed_reco/"+str(i[0])+"_"+str(i[1])+".png")
-		# 		done3 = True
-		# 	if(p[1] < 0.5 and reco >= 0.15 and not done4):
-		# 		utils.save_event_deepSets(e,plotDir+"e_missed_nonreco/"+str(i[0])+"_"+str(i[1])+".png")
-		# 		done4 = True
-
-		print(file)
-
 	np.savez_compressed("validation_outputs",
 						pred = predictions,
 						pred_reco = predictions_eReco)
