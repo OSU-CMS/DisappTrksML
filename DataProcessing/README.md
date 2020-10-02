@@ -1,12 +1,12 @@
-# Pipeline:
+# Pipeline
 
-## 1. Data production:
+## 1. Data production
 fill in
 
-## 2. Selection on root files:
+## 2. Selection on root files
 From the root files produced in Step 1, apply a selection using **selection/makeSelection.cpp**. Once the selections are applied, each file will contain two trees, electrons (eTree) and backgrounds (bTree) determined by gen-matching.
 
-## 3. Convert data to feed to classifiers:
+## 3. Convert data to feed to classifiers
 From the root files produced in Step 2 (or Step 1), **convert/** includes files to convert the rec hits around each track to some representation that can then be fed to classifiers.
 - **toImages.py** produces 3+(resolution_eta,resolution_phi,4) images, of the
 (ECAL, HS, HCAL, MUO) systems.
