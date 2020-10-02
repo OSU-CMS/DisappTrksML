@@ -1,18 +1,8 @@
 import os
-import tensorflow as tf
-from tensorflow import keras
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import json
-import random
-import sys
-import pickle
-from keras import optimizers, regularizers
 
 import utils
-from generator import generator
+from generator import generator, load_data
 from model import buildModel, buildModelWithEventInfo
 
 def run_batch_validation(model, weights, batchDir, dataDir, plotDir):
@@ -30,8 +20,8 @@ def run_batch_validation(model, weights, batchDir, dataDir, plotDir):
 
 	predictions, infos = [],[]
 	for events,files,class_label in zip(event_batches,file_batches,class_labels):
-		events = generator.load_data(files,events,class_label,dataDir)
-		batch_infos = generator.load_data(files,events,class_label+'_infos',dataDir)
+		events = load_data(files,events,class_label,dataDir)
+		batch_infos = load_data(files,events,class_label+'_infos',dataDir)
 
 		events = events[:,3:]
 		events = np.reshape(events,(events.shape[0],100,4))
