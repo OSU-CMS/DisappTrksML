@@ -1,4 +1,4 @@
 #!/bin/bash
 
-python toSets.py $1 $2 $3
+python toImages.py $1 $2 $3
 mv *.npz $4

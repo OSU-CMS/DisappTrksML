@@ -23,7 +23,8 @@ if(len(sys.argv)>2):
 	dataDir = str(sys.argv[2])
 	if(len(sys.argv)==4):
 		fileList = str(sys.argv[3])
-		fileNum = int(np.loadtxt(fileList)[fileNum])
+		inarray = np.loadtxt(fileList,dtype=float)
+		fileNum = int(inarray[fileNum])
 fname = "hist_"+str(fileNum)+".root"
 print "File "+dataDir+fname 
 
@@ -63,9 +64,9 @@ for class_label,tree in zip([0,1],[bTree,eTree]):
 
 	for event in tree:
 		nPV = event.nPV
-		# eventNumber = event.eventNumber
-		# lumiBlockNumber = event.lumiBlockNumber
-		# runNumber = event.runNumber
+		eventNumber = event.eventNumber
+		lumiBlockNumber = event.lumiBlockNumber
+		runNumber = event.runNumber
 		eventNumber = -1
 		lumiBlockNumber = -1
 		runNumber = -1

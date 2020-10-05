@@ -9,8 +9,8 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/mcarrigan/disappearingTracks/images_DYJetsToLL_M50/'
-    outDir = ''
+    dataDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection/'
+    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_images/'
     files = []
     for filename in os.listdir(dataDir):
         if('.root' in filename and 'hist' in filename):
@@ -18,8 +18,7 @@ if __name__=="__main__":
             index2 = filename.find(".")
             numFile = int(filename[index1+1:index2])
             files.append(numFile)
-            break
-    filelist = 'fileslist.txt'
+    filelist = 'filelist.txt'
     np.savetxt(filelist,files)
 
 
@@ -39,11 +38,11 @@ if __name__=="__main__":
     error                   = /data/users/llavezzo/Logs/convert/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = {1}, wrapper.sh, toSets.py
+    transfer_input_files = {2}, wrapper.sh, toImages.py
     getenv = true
     queue {0}
 
-    """.format(len(files),file,dataDir,filelist,outDir)
+    """.format(len(files),dataDir,filelist,outDir)
 
     f.write(submitLines)
     f.close()

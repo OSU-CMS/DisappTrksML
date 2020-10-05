@@ -10,14 +10,6 @@ from ROOT.Math import XYZVector
 import numpy as np
 import time
 
-# script arguments
-fileNum = int(sys.argv[1])
-if(len(sys.argv) == 3): 
-	fileList = str(sys.argv[2])
-	fileNum = np.load(fileList)[fileNum]
-fname = "hist_"+str(fileNum)+".root"
-print("File",fname)
-
 ######## parameters ################################################################
 dataDir = ''
 tanh_scaling = True
@@ -26,6 +18,17 @@ res_phi = 40
 eta_ub,eta_lb = 0.25,-0.25
 phi_ub,phi_lb = 0.25,-0.25
 ####################################################################################
+
+# script arguments
+fileNum = int(sys.argv[1])
+if(len(sys.argv)>2): 
+	dataDir = str(sys.argv[2])
+	if(len(sys.argv)==4):
+		fileList = str(sys.argv[3])
+		inarray = np.loadtxt(fileList,dtype=float)
+		fileNum = int(inarray[fileNum])
+fname = "hist_"+str(fileNum)+".root"
+print "File "+dataDir+fname 
 
 def convert_eta(eta):
 	return int(round(((res_eta-1)*1.0/(eta_ub-eta_lb))*(eta-eta_lb)))

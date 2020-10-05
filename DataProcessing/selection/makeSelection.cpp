@@ -1,5 +1,15 @@
-#include "DisappTrksML/TreeMaker/interface/Infos.h"
-#include "DataFormats/Math/interface/deltaR.h"
+#include <string>
+#include <iostream>
+#include <fstream> 
+using namespace std;
+
+#include "Math/Vector3D.h"
+#include "TString.h"
+#include "TMath.h"
+#include "TFile.h"
+#include "TTree.h"
+
+#include "Infos.h"
 
 TString string_tstring(string thing){
 	TString thingT = thing;
@@ -8,6 +18,15 @@ TString string_tstring(string thing){
 
 TString int_tstring(int num){
 	return string_tstring(to_string(num));
+}
+
+template <class T1, class T2, class T3, class T4>
+inline
+T1 deltaR (T1 eta1, T2 phi1, T3 eta2, T4 phi2) {
+	T1 deta = eta1 - eta2;
+	T1 dphi = abs(phi1-phi2); 
+	if (dphi>T1(M_PI)) dphi-=T1(2*M_PI);  
+	return deta*deta + dphi*dphi;
 }
 
 bool passesSelection(TrackInfo track){
@@ -32,7 +51,6 @@ bool isReconstructed(TrackInfo track, string flavor){
 void makeSelection(int file = 0, TString dataDir = "", TString filelist = "test.txt"){
 
 	// parameters
-	dataDir = "/store/user/bfrancis/images_DYJetsToLL_v3/";
 	bool Zee = false;
 
 	const double minGenParticlePt_ = 10;
@@ -43,7 +61,10 @@ void makeSelection(int file = 0, TString dataDir = "", TString filelist = "test.
 		if (infile.is_open()) {
 			int iLine = 0;
 			while(getline(infile,line)) {
-				if(iLine == file) file = std::stoi(line);
+				if(iLine == file) {
+					file = stod(line);
+					break;
+				}
 		  		iLine += 1;
 			}
 		infile.close();
@@ -55,9 +76,9 @@ void makeSelection(int file = 0, TString dataDir = "", TString filelist = "test.
 	if(oldFile == nullptr) return;
 	TTree * oldTree = (TTree*)oldFile->Get("trackImageProducer/tree");
 
-	std::vector<TrackInfo> * v_tracks = new std::vector<TrackInfo>();
-	std::vector<RecHitInfo> * v_recHits = new std::vector<RecHitInfo>(); 
-	std::vector<GenParticleInfo> * v_genParticles = new std::vector<GenParticleInfo>(); 
+	vector<TrackInfo> * v_tracks = new vector<TrackInfo>();
+	vector<RecHitInfo> * v_recHits = new vector<RecHitInfo>(); 
+	vector<GenParticleInfo> * v_genParticles = new vector<GenParticleInfo>(); 
 	int nPV;
 	unsigned long long eventNumber;
 	unsigned int lumiBlockNumber;
@@ -67,28 +88,28 @@ void makeSelection(int file = 0, TString dataDir = "", TString filelist = "test.
 	oldTree->SetBranchAddress("recHits", &v_recHits);
 	oldTree->SetBranchAddress("genParticles", &v_genParticles);
 	oldTree->SetBranchAddress("nPV", &nPV);
-	// oldTree->SetBranchAddress("eventNumber", &eventNumber);
-	// oldTree->SetBranchAddress("lumiBlockNumber", &lumiBlockNumber);
-	// oldTree->SetBranchAddress("runNumber", &runNumber);
+	oldTree->SetBranchAddress("eventNumber", &eventNumber);
+	oldTree->SetBranchAddress("lumiBlockNumber", &lumiBlockNumber);
+	oldTree->SetBranchAddress("runNumber", &runNumber);
 
 	TString newFileName = "hist_"+int_tstring(file)+".root";
 	TFile * newFile = new TFile(newFileName, "recreate");
 	TTree * eTree = new TTree("eTree","eTree");
 	TTree * bTree = new TTree("bTree","bTree");
-	std::vector<TrackInfo> * v_tracks_e = new std::vector<TrackInfo>();
-	std::vector<TrackInfo> * v_tracks_b = new std::vector<TrackInfo>();
+	vector<TrackInfo> * v_tracks_e = new vector<TrackInfo>();
+	vector<TrackInfo> * v_tracks_b = new vector<TrackInfo>();
 	eTree->Branch("nPV",&nPV);
 	eTree->Branch("recHits",&v_recHits);
 	eTree->Branch("tracks",&v_tracks_e);
-	// eTree->Branch("eventNumber", &eventNumber);
-	// eTree->Branch("lumiBlockNumber", &lumiBlockNumber);
-	// eTree->Branch("runNumber", &runNumber);
+	eTree->Branch("eventNumber", &eventNumber);
+	eTree->Branch("lumiBlockNumber", &lumiBlockNumber);
+	eTree->Branch("runNumber", &runNumber);
 	bTree->Branch("nPV",&nPV);
 	bTree->Branch("recHits",&v_recHits);
 	bTree->Branch("tracks",&v_tracks_b);
-	// bTree->Branch("eventNumber", &eventNumber);
-	// bTree->Branch("lumiBlockNumber", &lumiBlockNumber);
-	// bTree->Branch("runNumber", &runNumber);
+	bTree->Branch("eventNumber", &eventNumber);
+	bTree->Branch("lumiBlockNumber", &lumiBlockNumber);
+	bTree->Branch("runNumber", &runNumber);
 
 	cout << "Running over " << oldFileName << " with " << to_string(oldTree->GetEntries()) << " events." << endl;
 
