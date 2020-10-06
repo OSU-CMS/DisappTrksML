@@ -2,8 +2,9 @@ import os
 import numpy as np
 import sys
 import pickle as pkl
+import ROOT as r
 
-dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_Zee_V3/"
+dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection/"
 
 eCounts = {}
 bkgCounts = {}
@@ -18,11 +19,11 @@ for file in os.listdir(dataDir):
 	index2 = file.find(".")
 	fileNum = int(file[index1+1:index2])
 
-	fin = TFile(dataDir+file, 'read')
+	fin = r.TFile(dataDir+file, 'read')
 	eTree = fin.Get('eTree')
 	bTree = fin.Get('bTree')
-	electrons_thisTree = eTree->GetEntriesFast()
-	bkg_thisTree = bTree->GetEntriesFast()
+	electrons_thisTree = eTree.GetEntriesFast()
+	bkg_thisTree = bTree.GetEntriesFast()
 
 	eCounts.update({fileNum:electrons_thisTree})
 	electrons += electrons_thisTree
@@ -32,7 +33,7 @@ for file in os.listdir(dataDir):
 	
 print("electrons",electrons)
 print("bkg",bkg)
-with open(dataDir+'eCounts.pkl', 'wb') as f:
+with open('eCounts.pkl', 'wb') as f:
 	pkl.dump(eCounts,f)
-with open(dataDir+'bkgCounts.pkl', 'wb') as f:
+with open('bkgCounts.pkl', 'wb') as f:
 	pkl.dump(bkgCounts,f)
