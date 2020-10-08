@@ -48,7 +48,7 @@ bool isReconstructed(TrackInfo track, string flavor){
 	else return false;
 }
 
-void makeSelection(int file = 0, TString dataDir = "", TString filelist = "test.txt"){
+void makeSelection(int file = 1, TString dataDir = "/store/user/bfrancis/images_DYJetsToLL_v4/", TString filelist = ""){
 
 	// parameters
 	bool Zee = false;
