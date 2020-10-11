@@ -17,7 +17,7 @@ def load_data(files, events, class_label, dataDir):
 	lastFile = len(files)-1
 	images = np.array([])
 	for iFile, file in enumerate(files):
-		fname = "images_0p5_"+str(file)+".npz"
+		fname = "events_"+str(file)+".npz"
 		if(file == -1): continue
 
 		if(iFile == 0 and iFile != lastFile):
@@ -38,7 +38,7 @@ def load_data(files, events, class_label, dataDir):
 class generator(keras.utils.Sequence):
   
 	def __init__(self, batchesE, batchesBkg, indicesE, indicesBkg, 
-				batch_size, dataDir, val_mode=False,shuffle=True, eventInfo=False):
+				batch_size, dataDir, val_mode=False, shuffle=True, eventInfo=False):
 		self.batchesE = batchesE
 		self.batchesBkg = batchesBkg
 		self.indicesE = indicesE
@@ -62,10 +62,10 @@ class generator(keras.utils.Sequence):
 		indexE = self.indicesE[idx]
 		indexBkg = self.indicesBkg[idx]
 
-		e_images = load_data(filenamesE,indexE,'e',self.dataDir)
+		e_images = load_data(filenamesE,indexE,'signal',self.dataDir)
 		bkg_images = load_data(filenamesBkg,indexBkg,'bkg',self.dataDir)
 		if(self.eventInfo):
-			e_info = load_data(filenamesE,indexE,'e_infos',self.dataDir)
+			e_info = load_data(filenamesE,indexE,'s_infos',self.dataDir)
 			bkg_info = load_data(filenamesBkg,indexBkg,'bkg_infos',self.dataDir)
 		
 		numE = e_images.shape[0]
@@ -75,16 +75,16 @@ class generator(keras.utils.Sequence):
 		if(numBkg != 0):
 			indices = list(range(bkg_images.shape[0]))
 			random.shuffle(indices)
-			bkg_indices = bkg_images[indices,:2]
-			bkg_images = bkg_images[indices,2:]
-			if(self.eventInfo): bkg_info = bkg_info[indices,3:9]
+			bkg_indices = bkg_images[indices,:4]
+			bkg_images = bkg_images[indices,4:]
+			if(self.eventInfo): bkg_info = bkg_info[indices,[6,10,11,12,13]]
 
 		if(numE != 0):
 			indices = list(range(e_images.shape[0]))
 			random.shuffle(indices)
-			e_indices = e_images[indices,:2]
-			e_images = e_images[indices,2:]
-			if(self.eventInfo): e_info = e_info[indices,3:9]
+			e_indices = e_images[indices,:4]
+			e_images = e_images[indices,4:]
+			if(self.eventInfo): e_info = e_info[indices,[6,10,11,12,13]]
 
 		# concatenate images and suffle them, create labels
 		if(numE != 0 and numBkg != 0): 

@@ -127,6 +127,7 @@ void makeSelection(int file = 1, TString dataDir = "/store/user/bfrancis/images_
 			// selections
 			if(!passesSelection(track)) continue;
 
+			if(isReconstructed(track,"electron")) continue;
 			if(isReconstructed(track,"muon")) continue;
 			if(isReconstructed(track,"tau")) continue;
 

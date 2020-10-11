@@ -11,7 +11,7 @@ if __name__=="__main__":
 
     dataDir = '/store/user/bfrancis/images_DYJetsToLL_v4/'
     outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection/'
-    reprocessAllFiles = False
+    reprocessAllFiles = True
 
     alreadyProcessedFiles = []
     for filename in os.listdir(outDir):

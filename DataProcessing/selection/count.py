@@ -22,8 +22,8 @@ for file in os.listdir(dataDir):
 	fin = r.TFile(dataDir+file, 'read')
 	eTree = fin.Get('eTree')
 	bTree = fin.Get('bTree')
-	electrons_thisTree = eTree.GetEntriesFast()
-	bkg_thisTree = bTree.GetEntriesFast()
+	electrons_thisTree = int(eTree.GetEntries())
+	bkg_thisTree = int(bTree.GetEntries())
 
 	eCounts.update({fileNum:electrons_thisTree})
 	electrons += electrons_thisTree
@@ -33,7 +33,7 @@ for file in os.listdir(dataDir):
 	
 print("electrons",electrons)
 print("bkg",bkg)
-with open('eCounts.pkl', 'wb') as f:
+with open(dataDir+'eCounts.pkl', 'wb') as f:
 	pkl.dump(eCounts,f)
-with open('bkgCounts.pkl', 'wb') as f:
+with open(dataDir+'bkgCounts.pkl', 'wb') as f:
 	pkl.dump(bkgCounts,f)

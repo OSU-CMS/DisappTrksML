@@ -69,7 +69,7 @@ weightsDir = workDir + '/weights/'
 outputDir = workDir + '/outputFiles/'
 
 ################config parameters################
-dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_Zee_V3/"
+dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets/"
 logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
@@ -114,7 +114,7 @@ train_generator = generator(e_data[0], e_data[1], e_data[2], e_data[3],
 val_generator = generator(bkg_data[0], bkg_data[1], bkg_data[2], bkg_data[3], 
 					batch_size, dataDir, False, True, True)
 
-model = buildModelWithEventInfo()
+model = buildModelWithEventInfo(info_shape=5)
 
 model.compile(optimizer=optimizers.Adam(), 
 			  loss='categorical_crossentropy', 
