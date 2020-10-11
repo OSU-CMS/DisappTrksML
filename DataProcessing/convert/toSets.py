@@ -55,21 +55,17 @@ fin = TFile(dataDir+fname, 'read')
 eTree = fin.Get('eTree')
 bTree = fin.Get('bTree')
 
-electrons, e_infos = [], []
+signal, s_infos = [], []
 bkg, bkg_infos = [], []
-IDe, IDb = 0, 0
 
 for class_label,tree in zip([0,1],[bTree,eTree]):
-	ID = 0
 
 	for event in tree:
 		nPV = event.nPV
 		eventNumber = event.eventNumber
 		lumiBlockNumber = event.lumiBlockNumber
 		runNumber = event.runNumber
-		eventNumber = -1
-		lumiBlockNumber = -1
-		runNumber = -1
+		trackNumber = 0
 
 		for track in event.tracks:
 			
@@ -99,9 +95,9 @@ for class_label,tree in zip([0,1],[bTree,eTree]):
 				sets[iHit][2] = hits[iHit][2]
 				sets[iHit][3] = hits[iHit][3]
 
-			sets = np.concatenate(([eventNumber, lumiBlockNumber, runNumber], sets.flatten().astype('float32')))
+			sets = np.concatenate(([eventNumber, lumiBlockNumber, runNumber, trackNumber], sets.flatten().astype('float32')))
 			infos = np.array([
-					eventNumber, lumiBlockNumber, runNumber,
+					eventNumber, lumiBlockNumber, runNumber, trackNumber,
 					class_label,
 					nPV,
 					track.deltaRToClosestElectron,
@@ -109,21 +105,21 @@ for class_label,tree in zip([0,1],[bTree,eTree]):
 					track.deltaRToClosestTauHad,
 					track_eta,
 					track_phi,
-					track.dRMinBadEcalChannel
+					track.dRMinBadEcalChannel,
+					track.nLayersWithMeasurement
 				])
 
 			if(class_label == 0):
-				electrons.append(sets)
-				e_infos.append(infos)
-				ID+=1
+				signal.append(sets)
+				s_infos.append(infos)
 			if(class_label == 1):
 				bkg.append(sets)
 				bkg_infos.append(infos)
-				ID+=1
 
+			trackNumber+=1
 		
-np.savez_compressed('sets_'+str(fileNum)+'.npz', 
-					e=electrons,
+np.savez_compressed('events_'+str(fileNum)+'.npz', 
+					signal=signal,
 					bkg=bkg,
-					e_infos=e_infos,
+					s_infos=s_infos,
 					bkg_infos=bkg_infos)

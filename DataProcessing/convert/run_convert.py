@@ -10,14 +10,25 @@ import numpy as np
 if __name__=="__main__":
 
     dataDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection/'
-    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_images/'
+    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets/'
+    reprocessAllFiles = True
+
+    alreadyProcessedFiles = []
+    for filename in os.listdir(outDir):
+        if('.root' in filename and 'hist' in filename):
+            index1 = filename.find("_")
+            index2 = filename.find(".")
+            numFile = int(filename[index1+1:index2])
+            alreadyProcessedFiles.append(numFile)
     files = []
     for filename in os.listdir(dataDir):
         if('.root' in filename and 'hist' in filename):
             index1 = filename.find("_")
             index2 = filename.find(".")
             numFile = int(filename[index1+1:index2])
-            files.append(numFile)
+            if(not reprocessAllFiles):
+                if(numFile in alreadyProcessedFiles): continue
+            files.append(numFile) 
     filelist = 'filelist.txt'
     np.savetxt(filelist,files)
 
@@ -38,7 +49,7 @@ if __name__=="__main__":
     error                   = /data/users/llavezzo/Logs/convert/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = {2}, wrapper.sh, toImages.py
+    transfer_input_files = {2}, wrapper.sh, toSets.py
     getenv = true
     queue {0}
 

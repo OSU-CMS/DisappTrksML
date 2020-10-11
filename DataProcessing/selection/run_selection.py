@@ -11,14 +11,24 @@ if __name__=="__main__":
 
     dataDir = '/store/user/bfrancis/images_DYJetsToLL_v4/'
     outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection/'
+    reprocessAllFiles = False
 
+    alreadyProcessedFiles = []
+    for filename in os.listdir(outDir):
+        if('.root' in filename and 'hist' in filename):
+            index1 = filename.find("_")
+            index2 = filename.find(".")
+            numFile = int(filename[index1+1:index2])
+            alreadyProcessedFiles.append(numFile)
     files = []
     for filename in os.listdir(dataDir):
         if('.root' in filename and 'hist' in filename):
             index1 = filename.find("_")
             index2 = filename.find(".")
             numFile = int(filename[index1+1:index2])
-            files.append(numFile)   
+            if(not reprocessAllFiles):
+                if(numFile in alreadyProcessedFiles): continue
+            files.append(numFile) 
     filelist = 'filelist.txt'
     np.savetxt(filelist,files)
 

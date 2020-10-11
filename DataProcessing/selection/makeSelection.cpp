@@ -38,6 +38,7 @@ bool passesSelection(TrackInfo track){
 	if(!(abs(eta) < 2.4)) return false;
 	if(track.inGap) return false;
 	if(!(abs(track.dRMinJet) > 0.5)) return false;
+	if(track.nValidPixelHits < 4 || track.nLayersWithMeasurement < 4) return false;
 	return true;
 }
 
