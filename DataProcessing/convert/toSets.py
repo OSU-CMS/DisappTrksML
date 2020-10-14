@@ -106,7 +106,8 @@ for class_label,tree in zip([0,1],[bTree,eTree]):
 					track_eta,
 					track_phi,
 					track.dRMinBadEcalChannel,
-					track.nLayersWithMeasurement
+					track.nLayersWithMeasurement,
+					track.nValidPixelHits
 				])
 
 			if(class_label == 0):

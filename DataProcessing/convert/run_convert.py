@@ -13,6 +13,11 @@ if __name__=="__main__":
     outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets/'
     reprocessAllFiles = True
 
+    if(os.path.exists(dataDir+'eCounts.pkl')):
+        os.system("cp "+dataDir+"eCounts.pkl "+outDir)
+    if(os.path.exists(dataDir+'bkgCounts.pkl')):
+        os.system("cp "+dataDir+"bkgCounts.pkl "+outDir)
+
     alreadyProcessedFiles = []
     for filename in os.listdir(outDir):
         if('.root' in filename and 'hist' in filename):
