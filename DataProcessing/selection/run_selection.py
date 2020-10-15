@@ -11,6 +11,7 @@ if __name__=="__main__":
 
     dataDir = '/store/user/bfrancis/images_DYJetsToLL_v4/'
     outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection_muons/'
+    logDir = '/data/users/mcarrigan/Logs/selection/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
@@ -36,7 +37,6 @@ if __name__=="__main__":
 
     f = open('run.sub', 'w')
     submitLines = """
-
     Universe = vanilla
     +IsLocalJob = true
     Rank = TARGET.IsLocalSlot
@@ -45,16 +45,15 @@ if __name__=="__main__":
     request_cpus = 1
     executable              = wrapper.sh
     arguments               = $(PROCESS) {1} {2} {3}
-    log                     = /data/users/llavezzo/Logs/selection/log_$(PROCESS).log
-    output                  = /data/users/llavezzo/Logs/selection/out_$(PROCESS).txt
-    error                   = /data/users/llavezzo/Logs/selection/error_$(PROCESS).txt
+    log                     = {4}log_$(PROCESS).log
+    output                  = {4}out_$(PROCESS).txt
+    error                   = {4}error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
     transfer_input_files = {2}, wrapper.sh, makeSelection.cpp, Infos.h
     getenv = true
     queue {0}
-
-    """.format(len(files),dataDir,filelist,outDir)
+    """.format(len(files),dataDir,filelist,outDir, logDir)
 
     f.write(submitLines)
     f.close()
