@@ -95,16 +95,16 @@ void makeSelection(int file = 1, TString dataDir = "/store/user/bfrancis/images_
 
 	TString newFileName = "hist_"+int_tstring(file)+".root";
 	TFile * newFile = new TFile(newFileName, "recreate");
-	TTree * eTree = new TTree("eTree","eTree");
+	TTree * sTree = new TTree("sTree","sTree");
 	TTree * bTree = new TTree("bTree","bTree");
-	vector<TrackInfo> * v_tracks_e = new vector<TrackInfo>();
+	vector<TrackInfo> * v_tracks_s = new vector<TrackInfo>();
 	vector<TrackInfo> * v_tracks_b = new vector<TrackInfo>();
-	eTree->Branch("nPV",&nPV);
-	eTree->Branch("recHits",&v_recHits);
-	eTree->Branch("tracks",&v_tracks_e);
-	eTree->Branch("eventNumber", &eventNumber);
-	eTree->Branch("lumiBlockNumber", &lumiBlockNumber);
-	eTree->Branch("runNumber", &runNumber);
+	sTree->Branch("nPV",&nPV);
+	sTree->Branch("recHits",&v_recHits);
+	sTree->Branch("tracks",&v_tracks_s);
+	sTree->Branch("eventNumber", &eventNumber);
+	sTree->Branch("lumiBlockNumber", &lumiBlockNumber);
+	sTree->Branch("runNumber", &runNumber);
 	bTree->Branch("nPV",&nPV);
 	bTree->Branch("recHits",&v_recHits);
 	bTree->Branch("tracks",&v_tracks_b);
@@ -117,7 +117,7 @@ void makeSelection(int file = 1, TString dataDir = "/store/user/bfrancis/images_
 	for(int iE = 0; iE < oldTree->GetEntries(); iE++){
 
 		v_tracks_b->clear();
-		v_tracks_e->clear();
+		v_tracks_s->clear();
 
 		oldTree->GetEntry(iE);
 
@@ -150,19 +150,19 @@ void makeSelection(int file = 1, TString dataDir = "/store/user/bfrancis/images_
 					}
 				}
 			}
-			if(abs(genMatchedID) == 11 and abs(genMatchedDR) < 0.1) v_tracks_e->push_back(track);
+			if(abs(genMatchedID) == 13 and abs(genMatchedDR) < 0.1) v_tracks_s->push_back(track);
 			else v_tracks_b->push_back(track);
 		}
 
 		if(Zee){
-			if(v_tracks_e->size() < 2) continue;
+			if(v_tracks_s->size() < 2) continue;
 		}
-		if(v_tracks_e->size() > 0) eTree->Fill();
+		if(v_tracks_s->size() > 0) sTree->Fill();
 		if(v_tracks_b->size() > 0) bTree->Fill();
 	}
 
 	cout << "Saving file " << newFileName << " with" << endl;
-	cout << eTree->GetEntries() << " electron tracks and" << endl;
+	cout << sTree->GetEntries() << " signal tracks and" << endl;
 	cout << bTree->GetEntries() << " background tracks." << endl;
 
 	newFile->Write();

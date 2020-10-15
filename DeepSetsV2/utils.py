@@ -300,13 +300,13 @@ def count_events(file_batches, event_batches, dict):
 def prepare_data(dataDir, nTotE, batch_size=64, val_size=0.2, undersample_bkg=-1):
 
 	# import count dicts
-	with open(dataDir+'eCounts.pkl', 'rb') as f:
-		eCounts = pickle.load(f)
+	with open(dataDir+'sCounts.pkl', 'rb') as f:
+		sCounts = pickle.load(f)
 	with open(dataDir+'bkgCounts.pkl', 'rb') as f:
 		bkgCounts = pickle.load(f)
 
 	# count how many events are in the files for each class
-	availableE = sum(list(eCounts.values()))
+	availableE = sum(list(sCounts.values()))
 	availableBkg = sum(list(bkgCounts.values()))
 
 	# fractions for each class for the total dataset
@@ -319,8 +319,8 @@ def prepare_data(dataDir, nTotE, batch_size=64, val_size=0.2, undersample_bkg=-1
 	if(undersample_bkg!=-1): nTotBkg = int(nTotE*1.0*undersample_bkg/(1-undersample_bkg))
 
 	# can't request more events than we have
-	if(nTotE > availableE): sys.exit("ERROR: Requested more electron events than are available")
-	if(nTotBkg > availableBkg): sys.exit("ERROR: Requested more electron events than available")
+	if(nTotE > availableE): sys.exit("ERROR: Requested more signal events than are available")
+	if(nTotBkg > availableBkg): sys.exit("ERROR: Requested more background events than available")
 
 	# batches per epoch
 	nBatches = int(np.floor((nTotE + nTotBkg)*1.0/batch_size))
@@ -356,7 +356,7 @@ def prepare_data(dataDir, nTotE, batch_size=64, val_size=0.2, undersample_bkg=-1
 			b_events.append(evt)
 			b_files.append(file)
 	e_events, e_files = [], []
-	for file, nEvents in eCounts.items():
+	for file, nEvents in sCounts.items():
 		for evt in range(nEvents):
 			e_events.append(evt)
 			e_files.append(file)
@@ -370,8 +370,8 @@ def prepare_data(dataDir, nTotE, batch_size=64, val_size=0.2, undersample_bkg=-1
 	train_bkg_event_batches, val_bkg_event_batches, train_bkg_file_batches, val_bkg_file_batches = train_test_split(bkg_event_batches, bkg_file_batches, test_size=val_size, random_state=42)
 
 	# count events in each batch
-	nSavedETrain = count_events(train_e_file_batches, train_e_event_batches, eCounts)
-	nSavedEVal = count_events(val_e_file_batches, val_e_event_batches, eCounts)
+	nSavedETrain = count_events(train_e_file_batches, train_e_event_batches, sCounts)
+	nSavedEVal = count_events(val_e_file_batches, val_e_event_batches, sCounts)
 	nSavedBkgTrain = count_events(train_bkg_file_batches, train_bkg_event_batches, bkgCounts)
 	nSavedBkgVal = count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
 
@@ -409,7 +409,7 @@ def prepare_data(dataDir, nTotE, batch_size=64, val_size=0.2, undersample_bkg=-1
 		val_e_file_batches = val_e_file_batches + filler_files
 
 		# re count
-		nSavedEVal = count_events(val_e_file_batches, val_e_event_batches, eCounts)
+		nSavedEVal = count_events(val_e_file_batches, val_e_event_batches, sCounts)
 		nSavedBkgVal = count_events(val_bkg_file_batches, val_bkg_event_batches, bkgCounts)
 
 	print("\t\tElectrons\tBackground\te/(e+bkg)")

@@ -4,11 +4,11 @@ import sys
 import pickle as pkl
 import ROOT as r
 
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection/"
+dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection_muons/"
 
 eCounts = {}
 bkgCounts = {}
-electrons, bkg = 0, 0
+signal, bkg = 0, 0
 
 for file in os.listdir(dataDir):
 
@@ -20,20 +20,20 @@ for file in os.listdir(dataDir):
 	fileNum = int(file[index1+1:index2])
 
 	fin = r.TFile(dataDir+file, 'read')
-	eTree = fin.Get('eTree')
+	sTree = fin.Get('sTree')
 	bTree = fin.Get('bTree')
-	electrons_thisTree = int(eTree.GetEntries())
+	signal_thisTree = int(sTree.GetEntries())
 	bkg_thisTree = int(bTree.GetEntries())
 
-	eCounts.update({fileNum:electrons_thisTree})
-	electrons += electrons_thisTree
+	eCounts.update({fileNum:signal_thisTree})
+	signal += signal_thisTree
 
 	bkgCounts.update({fileNum:bkg_thisTree})
 	bkg += bkg_thisTree
 	
-print("electrons",electrons)
+print("signal",signal)
 print("bkg",bkg)
-with open(dataDir+'eCounts.pkl', 'wb') as f:
+with open(dataDir+'sCounts.pkl', 'wb') as f:
 	pkl.dump(eCounts,f)
 with open(dataDir+'bkgCounts.pkl', 'wb') as f:
 	pkl.dump(bkgCounts,f)

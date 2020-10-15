@@ -9,14 +9,18 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection/'
-    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets/'
+    dataDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection_muons/'
+    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_muons/'
     reprocessAllFiles = True
 
-    if(os.path.exists(dataDir+'eCounts.pkl')):
-        os.system("cp "+dataDir+"eCounts.pkl "+outDir)
+    if(not os.path.isdir(outDir)): os.mkdir(outDir)
+
+    if(os.path.exists(dataDir+'sCounts.pkl')):
+        os.system("cp "+dataDir+"sCounts.pkl "+outDir)
+    else: print("Missing sCounts.pkl file!")
     if(os.path.exists(dataDir+'bkgCounts.pkl')):
         os.system("cp "+dataDir+"bkgCounts.pkl "+outDir)
+    else: print("Missing bkgCounts.pkl file!")
 
     alreadyProcessedFiles = []
     for filename in os.listdir(outDir):

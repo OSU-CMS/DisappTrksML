@@ -10,8 +10,10 @@ import numpy as np
 if __name__=="__main__":
 
     dataDir = '/store/user/bfrancis/images_DYJetsToLL_v4/'
-    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection/'
+    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection_muons/'
     reprocessAllFiles = True
+
+    if(not os.path.isdir(outDir)): os.mkdir(outDir)
 
     alreadyProcessedFiles = []
     for filename in os.listdir(outDir):

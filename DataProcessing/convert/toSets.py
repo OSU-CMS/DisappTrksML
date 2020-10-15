@@ -52,13 +52,13 @@ def imageCoordinates(track, hit):
 	return (dEta, dPhi)
 
 fin = TFile(dataDir+fname, 'read')
-eTree = fin.Get('eTree')
+sTree = fin.Get('sTree')
 bTree = fin.Get('bTree')
 
 signal, signal_infos = [], []
 bkg, bkg_infos = [], []
 
-for class_label,tree in zip([0,1],[bTree,eTree]):
+for class_label,tree in zip([0,1],[bTree,sTree]):
 
 	for event in tree:
 		nPV = event.nPV
