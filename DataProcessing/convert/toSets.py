@@ -55,7 +55,7 @@ fin = TFile(dataDir+fname, 'read')
 eTree = fin.Get('eTree')
 bTree = fin.Get('bTree')
 
-signal, s_infos = [], []
+signal, signal_infos = [], []
 bkg, bkg_infos = [], []
 
 for class_label,tree in zip([0,1],[bTree,eTree]):
@@ -110,10 +110,10 @@ for class_label,tree in zip([0,1],[bTree,eTree]):
 					track.nValidPixelHits
 				])
 
-			if(class_label == 0):
-				signal.append(sets)
-				s_infos.append(infos)
 			if(class_label == 1):
+				signal.append(sets)
+				signal_infos.append(infos)
+			if(class_label == 0):
 				bkg.append(sets)
 				bkg_infos.append(infos)
 
@@ -122,5 +122,5 @@ for class_label,tree in zip([0,1],[bTree,eTree]):
 np.savez_compressed('events_'+str(fileNum)+'.npz', 
 					signal=signal,
 					bkg=bkg,
-					s_infos=s_infos,
+					signal_infos=signal_infos,
 					bkg_infos=bkg_infos)

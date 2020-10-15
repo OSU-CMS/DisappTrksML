@@ -37,7 +37,7 @@ def load_data(files, events, class_label, dataDir):
 # generate batches of images from files
 class generator(keras.utils.Sequence):
   
-	def __init__(self, batchesE, batchesBkg, indicesE, indicesBkg, 
+	def __init__(self, batchesE, indicesE, batchesBkg, indicesBkg, 
 				batch_size, dataDir, val_mode=False, shuffle=True, eventInfo=False):
 		self.batchesE = batchesE
 		self.batchesBkg = batchesBkg
@@ -65,7 +65,7 @@ class generator(keras.utils.Sequence):
 		e_images = load_data(filenamesE,indexE,'signal',self.dataDir)
 		bkg_images = load_data(filenamesBkg,indexBkg,'bkg',self.dataDir)
 		if(self.eventInfo):
-			e_info = load_data(filenamesE,indexE,'s_infos',self.dataDir)
+			e_info = load_data(filenamesE,indexE,'signal_infos',self.dataDir)
 			bkg_info = load_data(filenamesBkg,indexBkg,'bkg_infos',self.dataDir)
 		
 		numE = e_images.shape[0]
@@ -77,14 +77,18 @@ class generator(keras.utils.Sequence):
 			random.shuffle(indices)
 			bkg_indices = bkg_images[indices,:4]
 			bkg_images = bkg_images[indices,4:]
-			if(self.eventInfo): bkg_info = bkg_info[indices,[6,10,11,12,13]]
+			if(self.eventInfo): 
+				bkg_info = bkg_info[indices]
+				bkg_info = bkg_info[:,[6,10,11,12,13]]
 
 		if(numE != 0):
 			indices = list(range(e_images.shape[0]))
 			random.shuffle(indices)
 			e_indices = e_images[indices,:4]
 			e_images = e_images[indices,4:]
-			if(self.eventInfo): e_info = e_info[indices,[6,10,11,12,13]]
+			if(self.eventInfo): 
+				e_info = e_info[indices]
+				e_info = e_info[:,[6,10,11,12,13]]
 
 		# concatenate images and suffle them, create labels
 		if(numE != 0 and numBkg != 0): 

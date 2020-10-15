@@ -1,12 +1,11 @@
-import os, sys
+import os, sys, getopt
 import tensorflow as tf
-from tensorflow import keras
+import keras
 from keras import backend as K
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 import random
 import pickle
 import datetime
@@ -14,13 +13,13 @@ import datetime
 import utils
 import validate
 from generator import generator
-from models.deepSets import buildModel, buildModelWithEventInfo
+from model import buildModel, buildModelWithEventInfo
 
 # limit CPU usage
-config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
-								intra_op_parallelism_threads = 4,
+config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 2,   
+								intra_op_parallelism_threads = 2,
 								allow_soft_placement = True,
-								device_count={'CPU': 4})
+								device_count={'CPU': 2})
 tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
 # suppress warnings
@@ -58,7 +57,8 @@ cnt=0
 while(os.path.isdir(workDir)):
 	cnt+=1
 	if(cnt==1): workDir = workDir+"_"+str(cnt)
-	else: workDir = workDir[:-1] + str(cnt)
+	else: workDir = workDir[:-int(int(cnt*1.0/10)+1)] + str(cnt)
+
 print(utils.bcolors.YELLOW+"Output directory: "+workDir+utils.bcolors.ENDC)
 if(len(params) > 0): 
 	print(utils.bcolors.YELLOW+"Using params"+utils.bcolors.ENDC, params, end=" ")
@@ -73,12 +73,12 @@ dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets/"
 logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
-nTotE = 350000 
+nTotE = 3000 
 val_size = 0.2
-undersample_bkg = -1
+undersample_bkg = 0.9
 v = 1
 batch_size = 128
-epochs = 2
+epochs = 5
 patience_count = 10
 monitor = 'val_loss'
 metrics = ['accuracy']
@@ -96,7 +96,7 @@ os.makedirs(weightsDir)
 os.makedirs(outputDir)
 os.makedirs(logDir)
 
-e_data, bkg_data = utils.prepare_data(dataDir, nTotE, val_size, undersample_bkg)  
+e_data, bkg_data = utils.prepare_data(dataDir, nTotE, batch_size, val_size, undersample_bkg)  
 
 # save the train and validation batches
 np.save(outputDir+"e_files_trainBatches", e_data[0])
@@ -109,14 +109,14 @@ np.save(outputDir+"bkg_files_valBatches", bkg_data[2])
 np.save(outputDir+"bkg_events_valBatches", bkg_data[3])
 
 # initialize generators
-train_generator = generator(e_data[0], e_data[1], e_data[2], e_data[3], 
+train_generator = generator(e_data[0], e_data[1], bkg_data[0], bkg_data[1], 
 					batch_size, dataDir, False, True, True)
-val_generator = generator(bkg_data[0], bkg_data[1], bkg_data[2], bkg_data[3], 
+val_generator = generator(e_data[2], e_data[3], bkg_data[2], bkg_data[3], 
 					batch_size, dataDir, False, True, True)
 
 model = buildModelWithEventInfo(info_shape=5)
 
-model.compile(optimizer=optimizers.Adam(), 
+model.compile(optimizer=keras.optimizers.Adam(), 
 			  loss='categorical_crossentropy', 
 			  metrics=metrics)
 
@@ -125,11 +125,11 @@ callbacks = [
 	keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5',
 									save_best_only=True,
 									monitor=monitor,
-									mode='auto'),
-	tf.keras.callbacks.TensorBoard(log_dir=logDir, 
-	                               histogram_freq=0,
-	                               write_graph=False,
-	                               write_images=False)
+									mode='auto')
+	# tf.keras.callbacks.TensorBoard(log_dir=logDir, 
+	#                                histogram_freq=0,
+	#                                write_graph=False,
+	#                                write_images=False)
 ]
 
 history = model.fit(train_generator, 
@@ -149,4 +149,4 @@ print(utils.bcolors.GREEN+"Saved history, train and validation files to "+output
 utils.plot_history(history, plotDir, ['loss','accuracy'])
 print(utils.bcolors.YELLOW+"Plotted history to "+plotDir+utils.bcolors.ENDC) 
 
-if(run_validate): validate.run_batch_validation(model, weightsDir+'lastEpoch.h5', outputDir, dataDir, plotDir, batch_size)
+if(run_validate): validate.run_batch_validation(model, weightsDir+'lastEpoch.h5', outputDir, dataDir, plotDir)

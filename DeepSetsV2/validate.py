@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import keras 
+import random
 
 import utils
 from generator import generator, load_data
@@ -16,28 +18,41 @@ def run_batch_validation(model, weights, batchDir, dataDir, plotDir):
 	val_bkg_event_batches = np.load(batchDir+'bkg_events_valBatches.npy', allow_pickle=True)
 	file_batches = np.concatenate((val_e_file_batches,val_bkg_file_batches))
 	event_batches = np.concatenate((val_e_event_batches,val_bkg_event_batches))
-	class_labels = np.concatenate((['e']*val_e_file_batches.shape[0],['bkg']*val_bkg_file_batches.shape[0]))
+	class_labels = np.concatenate((['signal']*val_e_file_batches.shape[0],['bkg']*val_bkg_file_batches.shape[0]))
+	indices = list(range(file_batches.shape[0]))
+	random.shuffle(indices)
+	file_batches, event_batches, class_labels = file_batches[indices], event_batches[indices], class_labels[indices]
 
-	predictions, infos = [],[]
-	for events,files,class_label in zip(event_batches,file_batches,class_labels):
-		events = load_data(files,events,class_label,dataDir)
-		batch_infos = load_data(files,events,class_label+'_infos',dataDir)
+	cnt=0
+	predictions, infos, class_nums = [],[],[]
+	for indices,files,class_label in zip(event_batches,file_batches,class_labels):
 
-		events = events[:,3:]
+		events = load_data(files,indices,class_label,dataDir)
+		batch_infos = load_data(files,indices,class_label+'_infos',dataDir)
+
+		if(events.shape[0]==0): continue
+		events = events[:,4:]
 		events = np.reshape(events,(events.shape[0],100,4))
 
-		preds = model.predict(events)
+		preds = model.predict([events, batch_infos[:,[6,10,11,12,13]]])
 		predictions.append(preds)
 		infos.append(batch_infos)
+		if(class_label == 'bkg'): class_nums = class_nums + [0]*len(preds)
+		if(class_label == 'signal'): class_nums = class_nums + [1]*len(preds)
 
-	utils.metrics(true[:,1], predictions[:,1], plotDir, threshold=0.5)
+		cnt+=1
+		if(cnt > 20): break
+
+	predictions = np.vstack(predictions)
+	infos = np.vstack(infos)
+	utils.metrics(class_nums[:predictions.shape[0]], predictions[:,1], plotDir, threshold=0.5)
 
 	print()
 	print(utils.bcolors.GREEN+"Saved metrics to "+plotDir+utils.bcolors.ENDC)
 	print()
 
 	np.savez_compressed(batchDir+"validation_outputs",
-						truth = true,
+						truth = class_nums,
 						predicted = predictions,
 						indices = indices)
 
@@ -113,18 +128,18 @@ def run_validation(model, weights, dataDir,plotDir=""):
 
 if __name__ == "__main__":
 
-	dataDir = "/store/user/llavezzo/disappearingTracks/converted_deepSets100_Zee_V3/"
-	batchDir = "deepSets_4/outputFiles/"
-	plotDir = "deepSets_4/plots/"
-	weights = "deepSets_4/weights/lastEpoch.h5"
+	dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets/"
+	batchDir = "train/outputFiles/"
+	plotDir = "train/plots/"
+	weights = "train/weights/lastEpoch.h5"
 
-	model = buildModelWithEventInfo()
+	model = buildModelWithEventInfo(info_shape=5)
 
-	model.compile(optimizer=optimizers.Adam(), 
+	model.compile(optimizer=keras.optimizers.Adam(), 
 				  loss='categorical_crossentropy', 
 				  metrics=['accuracy'])
 
-	run_batch_validation(model, weights, batchDir, dataDir, plotDir, 128)
+	run_batch_validation(model, weights, batchDir, dataDir, plotDir)
 	# run_validation(model,weights,dataDir,plotDir)
 
 
