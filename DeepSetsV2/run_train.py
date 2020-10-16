@@ -10,13 +10,10 @@ import numpy as np
 
 if __name__=="__main__":
 
-    folder = "deepSets100_3"
-    dataDir = '/store/user/llavezzo/disappearingTracks/converted_deepSets100_Zee_failAllRecos/'
+    folder = "deepSets_electrons_info"
+    dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets/"
     params = [
-        #undersampling
-        [0.9,20,dataDir],
-        [0.8,20,dataDir],
-        [0.7,20,dataDir]    
+        [0.9,20,dataDir],  
     ]
     np.save('params.npy',params)
     njobs = len(params)

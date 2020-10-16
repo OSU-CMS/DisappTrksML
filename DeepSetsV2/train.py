@@ -73,12 +73,12 @@ dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_muo
 logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
-nTotE = 2500 
+nTotE = 3000 
 val_size = 0.2
 undersample_bkg = 0.9
 v = 1
 batch_size = 128
-epochs = 5
+epochs = 1
 patience_count = 10
 monitor = 'val_loss'
 metrics = ['accuracy']
@@ -88,6 +88,8 @@ if(len(params) > 0):
 	undersample_bkg = float(params[0])
 	epochs = int(params[1])
 	dataDir = str(params[2])
+
+print("Running over", dataDir)
 
 # create output directories
 os.makedirs(workDir)
@@ -115,6 +117,7 @@ val_generator = generator(e_data[2], e_data[3], bkg_data[2], bkg_data[3],
 					batch_size, dataDir, False, True, True)
 
 model = buildModelWithEventInfo(info_shape=5)
+#model = buildModel()
 
 model.compile(optimizer=keras.optimizers.Adam(), 
 			  loss='categorical_crossentropy', 

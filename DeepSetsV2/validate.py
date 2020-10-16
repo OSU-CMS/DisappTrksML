@@ -23,7 +23,6 @@ def run_batch_validation(model, weights, batchDir, dataDir, plotDir):
 	random.shuffle(indices)
 	file_batches, event_batches, class_labels = file_batches[indices], event_batches[indices], class_labels[indices]
 
-	cnt=0
 	predictions, infos, class_nums = [],[],[]
 	for indices,files,class_label in zip(event_batches,file_batches,class_labels):
 
@@ -35,13 +34,11 @@ def run_batch_validation(model, weights, batchDir, dataDir, plotDir):
 		events = np.reshape(events,(events.shape[0],100,4))
 
 		preds = model.predict([events, batch_infos[:,[6,10,11,12,13]]])
+		#preds = model.predict(events)
 		predictions.append(preds)
 		infos.append(batch_infos)
 		if(class_label == 'bkg'): class_nums = class_nums + [0]*len(preds)
 		if(class_label == 'signal'): class_nums = class_nums + [1]*len(preds)
-
-		cnt+=1
-		if(cnt > 20): break
 
 	predictions = np.vstack(predictions)
 	infos = np.vstack(infos)

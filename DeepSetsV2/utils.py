@@ -274,7 +274,6 @@ def make_batches(events, files, nPerBatch, nBatches):
 					file_batches.append(temp)
 				batches+=1
 
-
 		return np.array(event_batches), file_batches
 
 def count_events(file_batches, event_batches, dict):
