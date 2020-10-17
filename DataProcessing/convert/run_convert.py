@@ -10,8 +10,8 @@ import numpy as np
 if __name__=="__main__":
 
     dataDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection_muons/'
-    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_muons/'
-    logDir = '/data/users/mcarrigan/Logs/convert_data/'
+    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_muons_MUO/'
+    logDir = '/data/users/llavezzo/Logs/convert/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)

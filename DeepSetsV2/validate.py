@@ -23,6 +23,8 @@ def run_batch_validation(model, weights, batchDir, dataDir, plotDir):
 	random.shuffle(indices)
 	file_batches, event_batches, class_labels = file_batches[indices], event_batches[indices], class_labels[indices]
 
+	cnt = 0
+
 	predictions, infos, class_nums = [],[],[]
 	for indices,files,class_label in zip(event_batches,file_batches,class_labels):
 
@@ -39,6 +41,14 @@ def run_batch_validation(model, weights, batchDir, dataDir, plotDir):
 		infos.append(batch_infos)
 		if(class_label == 'bkg'): class_nums = class_nums + [0]*len(preds)
 		if(class_label == 'signal'): class_nums = class_nums + [1]*len(preds)
+
+		# analyze
+		if(class_label == 'signal' and cnt < 20):
+			missed_bkg = events[np.where(preds[:,1] > 0.5),:,:][0]	
+			for evnt in missed_bkg:
+				utils.save_event(evnt, plotDir+"identified_signal_"+str(cnt)+".png")
+				cnt+=1
+				if(cnt == 20): break
 
 	predictions = np.vstack(predictions)
 	infos = np.vstack(infos)
@@ -125,10 +135,10 @@ def run_validation(model, weights, dataDir,plotDir=""):
 
 if __name__ == "__main__":
 
-	dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets/"
-	batchDir = "train/outputFiles/"
-	plotDir = "train/plots/"
-	weights = "train/weights/lastEpoch.h5"
+	dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_muons_MUO/"
+	batchDir = "train_7/outputFiles/"
+	plotDir = "train_7/plots/"
+	weights = "train_7/weights/lastEpoch.h5"
 
 	model = buildModelWithEventInfo(info_shape=5)
 

@@ -75,6 +75,7 @@ for class_label,tree in zip([0,1],[bTree,sTree]):
 				if abs(dEta) < eta_range and abs(dPhi) < phi_range:
 					detIndex = detectorIndex(hit.detType)
 					if detIndex < 0: continue
+					if detIndex != 2: continue
 					energy = hit.energy if detIndex != 2 else 1
 					hits.append((dEta, dPhi, energy, detIndex))
 

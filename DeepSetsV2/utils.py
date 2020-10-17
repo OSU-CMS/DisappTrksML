@@ -31,27 +31,24 @@ def nested_defaultdict(default_factory, depth=1):
 
 def save_event(x,outf="event.png"):
 
-		if(x.shape[0] == 402): x = x[2:]
+		if(x.shape[0] == 404): x = x[4:]
 		if(x.shape[0] == 400): x = np.reshape(x, (100,4))
 
-		fig, axs = plt.subplots(2,2, figsize=(12,10))
+		fig, axs = plt.subplots(1,3, figsize=(17,5))
 				
-		i = 0
-		for col in range(2):
-				for row in range(2):
-						ax = axs[row,col]
-						im = x[np.where(x[:,3]==i)]
-						im = im[np.where(im[:,2]!=0)]
-						h = ax.hist2d(im[:,0],im[:,1],weights=im[:,2],cmap='cubehelix',bins=(80,80))
-						fig.colorbar(h[3], ax = ax)
-						ax.set_xlabel("Eta")
-						ax.set_ylabel("Phi")
-						i+=1
+		for i in range(3):
+			ax = axs[i]
+			im = x[np.where(x[:,3]==i)]
+			im = im[np.where(im[:,2]!=0)]
+			h = ax.hist2d(im[:,0],im[:,1],weights=im[:,2],range=[[-0.3,0.3],[-0.3,0.3]],cmap='cubehelix',bins=(80,80))
+			fig.colorbar(h[3], ax = ax)
+			ax.set_xlabel("Eta")
+			ax.set_ylabel("Phi")
+			i+=1
 
-		axs[0,0].set_title("ECAL")
-		axs[0,1].set_title("ES")
-		axs[1,0].set_title("HCAL")
-		axs[1,1].set_title("Muon")
+		axs[0].set_title("ECAL")
+		axs[1].set_title("HCAL")
+		axs[2].set_title("MUO")
 
 		plt.tight_layout()
 		plt.savefig(outf)

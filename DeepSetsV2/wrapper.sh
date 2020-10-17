@@ -21,7 +21,7 @@ rm *.py
 rm *.npy
 
 mkdir /data/users/llavezzo/$1/
-mv $1 /data/users/llavezzo/$1/
+mv * /data/users/llavezzo/$1/
 
 cd ..
 cd ..

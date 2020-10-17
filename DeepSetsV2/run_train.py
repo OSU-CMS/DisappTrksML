@@ -7,16 +7,19 @@ import glob
 import subprocess
 from itertools import product 
 import numpy as np
+import datetime
 
 if __name__=="__main__":
 
-    folder = "deepSets_electrons_info"
-    dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets/"
+    folder = "deepSets_muons_info"
+    dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_muons/"
     params = [
-        [0.9,20,dataDir],  
+        [0.9,10,dataDir],  
     ]
+
     np.save('params.npy',params)
     njobs = len(params)
+    folder = folder + "_" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
     os.system('mkdir /data/users/llavezzo/Logs/'+str(folder))
 
