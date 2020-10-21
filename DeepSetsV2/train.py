@@ -16,10 +16,10 @@ from generator import generator
 from model import buildModel, buildModelWithEventInfo
 
 # limit CPU usage
-config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 2,   
-								intra_op_parallelism_threads = 2,
+config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
+								intra_op_parallelism_threads = 4,
 								allow_soft_placement = True,
-								device_count={'CPU': 2})
+								device_count={'CPU': 4})
 tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
 # suppress warnings
@@ -73,11 +73,11 @@ dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_muo
 logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
-nTotE = 2500 
+nTotE = 6500 
 val_size = 0.2
 undersample_bkg = 0.9
-v = 2
-batch_size = 128
+v = 1
+batch_size = 256
 epochs = 10
 patience_count = 10
 monitor = 'val_loss'

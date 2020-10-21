@@ -53,12 +53,11 @@ def imageCoordinates(track, hit):
 
 fin = TFile(dataDir+fname, 'read')
 sTree = fin.Get('sTree')
-bTree = fin.Get('bTree')
 
 signal, signal_infos = [], []
 bkg, bkg_infos = [], []
 
-for class_label,tree in zip([0,1],[bTree,sTree]):
+for class_label,tree in zip([1],[sTree]):
 
 	for event in tree:
 		nPV = event.nPV
@@ -122,6 +121,4 @@ for class_label,tree in zip([0,1],[bTree,sTree]):
 		
 np.savez_compressed('events_'+str(fileNum)+'.npz', 
 					signal=signal,
-					bkg=bkg,
-					signal_infos=signal_infos,
-					bkg_infos=bkg_infos)
+					signal_infos=signal_infos)

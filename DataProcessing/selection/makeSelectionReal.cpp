@@ -42,49 +42,39 @@ bool passesSelection(TrackInfo track){
 }
 
 bool isReconstructed(TrackInfo track, string flavor){
-        if(flavor == "electron") return abs(track.deltaRToClosestElectron) < 0.15;
-        else if(flavor == "muon") return abs(track.deltaRToClosestMuon) < 0.15;
-        else if(flavor == "tau") return abs(track.deltaRToClosestTauHad) < 0.15;
-        else return false;
+		if(flavor == "electron") return abs(track.deltaRToClosestElectron) < 0.15;
+		else if(flavor == "muon") return abs(track.deltaRToClosestMuon) < 0.15;
+		else if(flavor == "tau") return abs(track.deltaRToClosestTauHad) < 0.15;
+		else return false;
 }
 
 bool passesSelectionReal(TrackInfo track){
-        
+		
 	ROOT::Math::XYZVector momentum = ROOT::Math::XYZVector(track.px, track.py, track.pz);
-        double eta = momentum.Eta();
+	double eta = momentum.Eta();
 	double pt = sqrt(momentum.Perp2());
-        if(!(abs(eta) < 2.4)) return false;
-        if (track.inGap) return false;
-        if (!(abs(track.dRMinJet) > 0.5)) return false;
-        if (!(pt > 30)) return false;
-        if (!(track.nValidPixelHits >= 4)) return false;
-        if (!(track.nValidHits >= 4)) return false;
-        if (!(track.missingInnerHits == 0)) return false;
-        if (!(track.missingMiddleHits == 0)) return false;
-        if (!(track.trackIso / pt < 0.05)) return false;
-        if (!(abs(track.d0) < 0.02)) return false;
-        if (!(abs(track.dz) < 0.5)) return false;
-	if (isReconstructed(track, "muon")) return false;
-        if (isReconstructed(track, "tau")) return false;
-	//Selections for AMSB
-	if (isReconstructed(track, "electron")) return false;
-        //Selections for electron events
-	//if (!track.passesProbeSelection) return false;
-        //if (!track.isTagProbeElectron) return false;
-        return true;
+	if(!(abs(eta) < 2.4)) return false;
+	if (track.inGap) return false;
+	if (!(abs(track.dRMinJet) > 0.5)) return false;
+
+	// AMSB
+	if(!(pt > 30)) return false;
+	if(!(track.nValidPixelHits >= 4)) return false;
+	if(!(track.nValidHits >= 4)) return false;
+	if(!(track.missingInnerHits == 0)) return false;
+	if(!(track.missingMiddleHits == 0)) return false;
+	if(!(track.trackIso / pt < 0.05)) return false;
+	if(!(abs(track.d0) < 0.02)) return false;
+	if(!(abs(track.dz) < 0.5)) return false;
+	
+	return true;
 }
 
 
 void makeSelectionReal(int file = 0, TString dataDir = "/data/users/mcarrigan/condor/AMSB/images_chargino_700GeV_1000cm_step3/", TString filelist = ""){
 
-
-	//int file = std::stoi(argv[1], nullptr, 10);
-	//TString dataDir = string_tstring(argv[2]);
-	//TString filelist = string_tstring(argv[3]);
-
 	// parameters
 	bool Zee = false;
-	cout << "In Make Selection" << endl;
 
 	const double minGenParticlePt_ = 10;
 
@@ -98,10 +88,10 @@ void makeSelectionReal(int file = 0, TString dataDir = "/data/users/mcarrigan/co
 					file = stod(line);
 					break;
 				}
-		  		iLine += 1;
+				iLine += 1;
 			}
 		infile.close();
-  		}
+		}
 	}
 
 	TString oldFileName = dataDir+"hist_"+int_tstring(file)+".root";
@@ -127,35 +117,20 @@ void makeSelectionReal(int file = 0, TString dataDir = "/data/users/mcarrigan/co
 
 	TString newFileName = "hist_"+int_tstring(file)+".root";
 	TFile * newFile = new TFile(newFileName, "recreate");
-	TTree * eTree = new TTree("eTree","eTree");
-	//TTree * eRecoTree = new TTree("eRecoTree","eRecoTree");
-        TTree * bTree = new TTree("bTree","bTree");
-	vector<TrackInfo> * v_tracks_e = new vector<TrackInfo>();
-	vector<TrackInfo> * v_tracks_eReco = new vector<TrackInfo>();
-	eTree->Branch("nPV",&nPV);
-	eTree->Branch("recHits",&v_recHits);
-	eTree->Branch("tracks",&v_tracks_e);
-	eTree->Branch("eventNumber", &eventNumber);
-	eTree->Branch("lumiBlockNumber", &lumiBlockNumber);
-	eTree->Branch("runNumber", &runNumber);
-	/*eRecoTree->Branch("nPV",&nPV);
-	eRecoTree->Branch("recHits",&v_recHits);
-	eRecoTree->Branch("tracks",&v_tracks_eReco);
-	eRecoTree->Branch("eventNumber", &eventNumber);
-	eRecoTree->Branch("lumiBlockNumber", &lumiBlockNumber);
-	eRecoTree->Branch("runNumber", &runNumber);*/
-	bTree->Branch("nPV",&nPV);
-        bTree->Branch("recHits",&v_recHits);
-        bTree->Branch("tracks",&v_tracks_eReco);
-        bTree->Branch("eventNumber", &eventNumber);
-        bTree->Branch("lumiBlockNumber", &lumiBlockNumber);
-        bTree->Branch("runNumber", &runNumber);
+	TTree * sTree = new TTree("sTree","sTree");
+	vector<TrackInfo> * v_tracks_s = new vector<TrackInfo>();
+	sTree->Branch("nPV",&nPV);
+	sTree->Branch("recHits",&v_recHits);
+	sTree->Branch("tracks",&v_tracks_s);
+	sTree->Branch("eventNumber", &eventNumber);
+	sTree->Branch("lumiBlockNumber", &lumiBlockNumber);
+	sTree->Branch("runNumber", &runNumber);
+
 	cout << "Running over " << oldFileName << " with " << to_string(oldTree->GetEntries()) << " events." << endl;
 
 	for(int iE = 0; iE < oldTree->GetEntries(); iE++){
 
-		v_tracks_eReco->clear();
-		v_tracks_e->clear();
+		v_tracks_s->clear();
 
 		oldTree->GetEntry(iE);
 
@@ -164,7 +139,9 @@ void makeSelectionReal(int file = 0, TString dataDir = "/data/users/mcarrigan/co
 
 			// selections
 			if(!passesSelectionReal(track)) continue;
-
+			if(isReconstructed(track, "muon")) continue;
+			if(isReconstructed(track, "tau")) continue;
+			if(isReconstructed(track, "electron")) continue;
 
 			// gen matching
 			int genMatchedID = 0;
@@ -185,23 +162,19 @@ void makeSelectionReal(int file = 0, TString dataDir = "/data/users/mcarrigan/co
 					}
 				}
 			}
-			//if(isReconstructed(track, "electron")) v_tracks_eReco->push_back(track);
-			//else v_tracks_e->push_back(track);
+		
 			if(abs(genMatchedID) == 1000024 || abs(genMatchedID) == 1000022){
- 				if(abs(genMatchedDR) < 0.1) {
-					if(track.isTagProbeElectron) v_tracks_e->push_back(track);
-					else v_tracks_eReco->push_back(track);
+				if(abs(genMatchedDR) < 0.1) {
+					v_tracks_s->push_back(track);
 				}
 			}
 		}
 
-		if(v_tracks_eReco->size() > 0) bTree->Fill();
-		if(v_tracks_e->size() > 0) eTree->Fill();
+		if(v_tracks_s->size() > 0) sTree->Fill();
 	}
 
 	cout << "Saving file " << newFileName << " with" << endl;
-	cout << bTree->GetEntries() << " electron reco tracks and" << endl;
-	cout << eTree->GetEntries() << " electron tracks." << endl;
+	cout << sTree->GetEntries() << " tracks." << endl;
 
 	newFile->Write();
 }

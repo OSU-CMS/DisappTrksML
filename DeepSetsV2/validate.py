@@ -2,6 +2,9 @@ import os
 import numpy as np
 import keras 
 import random
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 import utils
 from generator import generator, load_data
@@ -36,7 +39,6 @@ def run_batch_validation(model, weights, batchDir, dataDir, plotDir):
 		events = np.reshape(events,(events.shape[0],100,4))
 
 		preds = model.predict([events, batch_infos[:,[6,10,11,12,13]]])
-		#preds = model.predict(events)
 		predictions.append(preds)
 		infos.append(batch_infos)
 		if(class_label == 'bkg'): class_nums = class_nums + [0]*len(preds)
@@ -117,28 +119,38 @@ def run_validation(model, weights, dataDir,plotDir=""):
 
 	for file in os.listdir(dataDir):
 		if(".npz" not in file): continue
-		if("images_0p5" not in file): continue
+		if("events_" not in file): continue
 
 		data = np.load(dataDir+file)
-		events = data['e'][:,2:]
-		indices = data['e'][:,:2]
+		events = data['signal']
+		if(events.shape[0] == 0): continue
+		events = events[:,4:]
+		indices = data['signal'][:,:4]
 		events = np.reshape(events,(len(events),100,4))
-		batch_infos = data['e_infos']
+		batch_infos = data['signal_infos']
 
-		preds = model.predict(events)
+		preds = model.predict([events, batch_infos[:,[6,10,11,12,13]]])
 		predictions.append(preds)
-		infos.append(batch_infoss)
+		infos.append(batch_infos)
+
+	predictions = np.vstack(predictions)
+	infos = np.vstack(predictions)
+
+	plt.hist(predictions[:,1], bins=100)
+	plt.title("AMSB 800 GeV 10000cm Higgsino")
+	plt.yscale('log')
+	plt.xlabel("Classifier Output")
+	plt.savefig("preds.png")
 
 	np.savez_compressed("validation_outputs",
-						pred = predictions,
-						pred_reco = predictions_eReco)
+						pred = predictions)
 
 if __name__ == "__main__":
 
-	dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_muons_MUO/"
-	batchDir = "train_7/outputFiles/"
-	plotDir = "train_7/plots/"
-	weights = "train_7/weights/lastEpoch.h5"
+	dataDir = "/store/user/llavezzo/disappearingTracks/AMSB_800GeV_10000cm_sets/"
+	batchDir = "train/outputFiles/"
+	plotDir = "train/plots/"
+	weights = "train/weights/lastEpoch.h5"
 
 	model = buildModelWithEventInfo(info_shape=5)
 
@@ -146,7 +158,7 @@ if __name__ == "__main__":
 				  loss='categorical_crossentropy', 
 				  metrics=['accuracy'])
 
-	run_batch_validation(model, weights, batchDir, dataDir, plotDir)
-	# run_validation(model,weights,dataDir,plotDir)
+	#run_batch_validation(model, weights, batchDir, dataDir, plotDir)
+	run_validation(model,weights,dataDir,plotDir)
 
 

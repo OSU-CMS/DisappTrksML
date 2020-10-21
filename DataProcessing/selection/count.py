@@ -4,7 +4,7 @@ import sys
 import pickle as pkl
 import ROOT as r
 
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection_muons/"
+dataDir = "/store/user/llavezzo/disappearingTracks/AMSB_800GeV_10000cm_selection/"
 
 eCounts = {}
 bkgCounts = {}
