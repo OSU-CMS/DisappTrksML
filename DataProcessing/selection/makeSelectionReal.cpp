@@ -58,14 +58,14 @@ bool passesSelectionReal(TrackInfo track){
 	if (!(abs(track.dRMinJet) > 0.5)) return false;
 
 	// AMSB
-	if(!(pt > 30)) return false;
-	if(!(track.nValidPixelHits >= 4)) return false;
-	if(!(track.nValidHits >= 4)) return false;
-	if(!(track.missingInnerHits == 0)) return false;
-	if(!(track.missingMiddleHits == 0)) return false;
-	if(!(track.trackIso / pt < 0.05)) return false;
-	if(!(abs(track.d0) < 0.02)) return false;
-	if(!(abs(track.dz) < 0.5)) return false;
+	// if(!(pt > 30)) return false;
+	// if(!(track.nValidPixelHits >= 4)) return false;
+	// if(!(track.nValidHits >= 4)) return false;
+	// if(!(track.missingInnerHits == 0)) return false;
+	// if(!(track.missingMiddleHits == 0)) return false;
+	// if(!(track.trackIso / pt < 0.05)) return false;
+	// if(!(abs(track.d0) < 0.02)) return false;
+	// if(!(abs(track.dz) < 0.5)) return false;
 	
 	return true;
 }
@@ -163,11 +163,12 @@ void makeSelectionReal(int file = 0, TString dataDir = "/data/users/mcarrigan/co
 				}
 			}
 		
-			if(abs(genMatchedID) == 1000024 || abs(genMatchedID) == 1000022){
-				if(abs(genMatchedDR) < 0.1) {
-					v_tracks_s->push_back(track);
-				}
-			}
+			// if(abs(genMatchedID) == 1000024 || abs(genMatchedID) == 1000022){
+			// 	if(abs(genMatchedDR) < 0.1) {
+			// 		v_tracks_s->push_back(track);
+			// 	}
+			// }
+			if(track.isTagProbeMuon) v_tracks_s->push_back(track);
 		}
 
 		if(v_tracks_s->size() > 0) sTree->Fill();
