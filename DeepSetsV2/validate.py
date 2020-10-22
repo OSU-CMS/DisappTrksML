@@ -124,6 +124,7 @@ def run_validation(model, weights, dataDir,plotDir=""):
 	for file in os.listdir(dataDir):
 		if(".npz" not in file): continue
 		if("events_" not in file): continue
+		print(file)
 
 		data = np.load(dataDir+file)
 		events = data['signal']
@@ -141,7 +142,7 @@ def run_validation(model, weights, dataDir,plotDir=""):
 	infos = np.vstack(predictions)
 
 	plt.hist(predictions[:,1], bins=100)
-	plt.title("AMSB 800 GeV 10000cm Higgsino")
+	plt.title("SingleMu2017F")
 	plt.yscale('log')
 	plt.xlabel("Classifier Output")
 	plt.savefig("preds.png")
@@ -151,7 +152,7 @@ def run_validation(model, weights, dataDir,plotDir=""):
 
 if __name__ == "__main__":
 
-	dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_muons_MUO/"
+	dataDir = "/store/user/llavezzo/disappearingTracks/SingleMu2017F_sets_withRecoMuons/"
 	batchDir = "train/outputFiles/"
 	plotDir = "train/plots/"
 	weights = "train/weights/lastEpoch.h5"
@@ -162,7 +163,7 @@ if __name__ == "__main__":
 				  loss='categorical_crossentropy', 
 				  metrics=['accuracy'])
 
-	run_batch_validation(model, weights, batchDir, dataDir, plotDir)
-	#run_validation(model,weights,dataDir,plotDir)
+	#run_batch_validation(model, weights, batchDir, dataDir, plotDir)
+	run_validation(model,weights,dataDir,plotDir)
 
 
