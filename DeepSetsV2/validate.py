@@ -26,8 +26,7 @@ def run_batch_validation(model, weights, batchDir, dataDir, plotDir):
 	random.shuffle(indices)
 	file_batches, event_batches, class_labels = file_batches[indices], event_batches[indices], class_labels[indices]
 
-	cnt = 0
-
+	all_coords, identified_coords = [], []
 	predictions, infos, class_nums = [],[],[]
 	for indices,files,class_label in zip(event_batches,file_batches,class_labels):
 
@@ -45,15 +44,17 @@ def run_batch_validation(model, weights, batchDir, dataDir, plotDir):
 		if(class_label == 'signal'): class_nums = class_nums + [1]*len(preds)
 
 		# analyze
-		if(class_label == 'signal' and cnt < 20):
-			missed_bkg = events[np.where(preds[:,1] > 0.5),:,:][0]	
-			for evnt in missed_bkg:
-				utils.save_event(evnt, plotDir+"identified_signal_"+str(cnt)+".png")
-				cnt+=1
-				if(cnt == 20): break
+		if(class_label == 'signal'):
+			all_coords.append(batch_infos[:,[9,10]])
+			identified_signal_info = batch_infos[np.where(preds[:,1] > 0.5),:][0]
+			identified_coords.append(identified_signal_info[:,[9,10]])
+			
 
 	predictions = np.vstack(predictions)
 	infos = np.vstack(infos)
+	identified_coords = np.vstack(identified_coords)
+	all_coords = np.vstack(all_coords)
+
 	utils.metrics(class_nums[:predictions.shape[0]], predictions[:,1], plotDir, threshold=0.5)
 
 	print()
@@ -64,6 +65,9 @@ def run_batch_validation(model, weights, batchDir, dataDir, plotDir):
 						truth = class_nums,
 						predicted = predictions,
 						indices = indices)
+	np.savez_compressed(batchDir+"coords",
+						identified_coords = identified_coords,
+						all_coords = all_coords)
 
 
 def run_batch_validation2(model, weights, batchDir, dataDir, plotDir, batch_size):
@@ -147,7 +151,7 @@ def run_validation(model, weights, dataDir,plotDir=""):
 
 if __name__ == "__main__":
 
-	dataDir = "/store/user/llavezzo/disappearingTracks/AMSB_800GeV_10000cm_sets/"
+	dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_muons_MUO/"
 	batchDir = "train/outputFiles/"
 	plotDir = "train/plots/"
 	weights = "train/weights/lastEpoch.h5"
@@ -158,7 +162,7 @@ if __name__ == "__main__":
 				  loss='categorical_crossentropy', 
 				  metrics=['accuracy'])
 
-	#run_batch_validation(model, weights, batchDir, dataDir, plotDir)
-	run_validation(model,weights,dataDir,plotDir)
+	run_batch_validation(model, weights, batchDir, dataDir, plotDir)
+	#run_validation(model,weights,dataDir,plotDir)
 
 
