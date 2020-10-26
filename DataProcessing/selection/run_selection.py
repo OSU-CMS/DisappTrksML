@@ -9,8 +9,8 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/bfrancis/images_SingleMu2017F_v4/'
-    outDir = '/store/user/llavezzo/disappearingTracks/SingleMu2017F_selection_withRecoMuons/'
+    dataDir = '/store/user/bfrancis/images_DYJetsToLL_v4/'
+    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection_electrons/'
     logDir = '/data/users/llavezzo/Logs/selection/'
     reprocessAllFiles = True
 
@@ -50,7 +50,7 @@ if __name__=="__main__":
     error                   = {4}error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = {2}, wrapper.sh, makeSelectionReal.cpp, Infos.h
+    transfer_input_files = {2}, wrapper.sh, makeSelection.cpp, Infos.h
     getenv = true
     queue {0}
     """.format(len(files),dataDir,filelist,outDir, logDir)

@@ -69,11 +69,11 @@ weightsDir = workDir + '/weights/'
 outputDir = workDir + '/outputFiles/'
 
 ################config parameters################
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_muons_MUO/"
+dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_electrons/"
 logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
-nTotE = 6500 
+nTotE = 12000 
 val_size = 0.2
 undersample_bkg = 0.9
 v = 1

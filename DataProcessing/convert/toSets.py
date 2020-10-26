@@ -12,8 +12,8 @@ import time
 
 ######## parameters ################################################################
 dataDir = ''
-eta_range = 0.3
-phi_range = 0.3
+eta_range = 0.25
+phi_range = 0.25
 maxHitsInImages = 100
 ####################################################################################
 
@@ -53,6 +53,7 @@ def imageCoordinates(track, hit):
 
 fin = TFile(dataDir+fname, 'read')
 sTree = fin.Get('sTree')
+# bTree = fin.Get('bTree')
 
 signal, signal_infos = [], []
 bkg, bkg_infos = [], []
@@ -74,7 +75,6 @@ for class_label,tree in zip([1],[sTree]):
 				if abs(dEta) < eta_range and abs(dPhi) < phi_range:
 					detIndex = detectorIndex(hit.detType)
 					if detIndex < 0: continue
-					if detIndex != 2: continue
 					energy = hit.energy if detIndex != 2 else 1
 					hits.append((dEta, dPhi, energy, detIndex))
 
@@ -122,3 +122,5 @@ for class_label,tree in zip([1],[sTree]):
 np.savez_compressed('events_'+str(fileNum)+'.npz', 
 					signal=signal,
 					signal_infos=signal_infos)
+					# bkg=bkg,
+					# bkg_infos=bkg_infos)

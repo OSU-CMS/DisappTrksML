@@ -71,7 +71,7 @@ bool passesSelectionReal(TrackInfo track){
 }
 
 
-void makeSelectionReal(int file = 0, TString dataDir = "/store/user/bfrancis/images_SingleMu2017F_v4/", TString filelist = ""){
+void makeSelectionReal(int file = 0, TString dataDir = "/store/user/mcarrigan/disappearingTracks/images_higgsino_800GeV_10000cm_step3/", TString filelist = ""){
 
 	// parameters
 	bool Zee = false;
@@ -139,41 +139,38 @@ void makeSelectionReal(int file = 0, TString dataDir = "/store/user/bfrancis/ima
 
 			// selections
 			if(!passesSelectionReal(track)) continue;
-			// if(isReconstructed(track, "muon")) continue;
+			if(isReconstructed(track, "muon")) continue;
 			if(isReconstructed(track, "tau")) continue;
 			if(isReconstructed(track, "electron")) continue;
 
-			cout << "HERE" << endl;
-
 			// gen matching
-			// int genMatchedID = 0;
-			// double genMatchedDR(-1), genMatchedPt(-1);
-			// int genMatchedID_promptFinalState = 0;
-			// double genMatchedDR_promptFinalState(-1), genMatchedPt_promptFinalState(-1);
-			// for(const auto &genParticle : *v_genParticles) {
-			// 	if(genParticle.pt < minGenParticlePt_) continue;
-			// 	double thisDR = deltaR(genParticle.eta,genParticle.phi,track.eta,track.phi);
-			// 	if(genMatchedDR < 0 || thisDR < genMatchedDR) {
-			// 		genMatchedDR = thisDR;
-			// 		genMatchedID = genParticle.pdgId;
-			// 		genMatchedPt = genParticle.pt;
-			// 		if(genParticle.isPromptFinalState || genParticle.isDirectPromptTauDecayProductFinalState) {
-			// 			genMatchedDR_promptFinalState = thisDR;
-			// 			genMatchedID_promptFinalState = genParticle.pdgId;
-			// 			genMatchedPt_promptFinalState = genParticle.pt;
-			// 		}
-			// 	}
-			// }
-		
-			// if(abs(genMatchedID) == 1000024 || abs(genMatchedID) == 1000022){
-			// 	if(abs(genMatchedDR) < 0.1) {
-			// 		v_tracks_s->push_back(track);
-			// 	}
-			// }
-			if(track.isTagProbeMuon) {
-				v_tracks_s->push_back(track);
-				cout << "HERE2" << endl;
+			int genMatchedID = 0;
+			double genMatchedDR(-1), genMatchedPt(-1);
+			int genMatchedID_promptFinalState = 0;
+			double genMatchedDR_promptFinalState(-1), genMatchedPt_promptFinalState(-1);
+			for(const auto &genParticle : *v_genParticles) {
+				if(genParticle.pt < minGenParticlePt_) continue;
+				double thisDR = deltaR(genParticle.eta,genParticle.phi,track.eta,track.phi);
+				if(genMatchedDR < 0 || thisDR < genMatchedDR) {
+					genMatchedDR = thisDR;
+					genMatchedID = genParticle.pdgId;
+					genMatchedPt = genParticle.pt;
+					if(genParticle.isPromptFinalState || genParticle.isDirectPromptTauDecayProductFinalState) {
+						genMatchedDR_promptFinalState = thisDR;
+						genMatchedID_promptFinalState = genParticle.pdgId;
+						genMatchedPt_promptFinalState = genParticle.pt;
+					}
+				}
 			}
+		
+			if(abs(genMatchedID) == 1000024 || abs(genMatchedID) == 1000022){
+				if(abs(genMatchedDR) < 0.1) {
+					v_tracks_s->push_back(track);
+				}
+			}
+			// if(track.isTagProbeElectron) {
+			// 	v_tracks_s->push_back(track);
+			// }
 		}
 
 		if(v_tracks_s->size() > 0) sTree->Fill();

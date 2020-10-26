@@ -49,7 +49,7 @@ bool isReconstructed(TrackInfo track, string flavor){
 	else return false;
 }
 
-void makeSelection(int file = 1, TString dataDir = "/store/user/bfrancis/images_DYJetsToLL_v4/", TString filelist = ""){
+void makeSelection(int file = 1481, TString dataDir = "/store/user/bfrancis/images_DYJetsToLL_v4/", TString filelist = ""){
 
 	// parameters
 	bool Zee = false;
@@ -150,7 +150,7 @@ void makeSelection(int file = 1, TString dataDir = "/store/user/bfrancis/images_
 					}
 				}
 			}
-			if(abs(genMatchedID) == 13 and abs(genMatchedDR) < 0.1) v_tracks_s->push_back(track);
+			if(abs(genMatchedID) == 11 and abs(genMatchedDR) < 0.1) v_tracks_s->push_back(track);
 			else v_tracks_b->push_back(track);
 		}
 
