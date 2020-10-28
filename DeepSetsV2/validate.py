@@ -128,8 +128,6 @@ def run_validation_separate_class_dir(model, weights, bkgDir, sDir, plotDir=""):
 			predictions.append(preds)
 			infos.append(batch_infos)
 			for i in range(preds.shape[0]): class_labels.append(class_label)
-			print(predictions, class_labels)
-			sys.exit(0)
 			
 	predictions = np.vstack(predictions)
 	infos = np.vstack(predictions)
@@ -160,9 +158,9 @@ if __name__ == "__main__":
 
 	bkgDir = "/store/user/llavezzo/disappearingTracks/SingleEle2017F_sets/"
 	sDir  = "/store/user/llavezzo/disappearingTracks/AMSB_800GeV_10000cm_sets/"
-	batchDir = "train_1/outputFiles/"
-	plotDir = "train_1/plots/"
-	weights = "train_1/weights/model.5.h5"
+	batchDir = "train_6/outputFiles/"
+	plotDir = "train_6/plots/"
+	weights = "train_6/weights/model.4.h5"
 
 	model = buildModelWithEventInfo(info_shape=5)
 
@@ -173,5 +171,3 @@ if __name__ == "__main__":
 	#run_batch_validation(model, weights, batchDir, dataDir, plotDir)
 	#run_validation(model,weights,dataDir,plotDir)
 	run_validation_separate_class_dir(model, weights, bkgDir, sDir, plotDir)
-
-

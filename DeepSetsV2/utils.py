@@ -359,17 +359,8 @@ def prepare_data(dataDir, nTotE, batch_size=64, val_size=0.2, undersample_bkg=-1
 			e_files.append(file)
 
 	# make batches
-	# bkg_event_batches, bkg_file_batches = make_batches(b_events, b_files, bkgPerBatch, nBatches)
-	# e_event_batches, e_file_batches = make_batches(e_events, e_files, ePerBatch, nBatches)
-
-	# TESTING
-
-
-
-
-
-
-	# TESTING
+	bkg_event_batches, bkg_file_batches = make_batches(b_events, b_files, bkgPerBatch, nBatches)
+	e_event_batches, e_file_batches = make_batches(e_events, e_files, ePerBatch, nBatches)
 	
 	# train/validation split
 	train_e_event_batches, val_e_event_batches, train_e_file_batches, val_e_file_batches = train_test_split(e_event_batches, e_file_batches, test_size=val_size, random_state=42)
