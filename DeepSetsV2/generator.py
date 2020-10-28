@@ -160,3 +160,127 @@ class generator(keras.utils.Sequence):
 	# 		np.random.shuffle(indices)
 	# 		self.batchesBkg = [self.batchesBkg[i] for i in indices]
 	# 		self.indicesBkg = [self.indicesBkg[i] for i in indices]
+
+
+
+# generate batches of images from files
+class generator2(keras.utils.Sequence):
+  
+	def __init__(self, data, 
+				batch_size, dataDir, shuffle=True, eventInfo=False, val_mode=False):
+		self.events = data[0]
+		self.files = data[1]
+		self.classes = data[2]
+		self.batch_size = batch_size
+		self.dataDir = dataDir
+		self.shuffle = shuffle
+		self.val_mode = val_mode
+		self.y_batches = np.array([])
+		self.used_idx = []
+		self.indices_batches = np.array([])
+		self.eventInfo = eventInfo
+
+	def __len__(self):
+		return len(self.events)
+
+	def __getitem__(self, idx) :
+
+		eventsThisBatch = self.events[idx]
+		filesThisBatch = self.files[idx]
+		classesThisBatch = self.classes[idx]
+
+		if(self.val_mode):
+			signalEvents = eventsThisBatch[np.where(classesThisBatch == 'signal')]
+			signalFiles = filesThisBatch[np.where(classesThisBatch == 'signal')]
+			bkgEvents = eventsThisBatch[np.where(classesThisBatch == 'bkg')]
+			bkgFiles = filesThisBatch[np.where(classesThisBatch == 'bkg')]
+
+			sorting = np.argsort(signalFiles)
+			signalFiles = signalFiles[sorting]
+			signalEvents = signalEvents[sorting]
+			sorting = np.argsort(bkgFiles)
+			bkgFiles = bkgFiles[sorting]
+			bkgEvents = bkgEvents[sorting]
+
+			signalEvents = np.split(signalEvents, np.where(np.diff(signalFiles))[0]+1)
+			signalFiles = np.split(signalFiles, np.where(np.diff(signalFiles))[0]+1)
+			bkgEvents = np.split(bkgEvents, np.where(np.diff(bkgFiles))[0]+1)
+			bkgFiles = np.split(bkgFiles, np.where(np.diff(bkgFiles))[0]+1)
+
+			events, infos = [], []
+			batch_y = np.array([])
+			for e, f in zip(signalEvents, signalFiles):
+				events.append(np.load(self.dataDir+"events_"+str(f[0])+".npz")['signal'][e])
+				batch_y = np.concatenate((batch_y,['signal']*len(f)))
+				if(self.eventInfo): infos.append(np.load(self.dataDir+"events_"+str(f[0])+".npz")['signal_infos'][e])
+			for e, f in zip(bkgEvents, bkgFiles):
+				events.append(np.load(self.dataDir+"events_"+str(f[0])+".npz")['bkg'][e])
+				batch_y = np.concatenate((batch_y,['bkg']*len(f)))
+				if(self.eventInfo): infos.append(np.load(self.dataDir+"events_"+str(f[0])+".npz")['bkg_infos'][e])
+
+			events = np.vstack(events)
+			infos = np.vstack(infos)
+
+		else:
+			events, infos = [], []
+			for e, f, c in zip(eventsThisBatch, filesThisBatch, classesThisBatch):
+				events.append(np.load(self.dataDir+"events_"+str(f)+".npz")[c][e])
+				if(self.eventInfo): infos.append(np.load(self.dataDir+"events_"+str(f)+".npz")[c+'_infos'][e])
+		
+			batch_y = classesThisBatch
+
+		events = np.array(events)
+		infos = np.array(infos)
+		indices = list(range(events.shape[0]))
+		random.shuffle(indices)
+		batch_indices = events[indices,:4]
+		batch_x = events[indices,4:]
+		batch_x = np.reshape(batch_x,(batch_x.shape[0],100,4))
+		batch_y[batch_y=='signal'] = 1
+		batch_y[batch_y=='bkg'] = 0
+		batch_y = batch_y[indices]
+		
+		if(self.eventInfo): 
+			batch_info = infos[indices,:]
+			batch_info = batch_info[:,[6,10,11,12,13]]
+
+		batch_y = keras.utils.to_categorical(batch_y, num_classes=2)
+		
+		if(self.eventInfo):
+			return [batch_x, batch_info], batch_y
+		else:
+			return batch_x, batch_y
+	
+	def reset(self):
+		self.y_batches = np.array([])
+		self.used_idx = []
+
+	def get_y_batches(self):
+		return self.y_batches
+
+	def get_indices_batches(self):
+		return self.indices_batches
+
+	def on_epoch_end(self):
+		if(self.shuffle):
+
+			events = np.array(self.events)
+			files = np.array(self.files)
+			classes = np.array(self.classes)
+
+			nBatches = events.shape[0]
+
+			events = np.reshape(events,(nBatches*self.batch_size))
+			files = np.reshape(files,(nBatches*self.batch_size))
+			classes =np.reshape(classes,(nBatches*self.batch_size))
+
+			indices = list(range(len(events)))
+			random.shuffle(indices)
+
+			events = np.reshape(events[indices],(nBatches,self.batch_size))
+			files = np.reshape(files[indices],(nBatches,self.batch_size))
+			classes = np.reshape(classes[indices],(nBatches,self.batch_size))
+
+			self.events = events
+			self.files = files
+			self.classes = classes

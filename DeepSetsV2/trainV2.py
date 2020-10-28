@@ -12,7 +12,7 @@ import datetime
 			
 import utils
 import validate
-from generator import generator
+from generator import generator2
 from model import buildModel, buildModelWithEventInfo
 
 # limit CPU usage
@@ -69,15 +69,14 @@ weightsDir = workDir + '/weights/'
 outputDir = workDir + '/outputFiles/'
 
 ################config parameters################
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_electrons/"
-logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+dataDir = "C:/Users/llave/Documents/CMS/data/images_DYJetsToLL_v4_sets_electrons/"
 
 run_validate = True
-nTotE = 12000 
+nTotE = 12000
 val_size = 0.2
-undersample_bkg = 0.7
+undersample_bkg = 0.9
 v = 1
-batch_size = 256
+batch_size = 512
 epochs = 10
 patience_count = 10
 monitor = 'val_loss'
@@ -96,25 +95,18 @@ os.makedirs(workDir)
 os.makedirs(plotDir)
 os.makedirs(weightsDir)
 os.makedirs(outputDir)
-os.makedirs(logDir)
 
-e_data, bkg_data = utils.prepare_data2(dataDir, nTotE, batch_size, val_size, undersample_bkg)  
+train_data, val_data = utils.prepare_data2(dataDir, nTotE, batch_size, val_size, undersample_bkg)  
 
 # save the train and validation batches
-np.save(outputDir+"e_files_trainBatches", e_data[0])
-np.save(outputDir+"e_events_trainBatches", e_data[1])
-np.save(outputDir+"e_files_valBatches", e_data[2])
-np.save(outputDir+"e_events_valBatches", e_data[3])
-np.save(outputDir+"bkg_files_trainBatches", bkg_data[0])
-np.save(outputDir+"bkg_events_trainBatches", bkg_data[1])
-np.save(outputDir+"bkg_files_valBatches", bkg_data[2])
-np.save(outputDir+"bkg_events_valBatches", bkg_data[3])
+np.savez_compressed(outputDir+"train_data", events = train_data[0], files = train_data[1], classes = train_data[2])
+np.savez_compressed(outputDir+"val_data",  events = val_data[0], files = val_data[1], classes = val_data[2])
 
 # initialize generators
-train_generator = generator(e_data[0], e_data[1], bkg_data[0], bkg_data[1], 
-					batch_size, dataDir, False, True, True)
-val_generator = generator(e_data[2], e_data[3], bkg_data[2], bkg_data[3], 
-					batch_size, dataDir, False, True, True)
+train_generator = generator2(train_data, 
+					batch_size, dataDir, True, True, False)
+val_generator = generator2(val_data,
+					batch_size, dataDir, True, True, True)
 
 model = buildModelWithEventInfo(info_shape=5)
 #model = buildModel()

@@ -12,6 +12,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.model_selection import train_test_split
 import pickle
+import random
 
 class bcolors:
 		HEADER = '\033[95m'
@@ -416,3 +417,115 @@ def prepare_data(dataDir, nTotE, batch_size=64, val_size=0.2, undersample_bkg=-1
 	print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,5)))
 
 	return [train_e_file_batches, train_e_event_batches, val_e_file_batches, val_e_event_batches], [train_bkg_file_batches, train_bkg_event_batches,val_bkg_file_batches, val_bkg_event_batches]
+
+
+def prepare_data2(dataDir, nTotE, batch_size=64, val_size=0.2, undersample_bkg=-1):
+
+	# import count dicts
+	with open(dataDir+'sCounts.pkl', 'rb') as f:
+		sCounts = pickle.load(f)
+	with open(dataDir+'bkgCounts.pkl', 'rb') as f:
+		bkgCounts = pickle.load(f)
+
+	# count how many events are in the files for each class
+	availableE = sum(list(sCounts.values()))
+	availableBkg = sum(list(bkgCounts.values()))
+
+	# fractions for each class for the total dataset
+	fE = availableE*1.0/(availableE + availableBkg)
+	fBkg = availableBkg*1.0/(availableE + availableBkg)
+
+	# calculate how many total background events for the requested electrons
+	# to keep the same fraction of events, or under sample
+	nTotBkg = int(nTotE*1.0*availableBkg/availableE)
+	if(undersample_bkg!=-1): 
+		nTotBkg = int(nTotE*1.0*undersample_bkg/(1-undersample_bkg))
+
+	# can't request more events than we have
+	if(nTotE > availableE): sys.exit("ERROR: Requested more signal events than are available")
+	if(nTotBkg > availableBkg): sys.exit("ERROR: Requested more background events than available")
+
+	# batches per epoch
+	nBatches = int(np.floor((nTotE + nTotBkg)*1.0/batch_size))
+
+	# fill lists of all events and files
+	e_events, e_files = [], []
+	for file, nEvents in sCounts.items():
+		for evt in range(nEvents):
+			if(len(e_events)<nTotE):
+				e_events.append(evt)
+				e_files.append(file)
+
+	b_events, b_files = [], []
+	for file, nEvents in bkgCounts.items():
+		for evt in range(nEvents):
+			if(len(b_events)<(nBatches*batch_size-nTotE)):
+				b_events.append(evt)
+				b_files.append(file)
+	
+	eventsList = np.concatenate((e_events,b_events))
+	filesList = np.concatenate((e_files,b_files))
+	classesList = np.concatenate((['signal']*len(e_events),['bkg']*len(b_events)))
+
+	indices = list(range(len(eventsList)))
+	random.shuffle(indices)
+	eventBatches = chunks(eventsList[indices],[batch_size]*nBatches)
+	fileBatches = chunks(filesList[indices],[batch_size]*nBatches)
+	classBatches = chunks(classesList[indices],[batch_size]*nBatches)
+
+	# train/validation split
+	train_events, val_events, train_files, val_files, train_classes, val_classes = train_test_split(eventBatches, fileBatches, classBatches, test_size=val_size, random_state=42)
+
+	unique, counts = np.unique(train_classes, return_counts=True)
+	counter = dict(zip(unique, counts))
+	nSignalTrain = counter['signal']
+	nBkgTrain = counter['bkg']
+	unique, counts = np.unique(val_classes, return_counts=True)
+	counter = dict(zip(unique, counts))
+	nSignalVal = counter['signal']
+	nBkgVal = counter['bkg']
+	
+	# add background events to validation data
+	# to keep ratio e/bkg equal to that in original dataset
+	if(abs(1-nSignalVal*1.0/(nSignalVal+nBkgVal)/fE) > 0.05):
+		nBkgToLoad = int(nSignalVal*(1-fE)/fE-nBkgVal)
+
+		nBatchesToLoad = int(np.ceil(nBkgToLoad/batch_size))
+		nBkgToLoad = nBatchesToLoad*batch_size
+
+		b_events, b_files = [], []
+		for file, nEvents in bkgCounts.items():
+			for ibatch,jbatch in zip(train_files, val_files):
+				if(int(file) in ibatch or int(file) in jbatch): continue
+			for evt in range(nEvents):
+				b_events.append(evt)
+				b_files.append(file)
+		
+		b_events = b_events[:nBkgToLoad]
+		b_files = b_files[:nBkgToLoad]
+		nAddedBkg = len(b_events)
+		addedFileBatches = chunks(b_files,[batch_size]*nBatchesToLoad)
+		addedEventBatches = chunks(b_events,[batch_size]*nBatchesToLoad)
+		addedClassBatches = chunks(['bkg']*nAddedBkg,[batch_size]*nBatchesToLoad)
+
+		val_files = np.array(val_files)
+		val_events = np.array(val_events)
+		val_classes = np.array(val_classes)
+
+		for batch in addedFileBatches: val_files = np.concatenate((val_files,[batch]))
+		for batch in addedEventBatches: val_events = np.concatenate((val_events,[batch]))
+		for batch in addedClassBatches: val_classes = np.concatenate((val_classes,[batch]))
+
+		# re count
+		unique, counts = np.unique(val_classes, return_counts=True)
+		counter = dict(zip(unique, counts))
+		nSignalVal = counter['signal']
+		nBkgVal = counter['bkg']
+
+	print("\t\tElectrons\tBackground\te/(e+bkg)")
+	print("Requested:\t"+str(nTotE)+"\t\t"+str(nTotBkg)+"\t\t"+str(round(nTotE*1.0/(nTotE+nTotBkg),5)))
+	print("Training on:\t"+str(nSignalTrain)+"\t\t"+str(nBkgTrain)+"\t\t"+str(round(nSignalTrain*1.0/(nSignalTrain+nBkgTrain),5)))
+	print("Validating on:\t"+str(nSignalVal)+"\t\t"+str(nBkgVal)+"\t\t"+str(round(nSignalVal*1.0/(nSignalVal+nBkgVal),5)))
+	print("Dataset:\t"+str(availableE)+"\t\t"+str(availableBkg)+"\t\t"+str(round(fE,5)))
+
+	return [train_events, train_files, train_classes], [val_events, val_files, val_classes]
