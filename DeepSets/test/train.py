@@ -1,38 +1,39 @@
 import warnings
 warnings.filterwarnings('ignore')
 
-from keras import optimizers, regularizers
+import glob
 
-from DisappTrksML.DeepSets.deepSetsModel import *
+from DisappTrksML.DeepSets.architecture import *
 from DisappTrksML.DeepSets.generator import *
 from DisappTrksML.DeepSets.utilities import *
 
-model = buildModel()
+arch = DeepSetsArchitecture()
 
-model.compile(optimizer=optimizers.Adagrad(), 
-			  loss='categorical_crossentropy', 
-			  metrics=['accuracy'])
+arch.buildModel()
 
 params = {
-	'dim' : (1000,4),
+	'inputDir' : '/store/user/bfrancis/numpy/electrons_DYJetsToLL/',
+	'dim' : (100,4),
 	'batch_size' : 64,
 	'n_classes' : 2,
-	'n_channels' : 1,
 	'shuffle' : True,
 }
 
+inputFiles = glob.glob('/store/user/bfrancis/numpy/electrons_DYJetsToLL/hist_*.root.npz')
+inputIndices = [f.split('hist_')[-1][:-9] for f in inputFiles]
+nFiles = len(inputIndices)
+
+print('Found', nFiles, 'input files')
+
 file_indexes = {
-	'train' : range(0, 750),
-	'validation' : range(750, 1000),
-	'test' : range(1000, 1414 + 1),
+	'train' : inputIndices[0 : nFiles * 3/5],
+	'validation' : inputIndices[nFiles * 3/5 : nFiles * 4/5],
+	'test' : inputIndices[nFiles * 4/5 : -1],
 }
 
-training_generator = DataGenerator(file_indexes['train'], **params)
-validation_generator = DataGenerator(file_indexes['validation'], **params)
+train_generator = DataGenerator(file_indexes['train'], **params)
+validation_data = DataGenerator(file_indexes['validation'], **params)
 
-model.fit_generator(
-	generator=training_generator,
-	validation_data=validation_generator,
-	use_multiprocessing=True,
-	workers=6)
+arch.fit_generator(train_generator=train_generator, validation_data=validation_data)
 
+arch.displayTrainingHistory()

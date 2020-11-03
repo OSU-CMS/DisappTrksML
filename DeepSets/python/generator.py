@@ -1,13 +1,13 @@
 import numpy as np
-import keras
+from tensorflow import keras
 
 class DataGenerator(keras.utils.Sequence):
 
-	def __init__(self, file_ids, batch_size=32, dim=(1000,4), n_channels=1, n_classes=10, shuffle=True):
+	def __init__(self, file_ids, inputDir='.', batch_size=32, dim=(100,4), n_classes=2, shuffle=True):
 		self.file_ids = file_ids
+		self.inputDir = inputDir
 		self.batch_size = batch_size
 		self.dim = dim
-		self.n_channels = n_channels
 		self.n_classes = n_classes
 		self.shuffle = shuffle
 		self.on_epoch_end()
@@ -22,21 +22,20 @@ class DataGenerator(keras.utils.Sequence):
 		return X, y
 
 	def on_epoch_end(self):
-		self.indexes = np.arrange(len(self.file_ids))
+		self.indexes = np.arange(len(self.file_ids))
 		if self.shuffle:
 			np.random.shuffle(self.indexes)
 
 	def __data_generation(self, file_indices):
-		X = np.empty((self.batch_size, self.dim, self.n_channels))
+		X = np.empty((self.batch_size, self.dim[0], self.dim[1]))
 		y = np.empty((self.batch_size), dtype=int)
 
 		# generate data
 		for idx in file_indices:
-			fin = np.load('E:\shared\images_SingleEle2017F\hist_' + idx + '.root.npz')
-			X = np.concatenate((X, fin['images_reco']))
-			X = np.concatenate((X, fin['images_fail']))
-			y = np.concatenate((y, fin['labels_reco']))
-			y = np.concatenate((y, fin['labels_fail']))
+			fin = np.load(self.inputDir + '/hist_' + idx + '.root.npz')
+			X = np.concatenate((X, fin['signal']))
+			X = np.concatenate((X, fin['background']))
+			y = np.concatenate((y, np.ones(len(fin['signal'])), np.ones(len(fin['background']))))
 
 		p = np.random.permutation(len(X))
 		X = X[p]
