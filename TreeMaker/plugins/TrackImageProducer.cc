@@ -277,49 +277,56 @@ TrackImageProducer::getRecHits(const edm::Event &event)
   event.getByToken(EBRecHitsToken_, EBRecHits);
   for(const auto &hit : *EBRecHits) {
     math::XYZVector pos = getPosition(hit.detid());
-    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), DetType::EB));
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), -999., DetType::EB));
   }
 
   edm::Handle<EERecHitCollection> EERecHits;
   event.getByToken(EERecHitsToken_, EERecHits);
   for(const auto &hit : *EERecHits) {
     math::XYZVector pos = getPosition(hit.detid());
-    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), DetType::EE));
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), -999., DetType::EE));
   }
 
   edm::Handle<ESRecHitCollection> ESRecHits;
   event.getByToken(ESRecHitsToken_, ESRecHits);
   for(const auto &hit : *ESRecHits) {
     math::XYZVector pos = getPosition(hit.detid());
-    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), DetType::ES));
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), -999., DetType::ES));
   }
 
   edm::Handle<HBHERecHitCollection> HBHERecHits;
   event.getByToken(HBHERecHitsToken_, HBHERecHits);
   for(const auto &hit : *HBHERecHits) {
     math::XYZVector pos = getPosition(hit.detid());
-    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), DetType::HCAL));
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), -999., DetType::HCAL));
   }
 
   edm::Handle<CSCSegmentCollection> CSCSegments;
   event.getByToken(CSCSegmentsToken_, CSCSegments);
   for(const auto &seg : *CSCSegments) {
     math::XYZVector pos = getPosition(seg);
-    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, DetType::CSC));
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, seg.time(), DetType::CSC));
   }
 
   edm::Handle<DTRecSegment4DCollection> DTRecSegments;
   event.getByToken(DTRecSegmentsToken_, DTRecSegments);
   for(const auto &seg : *DTRecSegments) {
+    double time = -999.;
+    if(seg.hasPhi()) {
+      time = seg.phiSegment()->t0();
+    }
+    if(seg.hasZed()) {
+      time = seg.zSegment()->t0();
+    }
     math::XYZVector pos = getPosition(seg);
-    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, DetType::DT));
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, time, DetType::DT));
   }
 
   edm::Handle<RPCRecHitCollection> RPCRecHits;
   event.getByToken(RPCRecHitsToken_, RPCRecHits);
   for(const auto &hit : *RPCRecHits) {
     math::XYZVector pos = getPosition(hit);
-    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, DetType::RPC));
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, -999., DetType::RPC));
   }
 
 }

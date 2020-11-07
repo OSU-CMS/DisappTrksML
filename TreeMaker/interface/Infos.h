@@ -22,15 +22,16 @@ struct TrackInfo {
 };
 
 struct RecHitInfo {
-  double eta, phi, energy;
+  double eta, phi, energy, time;
   int detType;
 
   RecHitInfo() {}
 
-  RecHitInfo(double eta_, double phi_, double energy_, int detType_) :
+  RecHitInfo(double eta_, double phi_, double energy_, double time_, int detType_) :
     eta(eta_),
     phi(phi_),
     energy(energy_),
+    time(time_),
     detType(detType_) {}
 };
 
