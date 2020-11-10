@@ -41,6 +41,31 @@ bool passesSelection(TrackInfo track){
 	return true;
 }
 
+bool passesFullSelection(TrackInfo track){
+
+	ROOT::Math::XYZVector momentum = ROOT::Math::XYZVector(track.px, track.py, track.pz);
+	double eta = momentum.Eta();
+	double pt = sqrt(momentum.Perp2());
+
+	if(!(abs(track.eta) < 2.4 and ( track.phi < 2.7 or (track.eta < 0 or track.eta > 1.42) ))) return false;
+    if(!(pt > 30)) return false;
+    if(track.inGap) return false;
+    if(!(track.nValidPixelHits >= 4)) return false;
+    if(!(track.nValidHits >= 4)) return false;
+    if(!(track.missingInnerHits == 0)) return false;
+    if(!(track.missingMiddleHits == 0)) return false;
+    if(!(track.missingOuterHits >= 3)) return false;
+    if(!(track.trackIso / pt < 0.05)) return false;
+    if(!(abs(track.d0) < 0.02)) return false;
+    if(!(abs(track.dz) < 0.5)) return false;
+    if(!(abs(track.dRMinJet) > 0.5)) return false;
+    if(!(abs(track.deltaRToClosestElectron) > 0.15)) return false;
+    if(!(abs(track.deltaRToClosestMuon) > 0.15)) return false;
+    if(!(abs(track.deltaRToClosestTauHad) > 0.15)) return false;
+
+	return true;
+}
+
 bool isReconstructed(TrackInfo track, string flavor){
 		if(flavor == "electron") return abs(track.deltaRToClosestElectron) < 0.15;
 		else if(flavor == "muon") return abs(track.deltaRToClosestMuon) < 0.15;
@@ -138,10 +163,23 @@ void makeSelectionReal(int file = 0, TString dataDir = "/store/user/mcarrigan/di
 		for(const auto &track : *v_tracks){
 
 			// selections
-			if(!passesSelectionReal(track)) continue;
+			if(!passesFullSelection(track)) continue;
 			if(isReconstructed(track, "muon")) continue;
 			if(isReconstructed(track, "tau")) continue;
 			if(isReconstructed(track, "electron")) continue;
+
+			double ecalo_energy = 0;
+			for(const auto &hit : *v_recHits){
+				int detIndex = hit.detType;
+				if(!(detIndex == 0 || detIndex == 1 || detIndex == 4)) continue;
+				ROOT::Math::XYZVector momentum = ROOT::Math::XYZVector(track.px, track.py, track.pz);
+				double track_eta = momentum.Eta();
+				double track_phi = momentum.Phi();
+				double dEta = track_eta - hit.eta;
+				double dPhi = track_phi - hit.phi;
+				if(sqrt(dEta*dEta+dPhi*dPhi)<0.5) ecalo_energy += hit.energy;
+			}
+			//if(ecalo_energy >= 10) continue;
 
 			// gen matching
 			int genMatchedID = 0;
@@ -163,14 +201,14 @@ void makeSelectionReal(int file = 0, TString dataDir = "/store/user/mcarrigan/di
 				}
 			}
 		
-			if(abs(genMatchedID) == 1000024 || abs(genMatchedID) == 1000022){
-				if(abs(genMatchedDR) < 0.1) {
-					v_tracks_s->push_back(track);
-				}
-			}
-			// if(track.isTagProbeElectron) {
-			// 	v_tracks_s->push_back(track);
+			// if(abs(genMatchedID) == 1000024 || abs(genMatchedID) == 1000022){
+			// 	if(abs(genMatchedDR) < 0.1) {
+			// 		v_tracks_s->push_back(track);
+			// 	}
 			// }
+			if(track.isTagProbeElectron) {
+				v_tracks_s->push_back(track);
+			}
 		}
 
 		if(v_tracks_s->size() > 0) sTree->Fill();
@@ -179,5 +217,5 @@ void makeSelectionReal(int file = 0, TString dataDir = "/store/user/mcarrigan/di
 	cout << "Saving file " << newFileName << " with" << endl;
 	cout << sTree->GetEntries() << " tracks." << endl;
 
-	newFile->Write();
+	newFile->Write();	
 }

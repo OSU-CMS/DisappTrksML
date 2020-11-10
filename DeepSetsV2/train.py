@@ -69,13 +69,13 @@ weightsDir = workDir + '/weights/'
 outputDir = workDir + '/outputFiles/'
 
 ################config parameters################
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_electrons/"
+dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_electrons_noRecoReq/"
 logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
-nTotE = 12000 
+nTotE = 500000 
 val_size = 0.2
-undersample_bkg = 0.7
+undersample_bkg = 0.5
 v = 1
 batch_size = 256
 epochs = 10
@@ -98,7 +98,7 @@ os.makedirs(weightsDir)
 os.makedirs(outputDir)
 os.makedirs(logDir)
 
-e_data, bkg_data = utils.prepare_data2(dataDir, nTotE, batch_size, val_size, undersample_bkg)  
+e_data, bkg_data = utils.prepare_data(dataDir, nTotE, batch_size, val_size, undersample_bkg)  
 
 # save the train and validation batches
 np.save(outputDir+"e_files_trainBatches", e_data[0])

@@ -42,6 +42,34 @@ bool passesSelection(TrackInfo track){
 	return true;
 }
 
+bool passesFullSelection(TrackInfo track){
+
+	ROOT::Math::XYZVector momentum = ROOT::Math::XYZVector(track.px, track.py, track.pz);
+	double eta = momentum.Eta();
+	double pt = sqrt(momentum.Perp2());
+
+	if(!(abs(eta) < 2.4)) return false;
+    if(!(pt > 55)) return false;
+    if(track.inGap) return false;
+    if(!(track.nValidPixelHits >= 4)) return false;
+    if(!(track.nValidHits >= 4)) return false;
+    if(!(track.missingInnerHits == 0)) return false;
+    if(!(track.missingMiddleHits == 0)) return false;
+    if(!(track.missingOuterHits >= 3)) return false;
+    if(!(track.trackIso / pt < 0.05)) return false;
+    if(!(abs(track.d0) < 0.02)) return false;
+    if(!(abs(track.dz) < 0.5)) return false;
+    if(!(abs(track.dRMinJet) > 0.5)) return false;
+    if(!(abs(track.deltaRToClosestElectron) > 0.15)) return false;
+    if(!(abs(track.deltaRToClosestMuon) > 0.15)) return false;
+    if(!(abs(track.deltaRToClosestTauHad) > 0.15)) return false;
+
+    if((eta >= 0 && eta <= 1.42)) return false;
+    if(track.phi >= 2.7) return false;
+
+	return true;
+}
+
 bool isReconstructed(TrackInfo track, string flavor){
 	if(flavor == "electron") return abs(track.deltaRToClosestElectron) < 0.15;
 	else if(flavor == "muon") return abs(track.deltaRToClosestMuon) < 0.15;
@@ -125,9 +153,9 @@ void makeSelection(int file = 1481, TString dataDir = "/store/user/bfrancis/imag
 		for(const auto &track : *v_tracks){
 
 			// selections
-			if(!passesSelection(track)) continue;
+			if(!passesFullSelection(track)) continue;
 
-			if(isReconstructed(track,"electron")) continue;
+			//if(isReconstructed(track,"electron")) continue;
 			if(isReconstructed(track,"muon")) continue;
 			if(isReconstructed(track,"tau")) continue;
 

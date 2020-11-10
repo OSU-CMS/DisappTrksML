@@ -9,12 +9,15 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/llavezzo/disappearingTracks/SingleEle2017F_selection/'
-    outDir = '/store/user/llavezzo/disappearingTracks/SingleEle2017F_sets/'
+    # dataDir = '/store/user/llavezzo/disappearingTracks/SingleEle2017F_selection_fullSel_noEcaloCutV2/'
+    # outDir = '/store/user/llavezzo/disappearingTracks/SingleEle2017F_sets_fullSel_noEcaloCut/'
+    dataDir = '/store/user/llavezzo/disappearingTracks/AMSB_800GeV_10000cm_selection_fullSel_noEcaloCutV2/'
+    outDir = '/store/user/llavezzo/disappearingTracks/AMSB_800GeV_10000cm_sets_fullSel_noEcaloCut/'
     logDir = '/data/users/llavezzo/Logs/convert/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
+    if(not os.path.isdir(logDir)): os.mkdir(logDir)
 
     if(os.path.exists(dataDir+'sCounts.pkl')):
         os.system("cp "+dataDir+"sCounts.pkl "+outDir)
