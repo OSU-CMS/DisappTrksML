@@ -25,7 +25,7 @@ arch.buildModel()
 
 params = {
 	'input_dir' : '/store/user/bfrancis/numpy/electrons_DYJetsToLL/',
-	'dim' : (100,4),
+	'dim' : (100, 4),
 	'batch_size' : 64,
 	'n_classes' : 2,
 	'shuffle' : True,

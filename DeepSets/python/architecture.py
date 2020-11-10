@@ -204,13 +204,14 @@ class DeepSetsArchitecture:
 
         self.model = model
 
-    def fit_generator(self, train_generator, validation_data):
+    def fit_generator(self, train_generator, validation_data, epochs=10):
         import tensorflow as tf
         from tensorflow.keras import optimizers, regularizers
         self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=['accuracy'])
 
         self.training_history = self.model.fit_generator(train_generator,
-                                                         validation_data=validation_data)
+                                                         validation_data=validation_data,
+                                                         epochs=epochs)
 
     def displayTrainingHistory(self):
         import matplotlib.pyplot as plt
@@ -219,7 +220,7 @@ class DeepSetsArchitecture:
         val_acc = self.training_history.history['val_accuracy']
 
         loss = self.training_history.history['loss']
-        val_loss = self.training_history.history['validation_loss']
+        val_loss = self.training_history.history['val_loss']
 
         epochs = range(1, len(acc) + 1)
 
