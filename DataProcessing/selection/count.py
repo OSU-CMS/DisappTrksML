@@ -4,7 +4,7 @@ import sys
 import pickle as pkl
 import ROOT as r
 
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection_electrons/"
+dataDir = "/store/user/llavezzo/disappearingTracks/AMSB_800GeV_10000cm_selection_fullSel_noEcaloCutV2/"
 
 eCounts = {}
 bkgCounts = {}
@@ -21,15 +21,15 @@ for file in os.listdir(dataDir):
 
 	fin = r.TFile(dataDir+file, 'read')
 	sTree = fin.Get('sTree')
-	bTree = fin.Get('bTree')
+	#bTree = fin.Get('bTree')
 	signal_thisTree = int(sTree.GetEntries())
-	bkg_thisTree = int(bTree.GetEntries())
+	#bkg_thisTree = int(bTree.GetEntries())
 
 	eCounts.update({fileNum:signal_thisTree})
 	signal += signal_thisTree
 
-	bkgCounts.update({fileNum:bkg_thisTree})
-	bkg += bkg_thisTree
+	# bkgCounts.update({fileNum:bkg_thisTree})
+	# bkg += bkg_thisTree
 	
 print("signal",signal)
 print("bkg",bkg)

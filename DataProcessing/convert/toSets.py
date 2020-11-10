@@ -9,6 +9,8 @@ from ROOT import TFile, TTree, gROOT
 from ROOT.Math import XYZVector
 import numpy as np
 import time
+import sys
+import math
 
 ######## parameters ################################################################
 dataDir = ''
@@ -68,7 +70,19 @@ for class_label,tree in zip([1],[sTree]):
 		trackNumber = 0
 
 		for track in event.tracks:
+
+			momentum = XYZVector(track.px,track.py,track.pz)
+			track_eta = momentum.Eta()
+			track_phi = momentum.Phi()
 			
+			ecalo_energy = 0
+			for hit in event.recHits:
+				detIndex = hit.detType
+				if(not(detIndex == 0 or detIndex == 1 or detIndex == 4)): continue				
+				dEta = track_eta - hit.eta
+				dPhi = track_phi - hit.phi
+				if(math.sqrt(dEta*dEta+dPhi*dPhi)<0.5): ecalo_energy += hit.energy
+
 			hits = []
 			for hit in event.recHits:
 				dEta, dPhi = imageCoordinates(track, hit)
@@ -83,10 +97,6 @@ for class_label,tree in zip([1],[sTree]):
 				hits = hits[hits[:,2].argsort()]
 				hits = np.flip(hits, axis=0)
 				assert np.max(hits[:,2])==hits[0,2]
-
-			momentum = XYZVector(track.px,track.py,track.pz)
-			track_eta = momentum.Eta()
-			track_phi = momentum.Phi()
 
 			sets = np.zeros((maxHitsInImages,4))
 			for iHit in range(min(len(hits), maxHitsInImages)):
@@ -107,7 +117,8 @@ for class_label,tree in zip([1],[sTree]):
 					track_phi,
 					track.dRMinBadEcalChannel,
 					track.nLayersWithMeasurement,
-					track.nValidPixelHits
+					track.nValidPixelHits,
+					ecalo_energy
 				])
 
 			if(class_label == 1):
@@ -118,6 +129,11 @@ for class_label,tree in zip([1],[sTree]):
 				bkg_infos.append(infos)
 
 			trackNumber+=1
+
+print len(signal)
+
+if(len(signal) == 0): 
+	sys.exit(0)
 		
 np.savez_compressed('events_'+str(fileNum)+'.npz', 
 					signal=signal,

@@ -66,6 +66,12 @@ class DeepSetsArchitecture:
 
         self.input_shape = (self.max_hits, 4)
 
+    def set_phi_layers(self, layers):
+        self.phi_layers = layers
+
+    def set_f_layers(self, layers):
+        self.f_layers = layers
+
     def convertTrackFromTree(self, event, track, class_label, trackNumber):
         hits = []
 
@@ -212,6 +218,9 @@ class DeepSetsArchitecture:
         self.training_history = self.model.fit_generator(train_generator,
                                                          validation_data=validation_data,
                                                          epochs=epochs)
+
+    def save_weights(self, outputFileName):
+        self.model.save_weights(outputFileName)
 
     def displayTrainingHistory(self):
         import matplotlib.pyplot as plt
