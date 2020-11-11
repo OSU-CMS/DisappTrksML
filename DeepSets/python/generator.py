@@ -1,5 +1,6 @@
 import numpy as np
 from tensorflow import keras
+from collections import Counter
 
 class DataGenerator(keras.utils.Sequence):
 
@@ -27,6 +28,7 @@ class DataGenerator(keras.utils.Sequence):
 	def load_data(self):
 		for idx in self.file_ids:
 			fin = np.load(self.input_dir + '/hist_' + idx + '.root.npz')
+			print(idx)
 			if self.signal_data is None and self.background_data is None:
 				self.signal_data = fin['signal']
 				self.background_data = fin['background']
@@ -127,3 +129,106 @@ class DataGeneratorV2(keras.utils.Sequence):
 
 		return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
 """
+
+class DataGeneratorV3(keras.utils.Sequence):
+
+	def __init__(self, 
+				 file_ids, input_dir='.', 
+				 batch_size=32, 
+				 batch_ratio=0.5,
+				 dim=(100,4), 
+				 n_classes=2, 
+				 shuffle=True):
+		self.file_ids = file_ids
+		self.input_dir = input_dir
+		self.batch_size = batch_size
+		self.batch_ratio = batch_ratio
+		self.num_signal_batch = int(np.ceil(self.batch_ratio * self.batch_size))
+		self.num_background_batch = self.batch_size - self.num_signal_batch
+		self.dim = dim
+		self.n_classes = n_classes
+		self.shuffle = shuffle
+
+		self.signal_files = np.array([])
+		self.background_files = np.array([])
+		self.signal_events = np.array([])
+		self.background_events = np.array([])
+		self.num_signal = 0
+		self.num_background = 0
+
+		self.create_event_file_lists()
+		self.on_epoch_end()
+
+	def create_event_file_lists(self):
+
+		for idx in self.file_ids:
+			fin = np.load(self.input_dir + '/hist_' + idx + '.root.npz')
+			self.signal_files = np.concatenate((self.signal_files,np.ones(fin['signal'].shape[0])*int(idx)))
+			self.signal_events = np.concatenate((self.signal_events,np.arange(fin['signal'].shape[0],dtype=int)))
+			self.background_files = np.concatenate((self.background_files,np.ones(fin['signal'].shape[0])*int(idx)))
+			self.background_events = np.concatenate((self.background_events,np.arange(fin['signal'].shape[0],dtype=int)))
+
+		self.num_signal = len(self.signal_events)
+		self.num_background = len(self.background_events)
+
+	def __len__(self):
+		max_signal_batches = np.floor(self.num_signal / (self.batch_size*self.batch_ratio))
+		max_background_batches = np.floor(self.num_background / (self.batch_size*(1-self.batch_ratio)))
+		return int(min(max_signal_batches, max_background_batches))
+
+	def __getitem__(self, index):
+		return self.__data_generation(index)
+
+	def on_epoch_end(self):
+		if self.shuffle:
+			events = np.array([])
+			files = np.array([])
+			counter = Counter(self.signal_files)
+			files_set = np.array(list(counter.keys()))
+			p = np.random.permutation(len(files_set))
+			files_set = files_set[p]
+			for file in files_set:
+				events = np.concatenate((events, np.arange(counter[file])))
+				files = np.concatenate((files, np.ones(counter[file])*file))
+			self.signal_events = events
+			self.signal_files = files
+
+			events = np.array([])
+			files = np.array([])
+			counter = Counter(self.background_files)
+			files_set = np.array(list(counter.keys()))
+			p = np.random.permutation(len(files_set))
+			files_set = files_set[p]
+			for file in files_set:
+				events = np.concatenate((events, np.arange(counter[file])))
+				files = np.concatenate((files, np.ones(counter[file])*file))
+			self.background_events = events
+			self.background_files = files
+
+	def __data_generation(self, index):
+
+		X = None
+		X_files = self.signal_files[index * self.num_signal_batch : (index + 1) * self.num_signal_batch].astype(int)
+		X_events = self.signal_events[index * self.num_signal_batch : (index + 1) * self.num_signal_batch].astype(int)
+		files = list(set(X_files))
+		for file in files:
+			events_this_file = X_events[np.where(X_files == file)]
+			if X is None:
+				X = np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['signal'][events_this_file]
+			else:
+				X = np.vstack((X,np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['signal'][events_this_file]))
+
+		X_files = self.background_files[index * self.num_background_batch : (index + 1) * self.num_background_batch].astype(int)
+		X_events = self.background_events[index * self.num_background_batch : (index + 1) * self.num_background_batch].astype(int)
+		files = list(set(X_files))
+		for file in files:
+			events_this_file = X_events[np.where(X_files == file)]
+			X = np.vstack((X,np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['background'][events_this_file]))
+
+		y = np.concatenate((np.ones(self.num_signal_batch), np.zeros(self.num_background_batch)))
+
+		p = np.random.permutation(len(X))
+		X = X[p]
+		y = y[p]
+
+		return X, keras.utils.to_categorical(y, num_classes=self.n_classes)

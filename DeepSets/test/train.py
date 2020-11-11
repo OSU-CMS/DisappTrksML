@@ -9,7 +9,7 @@ from DisappTrksML.DeepSets.utilities import *
 
 import tensorflow as tf
 
-if False:
+if True:
 	# limit CPU usage
 	config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
 									intra_op_parallelism_threads = 4,
@@ -27,6 +27,7 @@ params = {
 	'input_dir' : '/store/user/bfrancis/numpy/electrons_DYJetsToLL/',
 	'dim' : (100, 4),
 	'batch_size' : 64,
+	# 'batch_ratio' : 0.5,
 	'n_classes' : 2,
 	'shuffle' : True,
 }
