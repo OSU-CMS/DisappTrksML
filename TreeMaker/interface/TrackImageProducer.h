@@ -103,7 +103,9 @@ class TrackImageProducer : public edm::EDAnalyzer {
 
       const math::XYZVector getPosition(const DetId &) const;
       const math::XYZVector getPosition(const CSCSegment&) const;
+      const math::XYZVector getPosition(const CSCRecHit2D&) const;
       const math::XYZVector getPosition(const DTRecSegment4D&) const;
+      const math::XYZVector getPosition(const DTRecHit1D&) const;
       const math::XYZVector getPosition(const RPCRecHit&) const;
 
       const double minDRBadEcalChannel(const reco::Track &) const;

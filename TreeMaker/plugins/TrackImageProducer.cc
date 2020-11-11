@@ -304,22 +304,57 @@ TrackImageProducer::getRecHits(const edm::Event &event)
   edm::Handle<CSCSegmentCollection> CSCSegments;
   event.getByToken(CSCSegmentsToken_, CSCSegments);
   for(const auto &seg : *CSCSegments) {
+    vector<CSCRecHitInfo> CSCRecHits;
+    vector<DTRecHitInfo> DTRecHits;
+    for(const auto &recHit : seg.specificRecHits()) {
+      int iLayer   = recHit.cscDetId().layer();
+      int iChamber = recHit.cscDetId().chamber();
+      int iRing    = recHit.cscDetId().ring();
+      int iStation = recHit.cscDetId().station();
+      int iEndcap  = recHit.cscDetId().endcap(); 
+      math::XYZVector recHitPos = getPosition(recHit);
+      CSCRecHits.push_back(
+        CSCRecHitInfo(recHitPos.eta(),recHitPos.phi(),recHitPos.x(),recHitPos.y(),recHitPos.z(), recHit.tpeak(),
+                      iLayer,iChamber,iRing,iStation,iEndcap)
+      );
+    }
     math::XYZVector pos = getPosition(seg);
-    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, seg.time(), DetType::CSC));
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, seg.time(), CSCRecHits, DetType::CSC));
   }
 
   edm::Handle<DTRecSegment4DCollection> DTRecSegments;
   event.getByToken(DTRecSegmentsToken_, DTRecSegments);
   for(const auto &seg : *DTRecSegments) {
+    vector<CSCRecHitInfo> CSCRecHits;
+    vector<DTRecHitInfo> DTRecHits;
     double time = -999.;
+    DTChamberId chamber = seg.chamberId();
     if(seg.hasPhi()) {
       time = seg.phiSegment()->t0();
+      for(const auto recHit : seg.phiSegment()->specificRecHits()){
+        DTWireId wire = recHit.wireId();
+        DTLayerId layer = wire.layerId();
+        DTSuperLayerId superlayer = layer.superlayerId();
+        math::XYZVector recHitPos = getPosition(recHit);
+        DTRecHits.push_back( DTRecHitInfo(recHitPos.eta(),recHitPos.phi(),recHitPos.x(),recHitPos.y(),recHitPos.z(), recHit.digiTime(),
+                             wire.wire(), layer.layer(), superlayer.superlayer(), chamber.wheel(), chamber.station(), chamber.sector())
+        ); 
+      }
     }
     if(seg.hasZed()) {
       time = seg.zSegment()->t0();
+      for(const auto recHit : seg.zSegment()->specificRecHits()){
+        DTWireId wire = recHit.wireId();
+        DTLayerId layer = wire.layerId();
+        DTSuperLayerId superlayer = layer.superlayerId();
+        math::XYZVector recHitPos = getPosition(recHit);
+        DTRecHits.push_back( DTRecHitInfo(recHitPos.eta(),recHitPos.phi(),recHitPos.x(),recHitPos.y(),recHitPos.z(), recHit.digiTime(),
+                             wire.wire(), layer.layer(), superlayer.superlayer(), chamber.wheel(), chamber.station(), chamber.sector())
+        );
+      }
     }
     math::XYZVector pos = getPosition(seg);
-    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, time, DetType::DT));
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, time, DTRecHits, DetType::DT));
   }
 
   edm::Handle<RPCRecHitCollection> RPCRecHits;
@@ -412,10 +447,30 @@ TrackImageProducer::getPosition(const CSCSegment& seg) const
 }
 
 const math::XYZVector
+TrackImageProducer::getPosition(const CSCRecHit2D& recHit) const
+{
+  const LocalPoint localPos = recHit.localPosition();
+  const CSCDetId id = recHit.cscDetId();
+
+  const GlobalPoint idPosition = cscGeometry_->chamber(id)->toGlobal(localPos);
+  math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
+  return idPositionRoot;
+}
+
+const math::XYZVector
 TrackImageProducer::getPosition(const DTRecSegment4D& seg) const
 {
   const LocalPoint segmentLocal = seg.localPosition();
   const GlobalPoint idPosition = dtGeometry_->idToDet(seg.geographicalId())->surface().toGlobal(segmentLocal);
+  math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
+  return idPositionRoot;
+}
+
+const math::XYZVector
+TrackImageProducer::getPosition(const DTRecHit1D& recHit) const
+{
+  const LocalPoint localPos = recHit.localPosition();
+  const GlobalPoint idPosition = dtGeometry_->idToDet(recHit.geographicalId())->surface().toGlobal(localPos);
   math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
   return idPositionRoot;
 }
