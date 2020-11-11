@@ -8,6 +8,8 @@ struct TrackInfo {
   double dRMinJet;
   double dRMinBadEcalChannel;
 
+  double ecalo;
+
   double trackIso;
   double px, py, pz, pt;
   double eta, phi;
@@ -19,8 +21,15 @@ struct TrackInfo {
 
   bool passesProbeSelection;
   double deltaRToClosestTagElectron, deltaRToClosestTagMuon;
-  bool isTagProbeElectron, isTagProbeMuon;
-  bool isTagProbeTauToElectron, isTagProbeTauToMuon;
+
+  // bit values reflect tag+probe status and charge products:
+  //     0b<in same-sign pair><in opposite-sign pair>
+  //     So 0 = 0b00 : not in any TP pair
+  //        1 = 0b01 : in OS TP pair
+  //        2 = 0b10 : in SS TP pair
+  //        3 = 0b11 : in both an OS and SS pair
+  unsigned int isTagProbeElectron, isTagProbeMuon;
+  unsigned int isTagProbeTauToElectron, isTagProbeTauToMuon;
 };
 
 struct CSCRecHitInfo {

@@ -86,20 +86,29 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
 
       void getGeometries(const edm::EventSetup &);
 
-      const TrackInfo getTrackInfo(const CandidateTrack &, 
-                                   const vector<CandidateTrack> &, 
-                                   const reco::Vertex &, 
-                                   const vector<pat::Jet> &,
-                                   const vector<pat::Electron> &,
-                                   const vector<pat::Muon> &,
-                                   const vector<pat::Tau> &,
-                                   const edm::Handle<vector<reco::GenParticle> >) const;
+      int countGoodPrimaryVertices(const vector<reco::Vertex> &) const;
+      int countGoodJets(const vector<pat::Jet> &) const;
+      double getMaxDijetDeltaPhi(const vector<pat::Jet> &) const;
+      double getLeadingJetMetPhi(const vector<pat::Jet> &, const pat::MET &) const;
+
+      void getTracks(const vector<CandidateTrack> &, 
+                     const reco::Vertex &, 
+                     const vector<pat::Jet> &,
+                     const vector<pat::Electron> &,
+                     const vector<pat::Muon> &,
+                     const vector<pat::Tau> &,
+                     const vector<pat::Electron> &tagElectrons,
+                     const vector<pat::Muon> &tagMuons,
+                     const pat::MET &);
 
       void getRecHits(const edm::Event &);
+      void getGenParticles(const reco::CandidateView &);
 
       const math::XYZVector getPosition(const DetId &) const;
       const math::XYZVector getPosition(const CSCSegment&) const;
+      const math::XYZVector getPosition(const CSCRecHit2D&) const;
       const math::XYZVector getPosition(const DTRecSegment4D&) const;
+      const math::XYZVector getPosition(const DTRecHit1D&) const;
       const math::XYZVector getPosition(const RPCRecHit&) const;
 
       vector<pat::Electron> getTagElectrons(const edm::Event &,
@@ -116,10 +125,16 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
 
       const bool isProbeTrack(const TrackInfo) const;
 
-      const bool isTagProbeElePair(const CandidateTrack &, const pat::Electron &) const;
-      const bool isTagProbeMuonPair(const CandidateTrack &, const pat::Muon &) const;
-      const bool isTagProbeTauToElePair(const CandidateTrack &, const pat::Electron &, const pat::MET &) const;
-      const bool isTagProbeTauToMuonPair(const CandidateTrack &, const pat::Muon &, const pat::MET &) const;
+      // bit values reflect tag+probe status and charge products:
+      //     0b<in same-sign pair><in opposite-sign pair>
+      //     So 0 = 0b00 : not in any TP pair
+      //        1 = 0b01 : in OS TP pair
+      //        2 = 0b10 : in SS TP pair
+      //        3 = 0b11 : in both an OS and SS pair
+      const unsigned int isTagProbeElePair(const CandidateTrack &, const pat::Electron &) const;
+      const unsigned int isTagProbeMuonPair(const CandidateTrack &, const pat::Muon &) const;
+      const unsigned int isTagProbeTauToElePair(const CandidateTrack &, const pat::Electron &, const pat::MET &) const;
+      const unsigned int isTagProbeTauToMuonPair(const CandidateTrack &, const pat::Muon &, const pat::MET &) const;
 
       const double minDRBadEcalChannel(const CandidateTrack &) const;
       void getChannelStatusMaps();
@@ -133,6 +148,7 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       edm::InputTag pfCandidates_;
       edm::InputTag vertices_;
       edm::InputTag jets_;
+      edm::InputTag rhoCentralCalo_;
       edm::InputTag EBRecHits_, EERecHits_, ESRecHits_;
       edm::InputTag HBHERecHits_;
       edm::InputTag cscSegments_, dtRecSegments_, rpcRecHits_;
@@ -146,14 +162,16 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       edm::EDGetTokenT<edm::TriggerResults>                   triggersToken_;
       edm::EDGetTokenT<vector<pat::TriggerObjectStandAlone> > trigObjsToken_;
       edm::EDGetTokenT<vector<CandidateTrack> >               tracksToken_;
-      edm::EDGetTokenT<vector<reco::GenParticle> >            genParticlesToken_;
-      edm::EDGetTokenT<vector<pat::MET> >                      metToken_;
+      edm::EDGetTokenT<reco::CandidateView>                   genParticlesToken_;
+      edm::EDGetTokenT<vector<pat::MET> >                     metToken_;
       edm::EDGetTokenT<vector<pat::Electron> >                electronsToken_;
       edm::EDGetTokenT<vector<pat::Muon> >                    muonsToken_;
       edm::EDGetTokenT<vector<pat::Tau> >                     tausToken_;
       edm::EDGetTokenT<vector<pat::PackedCandidate> >         pfCandidatesToken_;
       edm::EDGetTokenT<vector<reco::Vertex> >                 verticesToken_;
       edm::EDGetTokenT<vector<pat::Jet> >                     jetsToken_;
+
+      edm::EDGetTokenT<double> rhoCentralCaloToken_;
 
       edm::EDGetTokenT<EBRecHitCollection>         EBRecHitsToken_;
       edm::EDGetTokenT<EERecHitCollection>         EERecHitsToken_;
@@ -175,16 +193,29 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
 
       vector<TrackInfo> trackInfos_;
       vector<RecHitInfo> recHitInfos_;
+      vector<GenParticleInfo> genParticleInfos_;
       
+      // event information  
       int nPV_;
       unsigned long long eventNumber_;
       unsigned int lumiBlockNumber_;
       unsigned int runNumber_;
 
+      // event-wide cut results
+      bool firesGrandOrTrigger_;
+      bool passMETFilters_;
+      int numGoodPVs_;
+      double metNoMu_;
+      double numGoodJets_;
+      double dijetDeltaPhiMax_;
+      double leadingJetMetPhi_;
+
       bool is2017_;
 
       map<DetId, vector<double> > EcalAllDeadChannelsValMap_;
       map<DetId, vector<int> >    EcalAllDeadChannelsBitMap_;
+
+      vector<string> signalTriggerNames, metFilterNames;
 };
 
 #endif

@@ -22,6 +22,8 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   vertices_     (cfg.getParameter<edm::InputTag> ("vertices")),
   jets_         (cfg.getParameter<edm::InputTag> ("jets")),
 
+  rhoCentralCalo_ (cfg.getParameter<edm::InputTag> ("rhoCentralCalo")),
+
   EBRecHits_     (cfg.getParameter<edm::InputTag> ("EBRecHits")),
   EERecHits_     (cfg.getParameter<edm::InputTag> ("EERecHits")),
   ESRecHits_     (cfg.getParameter<edm::InputTag> ("ESRecHits")),
@@ -42,7 +44,7 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   triggersToken_     = consumes<edm::TriggerResults>           (triggers_);
   trigObjsToken_     = consumes<vector<pat::TriggerObjectStandAlone> > (trigObjs_);
   tracksToken_       = consumes<vector<CandidateTrack> >       (tracks_);
-  genParticlesToken_ = consumes<vector<reco::GenParticle> >    (genParticles_);
+  genParticlesToken_ = consumes<reco::CandidateView>           (genParticles_);
   metToken_          = consumes<vector<pat::MET> >             (met_);
   electronsToken_    = consumes<vector<pat::Electron> >        (electrons_);
   muonsToken_        = consumes<vector<pat::Muon> >            (muons_);
@@ -50,6 +52,8 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   pfCandidatesToken_ = consumes<vector<pat::PackedCandidate> > (pfCandidates_);
   verticesToken_     = consumes<vector<reco::Vertex> >         (vertices_);
   jetsToken_         = consumes<vector<pat::Jet> >             (jets_);
+
+  rhoCentralCaloToken_ = consumes<double> (rhoCentralCalo_);
 
   EBRecHitsToken_     = consumes<EBRecHitCollection>       (EBRecHits_);
   EERecHitsToken_     = consumes<EERecHitCollection>       (EERecHits_);
@@ -59,17 +63,30 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   DTRecSegmentsToken_ = consumes<DTRecSegment4DCollection> (dtRecSegments_);
   RPCRecHitsToken_    = consumes<RPCRecHitCollection>      (rpcRecHits_);
 
+  signalTriggerNames = cfg.getParameter<vector<string> >("signalTriggerNames");
+  metFilterNames = cfg.getParameter<vector<string> >("metFilterNames");
+
   trackInfos_.clear();
   recHitInfos_.clear();
+  genParticleInfos_.clear();
 
   tree_ = fs_->make<TTree>("tree", "tree");
   tree_->Branch("tracks", &trackInfos_);
   tree_->Branch("recHits", &recHitInfos_);
+  tree_->Branch("genParticles", &genParticleInfos_);
   
   tree_->Branch("nPV", &nPV_);
   tree_->Branch("eventNumber", &eventNumber_);
   tree_->Branch("lumiBlockNumber", &lumiBlockNumber_);
   tree_->Branch("runNumber", &runNumber_);
+
+  tree_->Branch("firesGrandOrTrigger", &firesGrandOrTrigger_);
+  tree_->Branch("passMETFilters", &passMETFilters_);
+  tree_->Branch("numGoodPVs", &numGoodPVs_);
+  tree_->Branch("metNoMu", &metNoMu_);
+  tree_->Branch("numGoodJets", &numGoodJets_);
+  tree_->Branch("dijetDeltaPhiMax", &dijetDeltaPhiMax_);
+  tree_->Branch("leadingJetMetPhi", &leadingJetMetPhi_);
 }
 
 TrackImageProducerMINIAOD::~TrackImageProducerMINIAOD()
@@ -79,7 +96,7 @@ TrackImageProducerMINIAOD::~TrackImageProducerMINIAOD()
 void
 TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetup &setup)
 {
-  // get reco objects
+  // get collections, setup objects
 
   edm::Handle<edm::TriggerResults> triggers;
   event.getByToken (triggersToken_, triggers);
@@ -90,7 +107,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   edm::Handle<vector<CandidateTrack> > tracks;
   event.getByToken(tracksToken_, tracks);
 
-  edm::Handle<vector<reco::GenParticle> > genParticles;
+  edm::Handle<reco::CandidateView> genParticles;
   event.getByToken(genParticlesToken_, genParticles);
 
   edm::Handle<vector<pat::MET> > met;
@@ -110,66 +127,87 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
 
   edm::Handle<vector<reco::Vertex> > vertices;
   event.getByToken(verticesToken_, vertices);
+
+  edm::Handle<vector<pat::Jet> > jets;
+  event.getByToken(jetsToken_, jets);
+
+  edm::Handle<double> rhoCentralCalo;
+  event.getByToken(rhoCentralCaloToken_, rhoCentralCalo);
+
+  const edm::TriggerNames &allTriggerNames = event.triggerNames(*triggers);
+
+  getGeometries(setup);
+  getChannelStatusMaps();
+
+  //
+
+  TVector2 metNoMuVec(met->at(0).px(), met->at(0).py());
+  for(const auto &pfCandidate : *pfCandidates) {
+    if(abs(pfCandidate.pdgId()) != 13) continue;
+    TVector2 muon(pfCandidate.px(), pfCandidate.py());
+    metNoMuVec += muon;
+  }
+
+  metNoMu_ = metNoMuVec.Mod();
+
+  firesGrandOrTrigger_ = false;
+  passMETFilters_ = true;
+
+  for(unsigned i = 0; i < allTriggerNames.size(); i++) {
+    string thisName = allTriggerNames.triggerName(i);
+
+    for(auto name : signalTriggerNames) {
+      if(thisName.find(name) == 0 && triggers->accept(i)) {
+        firesGrandOrTrigger_ = true;
+        break;
+      }
+    }
+
+    for(auto name : metFilterNames) {
+      if(thisName.find(name) == 0 && !triggers->accept(i)) {
+        passMETFilters_ = false;
+        break;
+      }
+    }
+
+    if(firesGrandOrTrigger_ && !passMETFilters_) break;
+  }
+
   const reco::Vertex &pv = vertices->at(0);
   nPV_ = vertices->size();
+  numGoodPVs_ = countGoodPrimaryVertices(*vertices);
 
   eventNumber_ = event.id().event();
   lumiBlockNumber_ = event.id().luminosityBlock();
   runNumber_ = event.id().run();
 
-  edm::Handle<vector<pat::Jet> > jets;
-  event.getByToken(jetsToken_, jets);
-
-  //
-
-  getGeometries(setup);
-  getChannelStatusMaps();
+  numGoodJets_      = countGoodJets(*jets);
+  dijetDeltaPhiMax_ = getMaxDijetDeltaPhi(*jets);
+  leadingJetMetPhi_ = getLeadingJetMetPhi(*jets, met->at(0));
 
   vector<pat::Electron> tagElectrons = getTagElectrons(event, *triggers, *trigObjs, pv, *electrons);
   vector<pat::Muon> tagMuons = getTagMuons(event, *triggers, *trigObjs, pv, *muons);
 
-  trackInfos_.clear();
-
-  for(const auto &track : *tracks) {
-    if(minTrackPt_ > 0 && track.pt() <= minTrackPt_) continue;
-
-    TrackInfo info = getTrackInfo(track, *tracks, pv, *jets, *electrons, *muons, *taus, genParticles);
-
-    if(maxRelTrackIso_ > 0 && info.trackIso / info.pt >= maxRelTrackIso_) continue;
-
-    if(info.passesProbeSelection) {
-      for(const auto tag : tagElectrons) {
-        double thisDR = deltaR(tag, track);
-        if(info.deltaRToClosestTagElectron < 0 || thisDR < info.deltaRToClosestTagElectron) {
-          info.deltaRToClosestTagElectron = thisDR;
-        }
-        if(isTagProbeElePair(track, tag)) info.isTagProbeElectron = true;
-        if(isTagProbeTauToElePair(track, tag, met->at(0))) info.isTagProbeTauToElectron = true;
-      }
-
-      for(const auto tag : tagMuons) {
-        double thisDR = deltaR(tag, track);
-        if(info.deltaRToClosestTagMuon < 0 || thisDR < info.deltaRToClosestTagMuon) {
-          info.deltaRToClosestTagMuon = thisDR;
-        }
-        if(isTagProbeMuonPair(track, tag)) info.isTagProbeMuon = true;
-        if(isTagProbeTauToMuonPair(track, tag, met->at(0))) info.isTagProbeTauToMuon = true;
-      }
-    }
-
-    trackInfos_.push_back(info);
-  }
+  getTracks(*tracks, pv, *jets, *electrons, *muons, *taus, tagElectrons, tagMuons, met->at(0));
 
   if(trackInfos_.size() == 0) return; // only fill tree with passing tracks
 
-  recHitInfos_.clear();
   getRecHits(event);
+  if(genParticles.isValid()) getGenParticles(*genParticles);
+
+  // account for pileup in track ecalo
+  double caloCorr = (*rhoCentralCalo) * 2. * M_PI_2 * 0.5 * 0.5;
+  for(auto &info : trackInfos_) {
+    info.ecalo -= caloCorr;
+    if(info.ecalo < 0) info.ecalo = 0;
+  }
 
   tree_->Fill();
 
 }
 
-void TrackImageProducerMINIAOD::getGeometries(const edm::EventSetup &setup) {
+void
+TrackImageProducerMINIAOD::getGeometries(const edm::EventSetup &setup) {
   setup.get<CaloGeometryRecord>().get(caloGeometry_);
   if(!caloGeometry_.isValid())
     throw cms::Exception("FatalError") << "Unable to find CaloGeometryRecord in event!\n";
@@ -189,123 +227,232 @@ void TrackImageProducerMINIAOD::getGeometries(const edm::EventSetup &setup) {
   setup.get<EcalChannelStatusRcd>().get(ecalStatus_);
 }
 
-const TrackInfo
-TrackImageProducerMINIAOD::getTrackInfo(const CandidateTrack &track, 
-                                        const vector<CandidateTrack> &tracks, 
-                                        const reco::Vertex &pv, 
-                                        const vector<pat::Jet> &jets,
-                                        const vector<pat::Electron> &electrons,
-                                        const vector<pat::Muon> &muons,
-                                        const vector<pat::Tau> &taus,
-                                        const edm::Handle<vector<reco::GenParticle> > genParticles) const
+int
+TrackImageProducerMINIAOD::countGoodPrimaryVertices(const vector<reco::Vertex> &vertices) const
 {
-  TrackInfo info;
+  int n = 0;
+  for(const auto &v : vertices) {
+    if(v.isValid() && v.ndof() >= 4 && fabs(v.z()) < 24.0 && hypot(v.x(), v.y()) < 2.0) n++;
+  }
+  return n;
+}
 
-  info.px = track.px();
-  info.py = track.py();
-  info.pz = track.pz();
-  info.eta = track.eta();
-  info.pt = track.pt();
-  info.phi = track.phi();
+int
+TrackImageProducerMINIAOD::countGoodJets(const vector<pat::Jet> &jets) const
+{
+  int n = 0;
+  vector<double> goodJetPhis;
 
-  info.dRMinJet = -1;
   for(const auto &jet : jets) {
-    if(jet.pt() > 30 &&
-       fabs(jet.eta()) < 4.5 &&
-       (((jet.neutralHadronEnergyFraction()<0.90 && jet.neutralEmEnergyFraction()<0.90 && (jet.chargedMultiplicity() + jet.neutralMultiplicity())>1 && jet.muonEnergyFraction()<0.8) && ((fabs(jet.eta())<=2.4 && jet.chargedHadronEnergyFraction()>0 && jet.chargedMultiplicity()>0 && jet.chargedEmEnergyFraction()<0.90) || fabs(jet.eta())>2.4) && fabs(jet.eta())<=3.0)
-          || (jet.neutralEmEnergyFraction()<0.90 && jet.neutralMultiplicity()>10 && fabs(jet.eta())>3.0))) {
-      double dR = deltaR(track, jet);
-      if(info.dRMinJet < 0 || dR < info.dRMinJet) info.dRMinJet = dR;
+    // let's not deal with jet smearing for now...
+    if(jet.pt() <= 110) continue;
+    if(fabs(jet.eta()) >= 2.4) continue;
+    if(!anatools::jetPassesTightLepVeto(jet)) continue;
+
+    n++;
+  }
+  return n;
+}
+
+double
+TrackImageProducerMINIAOD::getMaxDijetDeltaPhi(const vector<pat::Jet> &jets) const
+{
+  vector<double> goodJetPhis;
+  for(const auto &jet : jets) {
+    if(jet.pt() > 30 && fabs(jet.eta()) < 4.5 && anatools::jetPassesTightLepVeto(jet)) goodJetPhis.push_back(jet.phi());
+  }
+
+  double maxDeltaPhi = -999.;
+  for(unsigned int i = 0; i < goodJetPhis.size(); i++) {
+    for(unsigned int j = 0; j < goodJetPhis.size(); j++) {
+      if(i == j) continue;
+      double dPhi = fabs(deltaPhi(goodJetPhis[i], goodJetPhis[j]));
+      if(dPhi > maxDeltaPhi) maxDeltaPhi = dPhi;
     }
   }
 
-  bool inTOBCrack = (fabs(track.dz()) < 0.5 && fabs(M_PI_2 - track.theta()) < 1.0e-3);
-  bool inECALCrack = (fabs(track.eta()) >= 1.42 && fabs(track.eta()) <= 1.65);
-  bool inDTWheelGap = (fabs(track.eta()) >= 0.15 && fabs(track.eta()) <= 0.35);
-  bool inCSCTransitionRegion = (fabs(track.eta()) >= 1.55 && fabs(track.eta()) <= 1.85);
-  info.inGap = (inTOBCrack || inECALCrack || inDTWheelGap || inCSCTransitionRegion);
+  return maxDeltaPhi;
+}
 
-  info.dRMinBadEcalChannel = minDRBadEcalChannel(track);
+double
+TrackImageProducerMINIAOD::getLeadingJetMetPhi(const vector<pat::Jet> &jets, const pat::MET &met) const
+{
+  double deltaPhiMetJetLeading = 999.;
+  double ptJetLeading = -1;
 
-  info.trackIso = 0.0;
-  for(const auto &t : tracks) {
-    if(fabs(track.dz(t.vertex())) > 3.0 * hypot(track.dzError(), t.dzError())) continue;
-    double dR = deltaR(track, t);
-    if(dR < 0.3 && dR > 1.0e-12) info.trackIso += t.pt();
+  for(const auto &jet : jets) {
+    if(jet.pt() > 30 && 
+       fabs(jet.eta()) < 4.5 && 
+       anatools::jetPassesTightLepVeto(jet)) {
+      if(jet.pt() > ptJetLeading) {
+        ptJetLeading = jet.pt();
+        deltaPhiMetJetLeading = fabs(deltaPhi(jet, met));
+      }
+    }
   }
 
-  info.nValidPixelHits        = track.hitPattern().numberOfValidPixelHits();
-  info.nValidHits             = track.hitPattern().numberOfValidHits();
-  info.missingInnerHits       = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_INNER_HITS);
-  info.missingMiddleHits      = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::TRACK_HITS);
-  info.missingOuterHits       = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_OUTER_HITS);
-  info.nLayersWithMeasurement = track.hitPattern().trackerLayersWithMeasurement();
+  return deltaPhiMetJetLeading;
+}
 
-  // d0 wrt pv (2d) = (vertex - pv) cross p / |p|
-  info.d0 = ((track.vx() - pv.x()) * track.py() - (track.vy() - pv.y()) * track.px()) / track.pt(); 
+void
+TrackImageProducerMINIAOD::getTracks(const vector<CandidateTrack> &tracks, 
+                                     const reco::Vertex &pv, 
+                                     const vector<pat::Jet> &jets,
+                                     const vector<pat::Electron> &electrons,
+                                     const vector<pat::Muon> &muons,
+                                     const vector<pat::Tau> &taus,
+                                     const vector<pat::Electron> &tagElectrons,
+                                     const vector<pat::Muon> &tagMuons,
+                                     const pat::MET &met)
+{
+  trackInfos_.clear();
+
+  for(const auto &track : tracks) {
+    // apply track pt cut
+    if(minTrackPt_ > 0 && track.pt() <= minTrackPt_) continue;
+
+    TrackInfo info;
+
+    info.trackIso = 0.0;
+    for(const auto &t : tracks) {
+      if(fabs(track.dz(t.vertex())) > 3.0 * hypot(track.dzError(), t.dzError())) continue;
+      double dR = deltaR(track, t);
+      if(dR < 0.3 && dR > 1.0e-12) info.trackIso += t.pt();
+    }
+
+    // apply relative track isolation cut
+    if(maxRelTrackIso_ > 0 && info.trackIso / track.pt() >= maxRelTrackIso_) continue;
+
+    info.px = track.px();
+    info.py = track.py();
+    info.pz = track.pz();
+    info.eta = track.eta();
+    info.pt = track.pt();
+    info.phi = track.phi();
+
+    info.dRMinJet = -1;
+    for(const auto &jet : jets) {
+      if(jet.pt() > 30 &&
+         fabs(jet.eta()) < 4.5 &&
+         (((jet.neutralHadronEnergyFraction()<0.90 && jet.neutralEmEnergyFraction()<0.90 && (jet.chargedMultiplicity() + jet.neutralMultiplicity())>1 && jet.muonEnergyFraction()<0.8) && ((fabs(jet.eta())<=2.4 && jet.chargedHadronEnergyFraction()>0 && jet.chargedMultiplicity()>0 && jet.chargedEmEnergyFraction()<0.90) || fabs(jet.eta())>2.4) && fabs(jet.eta())<=3.0)
+            || (jet.neutralEmEnergyFraction()<0.90 && jet.neutralMultiplicity()>10 && fabs(jet.eta())>3.0))) {
+        double dR = deltaR(track, jet);
+        if(info.dRMinJet < 0 || dR < info.dRMinJet) info.dRMinJet = dR;
+      }
+    }
+
+    bool inTOBCrack = (fabs(track.dz()) < 0.5 && fabs(M_PI_2 - track.theta()) < 1.0e-3);
+    bool inECALCrack = (fabs(track.eta()) >= 1.42 && fabs(track.eta()) <= 1.65);
+    bool inDTWheelGap = (fabs(track.eta()) >= 0.15 && fabs(track.eta()) <= 0.35);
+    bool inCSCTransitionRegion = (fabs(track.eta()) >= 1.55 && fabs(track.eta()) <= 1.85);
+    info.inGap = (inTOBCrack || inECALCrack || inDTWheelGap || inCSCTransitionRegion);
+
+    info.dRMinBadEcalChannel = minDRBadEcalChannel(track);
+
+    info.nValidPixelHits        = track.hitPattern().numberOfValidPixelHits();
+    info.nValidHits             = track.hitPattern().numberOfValidHits();
+    info.missingInnerHits       = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_INNER_HITS);
+    info.missingMiddleHits      = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::TRACK_HITS);
+    info.missingOuterHits       = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_OUTER_HITS);
+    info.nLayersWithMeasurement = track.hitPattern().trackerLayersWithMeasurement();
+
+    // d0 wrt pv (2d) = (vertex - pv) cross p / |p|
+    info.d0 = ((track.vx() - pv.x()) * track.py() - (track.vy() - pv.y()) * track.px()) / track.pt(); 
   
-  // dz wrt pv (2d) = (v_z - pv_z) - p_z * [(vertex - pv) dot p / |p|^2]
-  info.dz = track.vz() - pv.z() -
-    ((track.vx() - pv.x()) * track.px() + (track.vy() - pv.y()) * track.py()) * track.pz() / track.pt() / track.pt();
+    // dz wrt pv (2d) = (v_z - pv_z) - p_z * [(vertex - pv) dot p / |p|^2]
+    info.dz = track.vz() - pv.z() -
+      ((track.vx() - pv.x()) * track.px() + (track.vy() - pv.y()) * track.py()) * track.pz() / track.pt() / track.pt();
 
-  info.deltaRToClosestElectron = -1;
-  for(const auto &electron : electrons) {
-    double thisDR = deltaR(electron, track);
-    if(info.deltaRToClosestElectron < 0 || thisDR < info.deltaRToClosestElectron) info.deltaRToClosestElectron = thisDR;
-  }
+    info.deltaRToClosestElectron = -1;
+    for(const auto &electron : electrons) {
+      double thisDR = deltaR(electron, track);
+      if(info.deltaRToClosestElectron < 0 || thisDR < info.deltaRToClosestElectron) info.deltaRToClosestElectron = thisDR;
+    }
 
-  info.deltaRToClosestMuon = -1;
-  for(const auto &muon : muons) {
-    double thisDR = deltaR(muon, track);
-    if(info.deltaRToClosestMuon < 0 || thisDR < info.deltaRToClosestMuon) info.deltaRToClosestMuon = thisDR;
-  }
+    info.deltaRToClosestMuon = -1;
+    for(const auto &muon : muons) {
+      double thisDR = deltaR(muon, track);
+      if(info.deltaRToClosestMuon < 0 || thisDR < info.deltaRToClosestMuon) info.deltaRToClosestMuon = thisDR;
+    }
 
-  info.deltaRToClosestTauHad = -1;
-  for(const auto &tau : taus) {
-    if(tau.isTauIDAvailable("againstElectronLooseMVA5")) {
-      if(tau.tauID("decayModeFinding") <= 0.5 ||
-         tau.tauID("againstElectronLooseMVA5") <= 0.5 ||
-         tau.tauID("againstMuonLoose3") <= 0.5) {
+    info.deltaRToClosestTauHad = -1;
+    for(const auto &tau : taus) {
+      if(tau.isTauIDAvailable("againstElectronLooseMVA5")) {
+        if(tau.tauID("decayModeFinding") <= 0.5 ||
+           tau.tauID("againstElectronLooseMVA5") <= 0.5 ||
+           tau.tauID("againstMuonLoose3") <= 0.5) {
+          continue;
+        }
+      }
+      else if(tau.isTauIDAvailable("againstElectronLooseMVA6")) {
+        if(tau.tauID("decayModeFinding") <= 0.5 ||
+           tau.tauID("againstElectronLooseMVA6") <= 0.5 ||
+           tau.tauID("againstMuonLoose3") <= 0.5) {
+          continue;
+        }
+      }
+      else {
         continue;
       }
+
+      double thisDR = deltaR(tau, track);
+      if(info.deltaRToClosestTauHad < 0 || thisDR < info.deltaRToClosestTauHad) info.deltaRToClosestTauHad = thisDR;
     }
-    else if(tau.isTauIDAvailable("againstElectronLooseMVA6")) {
-      if(tau.tauID("decayModeFinding") <= 0.5 ||
-         tau.tauID("againstElectronLooseMVA6") <= 0.5 ||
-         tau.tauID("againstMuonLoose3") <= 0.5) {
-        continue;
+
+    info.passesProbeSelection = isProbeTrack(info);
+
+    info.deltaRToClosestTagElectron = -1;
+    info.deltaRToClosestTagMuon = -1;
+
+    info.isTagProbeElectron = 0;
+    info.isTagProbeTauToElectron = 0;
+
+    info.isTagProbeMuon = 0;
+    info.isTagProbeTauToMuon = 0;
+
+    if(info.passesProbeSelection) {
+      for(const auto tag : tagElectrons) {
+        double thisDR = deltaR(tag, track);
+        if(info.deltaRToClosestTagElectron < 0 || thisDR < info.deltaRToClosestTagElectron) {
+          info.deltaRToClosestTagElectron = thisDR;
+        }
+        info.isTagProbeElectron |= isTagProbeElePair(track, tag);
+        info.isTagProbeTauToElectron |= isTagProbeTauToElePair(track, tag, met);
+      }
+
+      for(const auto tag : tagMuons) {
+        double thisDR = deltaR(tag, track);
+        if(info.deltaRToClosestTagMuon < 0 || thisDR < info.deltaRToClosestTagMuon) {
+          info.deltaRToClosestTagMuon = thisDR;
+        }
+        info.isTagProbeMuon |= isTagProbeMuonPair(track, tag);
+        info.isTagProbeTauToMuon |= isTagProbeTauToMuonPair(track, tag, met);
       }
     }
-    else {
-      continue;
-    }
 
-    double thisDR = deltaR(tau, track);
-    if(info.deltaRToClosestTauHad < 0 || thisDR < info.deltaRToClosestTauHad) info.deltaRToClosestTauHad = thisDR;
+    info.ecalo = 0; // calculated in getRecHits
+
+    trackInfos_.push_back(info);
   }
 
-  info.passesProbeSelection = isProbeTrack(info);
-
-  info.deltaRToClosestTagElectron = -1;
-  info.deltaRToClosestTagMuon = -1;
-
-  info.isTagProbeElectron = false;
-  info.isTagProbeTauToElectron = false;
-
-  info.isTagProbeMuon = false;
-  info.isTagProbeTauToMuon = false;
-
-  return info;
+  return;
 }
 
 void 
 TrackImageProducerMINIAOD::getRecHits(const edm::Event &event)
 {
+  recHitInfos_.clear();
+
   edm::Handle<EBRecHitCollection> EBRecHits;
   event.getByToken(EBRecHitsToken_, EBRecHits);
   for(const auto &hit : *EBRecHits) {
     math::XYZVector pos = getPosition(hit.detid());
     recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), -999., DetType::EB));
+
+    for(auto &info : trackInfos_) {
+      double dR2 = deltaR2(pos.eta(), pos.phi(), info.eta, info.phi);
+      if(dR2 < 0.5*0.5) info.ecalo += hit.energy();
+    }
   }
 
   edm::Handle<EERecHitCollection> EERecHits;
@@ -313,6 +460,11 @@ TrackImageProducerMINIAOD::getRecHits(const edm::Event &event)
   for(const auto &hit : *EERecHits) {
     math::XYZVector pos = getPosition(hit.detid());
     recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), -999., DetType::EE));
+
+    for(auto &info : trackInfos_) {
+      double dR2 = deltaR2(pos.eta(), pos.phi(), info.eta, info.phi);
+      if(dR2 < 0.5*0.5) info.ecalo += hit.energy();
+    }
   }
 
   edm::Handle<ESRecHitCollection> ESRecHits;
@@ -327,29 +479,67 @@ TrackImageProducerMINIAOD::getRecHits(const edm::Event &event)
   for(const auto &hit : *HBHERecHits) {
     math::XYZVector pos = getPosition(hit.detid());
     recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), hit.energy(), -999., DetType::HCAL));
+
+    for(auto &info : trackInfos_) {
+      double dR2 = deltaR2(pos.eta(), pos.phi(), info.eta, info.phi);
+      if(dR2 < 0.5*0.5) info.ecalo += hit.energy();
+    }
   }
 
   edm::Handle<CSCSegmentCollection> CSCSegments;
   event.getByToken(CSCSegmentsToken_, CSCSegments);
   for(const auto &seg : *CSCSegments) {
+    vector<CSCRecHitInfo> CSCRecHits;
+    vector<DTRecHitInfo> DTRecHits;
+    for(const auto &recHit : seg.specificRecHits()) {
+      int iLayer   = recHit.cscDetId().layer();
+      int iChamber = recHit.cscDetId().chamber();
+      int iRing    = recHit.cscDetId().ring();
+      int iStation = recHit.cscDetId().station();
+      int iEndcap  = recHit.cscDetId().endcap(); 
+      math::XYZVector recHitPos = getPosition(recHit);
+      CSCRecHits.push_back(
+        CSCRecHitInfo(recHitPos.eta(),recHitPos.phi(),recHitPos.x(),recHitPos.y(),recHitPos.z(), recHit.tpeak(),
+                      iLayer,iChamber,iRing,iStation,iEndcap)
+      );
+    }
     math::XYZVector pos = getPosition(seg);
-    double time = -999.;
-    time = seg.time();
-    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, time, DetType::CSC));
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, seg.time(), CSCRecHits, DetType::CSC));
   }
 
   edm::Handle<DTRecSegment4DCollection> DTRecSegments;
   event.getByToken(DTRecSegmentsToken_, DTRecSegments);
   for(const auto &seg : *DTRecSegments) {
-    math::XYZVector pos = getPosition(seg);
+    vector<CSCRecHitInfo> CSCRecHits;
+    vector<DTRecHitInfo> DTRecHits;
     double time = -999.;
+    DTChamberId chamber = seg.chamberId();
     if(seg.hasPhi()) {
       time = seg.phiSegment()->t0();
+      for(const auto recHit : seg.phiSegment()->specificRecHits()){
+        DTWireId wire = recHit.wireId();
+        DTLayerId layer = wire.layerId();
+        DTSuperLayerId superlayer = layer.superlayerId();
+        math::XYZVector recHitPos = getPosition(recHit);
+        DTRecHits.push_back( DTRecHitInfo(recHitPos.eta(),recHitPos.phi(),recHitPos.x(),recHitPos.y(),recHitPos.z(), recHit.digiTime(),
+                             wire.wire(), layer.layer(), superlayer.superlayer(), chamber.wheel(), chamber.station(), chamber.sector())
+        ); 
+      }
     }
     if(seg.hasZed()) {
       time = seg.zSegment()->t0();
+      for(const auto recHit : seg.zSegment()->specificRecHits()){
+        DTWireId wire = recHit.wireId();
+        DTLayerId layer = wire.layerId();
+        DTSuperLayerId superlayer = layer.superlayerId();
+        math::XYZVector recHitPos = getPosition(recHit);
+        DTRecHits.push_back( DTRecHitInfo(recHitPos.eta(),recHitPos.phi(),recHitPos.x(),recHitPos.y(),recHitPos.z(), recHit.digiTime(),
+                             wire.wire(), layer.layer(), superlayer.superlayer(), chamber.wheel(), chamber.station(), chamber.sector())
+        );
+      }
     }
-    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, time, DetType::DT));
+    math::XYZVector pos = getPosition(seg);
+    recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, time, DTRecHits, DetType::DT));
   }
 
   edm::Handle<RPCRecHitCollection> RPCRecHits;
@@ -359,6 +549,65 @@ TrackImageProducerMINIAOD::getRecHits(const edm::Event &event)
     recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, -999., DetType::RPC));
   }
 
+}
+
+void
+TrackImageProducerMINIAOD::getGenParticles(const reco::CandidateView &genParticles) {
+  
+  genParticleInfos_.clear();
+
+  vector<const reco::Candidate*> cands;
+  vector<const reco::Candidate*>::const_iterator found = cands.begin();
+  for(reco::CandidateView::const_iterator p = genParticles.begin(); p != genParticles.end(); ++p) cands.push_back(&*p);
+
+  for(reco::CandidateView::const_iterator p = genParticles.begin(); p != genParticles.end(); p++) {
+    GenParticleInfo info;
+    info.px = p->px();
+    info.py = p->py();
+    info.pz = p->pz();
+    info.e  = p->energy();
+
+    info.eta = p->eta();
+    info.phi = p->phi();
+    info.pt  = p->pt();
+
+    info.pdgId = p->pdgId();
+    info.status = p->status();
+
+    info.mother1_index = -1;
+    info.mother2_index = -1;
+
+    info.daughter1_index = -1;
+    info.daughter2_index = -1;
+
+    info.nMothers = p->numberOfMothers();
+    info.nDaughters = p->numberOfDaughters();
+
+    found = find(cands.begin(), cands.end(), p->mother(0));
+    if(found != cands.end()) info.mother1_index = found - cands.begin();
+
+    found = find(cands.begin(), cands.end(), p->mother(p->numberOfMothers() - 1));
+    if(found != cands.end()) info.mother2_index = found - cands.begin();
+
+    found = find(cands.begin(), cands.end(), p->daughter(0));
+    if(found != cands.end()) info.daughter1_index = found - cands.begin();
+
+    found = find(cands.begin(), cands.end(), p->daughter(p->numberOfDaughters() - 1));
+    if(found != cands.end()) info.daughter2_index = found - cands.begin();
+
+    const reco::GenParticle* gp = dynamic_cast<const reco::GenParticle*>(&*p);
+
+    info.isPromptFinalState = gp->isPromptFinalState();
+    info.isDirectPromptTauDecayProductFinalState = gp->isDirectPromptTauDecayProductFinalState();
+    info.isHardProcess = gp->isHardProcess();
+    info.fromHardProcessFinalState = gp->fromHardProcessFinalState();
+    info.fromHardProcessBeforeFSR = gp->fromHardProcessBeforeFSR();
+    info.isFirstCopy = gp->statusFlags().isFirstCopy();
+    info.isLastCopy = gp->isLastCopy();
+    info.isLastCopyBeforeFSR = gp->isLastCopyBeforeFSR();
+
+    genParticleInfos_.push_back(info);
+  }
 }
 
 const math::XYZVector 
@@ -385,10 +634,30 @@ TrackImageProducerMINIAOD::getPosition(const CSCSegment& seg) const
 }
 
 const math::XYZVector
+TrackImageProducerMINIAOD::getPosition(const CSCRecHit2D& recHit) const
+{
+  const LocalPoint localPos = recHit.localPosition();
+  const CSCDetId id = recHit.cscDetId();
+
+  const GlobalPoint idPosition = cscGeometry_->chamber(id)->toGlobal(localPos);
+  math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
+  return idPositionRoot;
+}
+
+const math::XYZVector
 TrackImageProducerMINIAOD::getPosition(const DTRecSegment4D& seg) const
 {
   const LocalPoint segmentLocal = seg.localPosition();
   const GlobalPoint idPosition = dtGeometry_->idToDet(seg.geographicalId())->surface().toGlobal(segmentLocal);
+  math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
+  return idPositionRoot;
+}
+
+const math::XYZVector
+TrackImageProducerMINIAOD::getPosition(const DTRecHit1D& recHit) const
+{
+  const LocalPoint localPos = recHit.localPosition();
+  const GlobalPoint idPosition = dtGeometry_->idToDet(recHit.geographicalId())->surface().toGlobal(localPos);
   math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
   return idPositionRoot;
 }
@@ -498,7 +767,7 @@ TrackImageProducerMINIAOD::isProbeTrack(const TrackInfo info) const
   return true;
 }
 
-const bool
+const unsigned int
 TrackImageProducerMINIAOD::isTagProbeElePair(const CandidateTrack &probe, const pat::Electron &tag) const 
 {
   TLorentzVector t(tag.px(), tag.py(), tag.pz(), tag.energy());
@@ -510,12 +779,11 @@ TrackImageProducerMINIAOD::isTagProbeElePair(const CandidateTrack &probe, const 
                         probe.pz() * probe.pz() + 
                         0.000510998928 * 0.000510998928)); // energyOfElectron()
 
-  if(fabs((t + p).M() - 91.1876) >= 10.0 || tag.charge() * probe.charge() >= 0) return false;
-
-  return true;
+  if(fabs((t + p).M() - 91.1876) >= 10.0) return 0b00;
+  return (tag.charge() * probe.charge() < 0) ? 0b01 : 0b10;
 }
 
-const bool
+const unsigned int
 TrackImageProducerMINIAOD::isTagProbeTauToElePair(const CandidateTrack &probe, 
                                                   const pat::Electron &tag, 
                                                   const pat::MET &met) const 
@@ -533,12 +801,12 @@ TrackImageProducerMINIAOD::isTagProbeTauToElePair(const CandidateTrack &probe,
                         0.000510998928 * 0.000510998928)); // energyOfElectron()
 
   double invMass = (t + p).M();
-  if(invMass <= 91.1876 - 50 || invMass >= 91.1876 - 15 || tag.charge() * probe.charge() >= 0) return false;
 
-  return true;
+  if(invMass <= 91.1876 - 50 || invMass >= 91.1876 - 15) return 0b00;
+  return (tag.charge() * probe.charge() < 0) ? 0b01 : 0b10;
 }
 
-const bool
+const unsigned int
 TrackImageProducerMINIAOD::isTagProbeMuonPair(const CandidateTrack &probe, const pat::Muon &tag) const 
 {
   TLorentzVector t(tag.px(), tag.py(), tag.pz(), tag.energy());
@@ -550,12 +818,11 @@ TrackImageProducerMINIAOD::isTagProbeMuonPair(const CandidateTrack &probe, const
                         probe.pz() * probe.pz() + 
                         0.1056583715 * 0.1056583715)); // energyOfMuon()
 
-  if(fabs((t + p).M() - 91.1876) >= 10.0 || tag.charge() * probe.charge() >= 0) return false;
-
-  return true;
+  if(fabs((t + p).M() - 91.1876) >= 10.0) return 0b00;
+  return (tag.charge() * probe.charge() < 0) ? 0b01 : 0b10;
 }
 
-const bool
+const unsigned int
 TrackImageProducerMINIAOD::isTagProbeTauToMuonPair(const CandidateTrack &probe, 
                                                    const pat::Muon &tag, 
                                                    const pat::MET &met) const 
@@ -573,9 +840,9 @@ TrackImageProducerMINIAOD::isTagProbeTauToMuonPair(const CandidateTrack &probe,
                         0.1056583715 * 0.1056583715)); // energyOfMuon()
 
   double invMass = (t + p).M();
-  if(invMass <= 91.1876 - 50 || invMass >= 91.1876 - 15 || tag.charge() * probe.charge() >= 0) return false;
 
-  return true;
+  if(invMass <= 91.1876 - 50 || invMass >= 91.1876 - 15) return 0b00;
+  return (tag.charge() * probe.charge() < 0) ? 0b01 : 0b10;
 }
 
 const double
