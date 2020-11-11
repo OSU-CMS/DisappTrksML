@@ -1,6 +1,8 @@
 #ifndef INFO_STRUCTS
 #define INFO_STRUCTS
 
+#include <vector>
+
 struct TrackInfo {
   double deltaRToClosestElectron, deltaRToClosestMuon, deltaRToClosestTauHad;
   double dRMinJet;
@@ -21,9 +23,54 @@ struct TrackInfo {
   bool isTagProbeTauToElectron, isTagProbeTauToMuon;
 };
 
+struct CSCRecHitInfo {
+  double eta, phi, x, y, z, tpeak;
+  int layer, chamber, ring, station, endcap;
+
+  CSCRecHitInfo() {}
+
+  CSCRecHitInfo(double eta_, double  phi_, double x_, double y_, double z_, double tpeak_,
+                int layer_, int chamber_, int ring_, int station_, int endcap_):
+    eta(eta_),
+    phi(phi_),
+    x(x_),
+    y(y_),
+    z(z_),
+    tpeak(tpeak_),
+    layer(layer_),
+    chamber(chamber_),
+    ring(ring_),
+    station(station_),
+    endcap(endcap_) {}
+};
+
+struct DTRecHitInfo {
+  double eta, phi, x, y, z, digitime;
+  int wire, layer, superlayer, wheel, station, sector;
+
+  DTRecHitInfo() {}
+
+  DTRecHitInfo(double eta_, double  phi_, double x_, double y_, double z_, double digitime_,
+               int wire_, int layer_, int superlayer_, int wheel_, int station_, int sector_):
+    eta(eta_),
+    phi(phi_),
+    x(x_),
+    y(y_),
+    z(z_),
+    digitime(digitime_),
+    wire(wire_),
+    layer(layer_),
+    superlayer(superlayer_),
+    wheel(wheel_), 
+    station(station_),
+    sector(sector_) {}
+};
+
 struct RecHitInfo {
   double eta, phi, energy, time;
   int detType;
+  std::vector<CSCRecHitInfo> cscRecHits;
+  std::vector<DTRecHitInfo> dtRecHits;
 
   RecHitInfo() {}
 
@@ -33,6 +80,24 @@ struct RecHitInfo {
     energy(energy_),
     time(time_),
     detType(detType_) {}
+
+  RecHitInfo(double eta_, double phi_, double energy_, double time_, std::vector<CSCRecHitInfo> cscRecHits_, int detType_) :
+    eta(eta_),
+    phi(phi_),
+    energy(energy_),
+    time(time_),
+    detType(detType_) {
+      cscRecHits = cscRecHits_;
+    }
+
+  RecHitInfo(double eta_, double phi_, double energy_, double time_, std::vector<DTRecHitInfo> dtRecHits_, int detType_) :
+    eta(eta_),
+    phi(phi_),
+    energy(energy_),
+    time(time_),
+    detType(detType_) {
+      dtRecHits = dtRecHits_;
+    }
 };
 
 struct GenParticleInfo {
