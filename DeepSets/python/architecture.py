@@ -1,10 +1,20 @@
 #!/usr/bin/env python
 
 import math
-
+from datetime import datetime
 import numpy as np
+import pickle
 
 from ROOT import TFile, TTree
+
+import tensorflow as tf
+from tensorflow import keras
+
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization
+from tensorflow.keras import optimizers, regularizers
+
+import matplotlib.pyplot as plt
 
 # combine EB+EE and muon detectors into ECAL/HCAL/MUO indices
 def detectorIndex(detType):
@@ -160,17 +170,11 @@ class DeepSetsArchitecture:
                             background=background,
                             background_info=background_info)
 
-        print('Wrote', outputFileName)
+        print 'Wrote', outputFileName
 
         inputFile.Close()
 
     def buildModel(self):
-        import tensorflow as tf
-        from tensorflow import keras
-
-        from tensorflow.keras.models import Model
-        from tensorflow.keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization
-
         inputs = Input(shape=(self.input_shape[-1],))
 
         # build phi network for each individual hit
@@ -210,21 +214,29 @@ class DeepSetsArchitecture:
 
         self.model = model
 
+    def load_model_weights(self, weights_path):
+        self.buildModel()
+        self.model.load_weights(weights_path)
+
+    def evaluate_model(self, track):
+        return self.model.predict(track)
+
     def fit_generator(self, train_generator, validation_data, epochs=10):
-        import tensorflow as tf
-        from tensorflow.keras import optimizers, regularizers
         self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=['accuracy'])
 
         self.training_history = self.model.fit_generator(train_generator,
                                                          validation_data=validation_data,
                                                          epochs=epochs)
 
+        backup_suffix = datetime.now().strftime('%Y-%M-%d_%H.%M.%S')
+        self.save_weights('model_' + backup_suffix + '.h5')
+        pickle.dump(self.training_history, open('trainingHistory_' + backup_suffix + '.pkl', 'wb'))
+
     def save_weights(self, outputFileName):
         self.model.save_weights(outputFileName)
+        print 'Saved models in file:', outputFileName
 
     def displayTrainingHistory(self):
-        import matplotlib.pyplot as plt
-
         acc = self.training_history.history['accuracy']
         val_acc = self.training_history.history['val_accuracy']
 
