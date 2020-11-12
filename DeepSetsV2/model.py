@@ -1,8 +1,5 @@
-import tensorflow as tf
-import keras
-from keras.models import Model
-from keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization
-from keras.layers.merge import concatenate
+
+from tensorflow.keras.layers.merge import concatenate
 
 def buildModel(input_shape=(100,4), phi_layers=[64, 64, 256], f_layers=[64, 64, 64]):
 	inputs = Input(shape=(input_shape[-1],))

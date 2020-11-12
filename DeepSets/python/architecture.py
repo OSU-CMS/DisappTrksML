@@ -82,7 +82,7 @@ class DeepSetsArchitecture:
     def set_f_layers(self, layers):
         self.f_layers = layers
 
-    def convertTrackFromTree(self, event, track, class_label, trackNumber):
+    def convertTrackFromTree(self, event, track, class_label):
         hits = []
 
         for hit in event.recHits:
@@ -154,11 +154,11 @@ class DeepSetsArchitecture:
                 if not trackPasses[i]: continue
 
                 if isGenMatched(event, track, 11):
-                    values = self.convertTrackFromTree(event, track, 1, i)
+                    values = self.convertTrackFromTree(event, track, 1)
                     signal.append(values['sets'])
                     signal_info.append(values['infos'])
                 else:
-                    values = self.convertTrackFromTree(event, track, 0, i)
+                    values = self.convertTrackFromTree(event, track, 0)
                     background.append(values['sets'])
                     background_info.append(values['infos'])
 
