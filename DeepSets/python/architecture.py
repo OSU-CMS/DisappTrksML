@@ -215,11 +215,12 @@ class DeepSetsArchitecture:
         self.model = model
 
     def load_model_weights(self, weights_path):
-        self.buildModel()
         self.model.load_weights(weights_path)
 
-    def evaluate_model(self, track):
-        return self.model.predict(track)
+    def evaluate_model(self, event, track):
+        converted_arrays = self.convertTrackFromTree(event, track, 1) # class_label doesn't matter
+        prediction = self.model.predict(converted_arrays['sets'])
+        return prediction[0][1] # p(is electron)
 
     def fit_generator(self, train_generator, validation_data, epochs=10):
         self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=['accuracy'])

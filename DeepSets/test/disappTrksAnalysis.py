@@ -10,6 +10,8 @@ from tensorflow.keras.layers import concatenate
 from DisappTrksML.DeepSets.architecture import *
 
 arch = DeepSetsArchitecture()
+arch.buildModel()
+arch.load_model_weights('noReco_64.64.256_64.64.64.h5')
 
 def calculateFidicualMaps(electron_payload, muon_payload, payload_suffix):
 
@@ -73,8 +75,8 @@ def fiducialMapSigmas(track, fiducial_maps):
 
 def signalSelection(event, fiducial_maps, fiducial_map_cut=-1):
 
-	eventPasses = (event.firesGrandOrTrigger and
-				   event.passMETFilters and
+	eventPasses = (event.firesGrandOrTrigger == 1 and
+				   event.passMETFilters == 1 and
 				   event.numGoodPVs >= 1 and
 				   event.metNoMu > 120 and
 				   event.numGoodJets >= 1 and
@@ -89,7 +91,7 @@ def signalSelection(event, fiducial_maps, fiducial_map_cut=-1):
 	for i, track in enumerate(event.tracks):
 		if (not abs(track.eta) < 2.1 or
 			not track.pt > 55 or
-			track.inGap or
+			track.inGap == 0 or
 			not (track.phi < 2.7 or track.eta < 0 or track.eta > 1.42)): # 2017 eta-phi low efficiency
 			continue
 
@@ -119,7 +121,7 @@ def signalSelection(event, fiducial_maps, fiducial_map_cut=-1):
 	return (True in trackPasses), trackPasses
 
 def fakeBackgroundSelection(event, fiducial_maps, fiducial_map_cut=-1):
-	eventPasses = event.passMETFilters
+	eventPasses = (event.passMETFilters == 1)
 	trackPasses = [False] * len(event.tracks)
 
 	if not eventPasses:
@@ -128,7 +130,7 @@ def fakeBackgroundSelection(event, fiducial_maps, fiducial_map_cut=-1):
 	for i, track in enumerate(event.tracks):
 		if (not abs(track.eta) < 2.1 or
 			not track.pt > 30 or
-			track.inGap or
+			track.inGap == 0 or
 			not (track.phi < 2.7 or track.eta < 0 or track.eta > 1.42)): # 2017 eta-phi low efficiency
 			continue
 
@@ -161,7 +163,7 @@ def fakeBackgroundSelection(event, fiducial_maps, fiducial_map_cut=-1):
 
 def leptonBackgroundSelection(event, fiducial_maps, lepton_type, fiducial_map_cut=-1):
 
-	eventPasses = event.passMETFilters
+	eventPasses = (event.passMETFilters == 1)
 	trackPasses = [False] * len(event.tracks)
 	trackPassesVeto = [False] * len(event.tracks)
 
@@ -172,7 +174,7 @@ def leptonBackgroundSelection(event, fiducial_maps, lepton_type, fiducial_map_cu
 
 		if (not abs(track.eta) < 2.1 or
 			not track.pt > 30 or
-			track.inGap or
+			track.inGap == 0 or
 			not (track.phi < 2.7 or track.eta < 0 or track.eta > 1.42)): # 2017 eta-phi low efficiency
 			continue
 
@@ -217,65 +219,43 @@ def leptonBackgroundSelection(event, fiducial_maps, lepton_type, fiducial_map_cu
 
 	return (True in trackPasses), trackPasses, trackPassesVeto
 
-def buildModelWithEventInfo(input_shape=(100, 4), info_shape=5, phi_layers=[64, 64, 256], f_layers=[64, 64, 64]):
-	inputs = Input(shape=(input_shape[-1],))
-
-	# build phi network for each individual hit
-	phi_network = Masking()(inputs)
-	for layerSize in phi_layers[:-1]:
-		phi_network = Dense(layerSize)(phi_network)
-		phi_network = Activation('relu')(phi_network)
-		phi_network = BatchNormalization()(phi_network)
-	phi_network = Dense(phi_layers[-1])(phi_network)
-	phi_network = Activation('linear')(phi_network)
-
-	# build summed model for latent space
-	unsummed_model = Model(inputs=inputs, outputs=phi_network)
-	set_input = Input(shape=input_shape)
-	phi_set = TimeDistributed(unsummed_model)(set_input)
-	summed = Lambda(lambda x: tf.reduce_sum(x, axis=1))(phi_set)
-	phi_model = Model(inputs=set_input, outputs=summed)
-
-	# define F (rho) network evaluating in the latent space
-	f_inputs = Input(shape=(phi_layers[-1] + info_shape,)) # plus any other track/event-wide variable
-	f_network = Dense(f_layers[0])(f_inputs)
-	f_network = Activation('relu')(f_network)
-	for layerSize in f_layers[1:]:
-		f_network = Dense(layerSize)(f_network)
-		f_network = Activation('relu')(f_network)
-	f_network = Dense(2)(f_network)
-	f_outputs = Activation('softmax')(f_network)
-	f_model = Model(inputs=f_inputs, outputs=f_outputs)
-
-	# build the DeepSets architecture
-	deepset_inputs = Input(shape=input_shape)
-	latent_space = phi_model(deepset_inputs)
-	info_inputs = Input(shape=(info_shape,))
-	deepset_inputs2 = concatenate([latent_space,info_inputs])
-	deepset_outputs = f_model(deepset_inputs2)
-	model = Model(inputs=[deepset_inputs,info_inputs], outputs=deepset_outputs)
-
-	model.compile(optimizer=keras.optimizers.Adam(), 
-				  loss='categorical_crossentropy', 
-				  metrics=['accuracy'])
-
-	return model
-
-def evaluateModel(model, event, track):
-	converted_arrays = arch.convertTrackFromTree(event, track, 1) # class_label doesn't matter
-	x = np.reshape(converted_arrays['sets'], (1, 100, 4))
-	x_info = np.reshape(converted_arrays['infos'][[5, 9, 10, 11, 12]], (1, 5))
-
-	prediction = model.predict([x, x_info])
-	return prediction[0][0]
+def printEventInfo(event, track):
+	print 'EVENT INFO'
+	print 'Trigger:', event.firesGrandOrTrigger
+	print 'MET filters:', event.passMETFilters
+	print 'Num good PVs (>=1):', event.numGoodPVs
+	print 'MET (no mu) (>120):', event.metNoMu
+	print 'Num good jets (>=1):', event.numGoodJets
+	print 'max dijet dPhi (<=2.5):', event.dijetDeltaPhiMax
+	print 'dPhi(lead jet, met no mu) (>0.5):', abs(event.leadingJetMetPhi)
+	print
+	print 'TRACK INFO'
+	print '\teta (<2.1):', abs(track.eta)
+	print '\tpt (>55):', track.pt
+	print '\tIn gap (false):', track.inGap
+	print '\tNot in 2017 low eff. region (true):', (track.phi < 2.7 or track.eta < 0 or track.eta > 1.42)
+	print '\tmin dR(track, bad ecal channel) (>= 0.05):', track.dRMinBadEcalChannel
+	print '\tnValidPixelHits (>=4):', track.nValidPixelHits
+	print '\tnValidHits (>=4):', track.nValidHits
+	print '\tmissing inner hits (==0):', track.missingInnerHits
+	print '\tmissing middle hits (==0):', track.missingMiddleHits
+	print '\ttrackIso/pt (<0.05):', track.trackIso / track.pt
+	print '\td0 (<0.02):', abs(track.d0)
+	print '\tdz (<0.5):', abs(track.dz)
+	print '\tmin dR(track, jet) (>0.5):', abs(track.dRMinJet)
+	print '\tmin dR(track, ele) (>0.15):', abs(track.deltaRToClosestElectron)
+	print '\tmin dR(track, muon) (>0.15):', abs(track.deltaRToClosestMuon)
+	print '\tmin dR(track, tauHad) (>0.15):', abs(track.deltaRToClosestTauHad)
+	print '\tecalo (<10):', track.ecalo
+	print '\tmissing outer hits (>=3):', track.missingOuterHits
+	print
+	print '\tisTagProbeElectron:', track.isTagProbeElectron
+	print '\tisTagProbeMuon:', track.isTagProbeMuon
 
 def processDataset(dataset, inputDir):
 	payload_dir = os.environ['CMSSW_BASE'] + '/src/OSUT3Analysis/Configuration/data/'
 	fiducial_maps = calculateFidicualMaps(payload_dir + 'electronFiducialMap_2017_data.root', 
 										  payload_dir + 'muonFiducialMap_2017_data.root', '_2017F')
-
-	model = buildModelWithEventInfo()
-	model.load_weights('weights_noReco.h5')
 
 	h_disc  = TH2D('disc', 'disc:discriminant:nLayers', 100, 0, 1, 10, 0, 10)
 	h_sigma = TH2D('sigma', 'sigma:sigma:nLayers', 100, 0, 10, 10, 0, 10)
@@ -286,6 +266,8 @@ def processDataset(dataset, inputDir):
 
 	nEvents = chain.GetEntries()
 	print '\nAdded', nEvents, 'events for dataset type:', dataset, '\n'
+
+	firstTrack = False
 
 	for iEvent, event in enumerate(chain):
 		if iEvent % 10000 == 0:
@@ -304,7 +286,11 @@ def processDataset(dataset, inputDir):
 			if not trackPasses[iTrack]: continue
 			if dataset in ['electrons', 'muons'] and not trackPassesVeto[iTrack]: continue
 
-			discriminant = evaluateModel(model, event, track)
+			if not firstTrack:
+				printEventInfo(event, track)
+				firstTrack = True
+
+			discriminant = arch.evaluate_model(event, track)
 			fiducial_sigmas = fiducialMapSigmas(track, fiducial_maps)
 
 			h_disc.Fill(discriminant, track.nLayersWithMeasurement)
@@ -345,10 +331,10 @@ def analyze():
 #######################################
 
 datasets = {
-	'electrons' : '/store/user/bfrancis/images_v5/SingleEle_2017F/*.root',
-	'muons'     : '/store/user/bfrancis/images_v5/SingleMu_2017F/*.root',
-	'fake'      : '/store/user/bfrancis/images_v5/ZtoMuMu_2017F/*.root',
-	'higgsino_300_1000' : '/data/users/bfrancis/condor/2017/images_higgsino_300_1000/*.root',
+	'electrons' : '/store/user/bfrancis/images_v5/SingleEle_2017F/hist_*.root',
+	'muons'     : '/store/user/bfrancis/images_v5/SingleMu_2017F/hist_*.root',
+	'fake'      : '/store/user/bfrancis/images_v5/ZtoMuMu_2017F/hist_*.root',
+	'higgsino_300_1000' : '/data/users/bfrancis/condor/2017/images_higgsino_300_1000/hist_*.root',
 }
 
 for dataset in datasets:
