@@ -219,7 +219,7 @@ class DeepSetsArchitecture:
 
     def evaluate_model(self, event, track):
         converted_arrays = self.convertTrackFromTree(event, track, 1) # class_label doesn't matter
-        prediction = self.model.predict(converted_arrays['sets'])
+        prediction = self.model.predict(np.reshape(converted_arrays['sets'], (1, 100, 4)))
         return prediction[0][1] # p(is electron)
 
     def fit_generator(self, train_generator, validation_data, epochs=10):
