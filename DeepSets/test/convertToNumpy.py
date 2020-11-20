@@ -11,7 +11,7 @@ from DisappTrksML.DeepSets.architecture import *
 
 ## PARAMETERS ##
 
-inputDirectory = '/store/user/bfrancis/images_DYJetsToLL_v4/'
+inputDirectory = '/store/user/bfrancis/images_v5/DYJetsToLL/'
 
 ################
 

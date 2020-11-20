@@ -165,11 +165,14 @@ class DataGeneratorV3(keras.utils.Sequence):
 			fin = np.load(self.input_dir + '/hist_' + idx + '.root.npz')
 			self.signal_files = np.concatenate((self.signal_files,np.ones(fin['signal'].shape[0])*int(idx)))
 			self.signal_events = np.concatenate((self.signal_events,np.arange(fin['signal'].shape[0],dtype=int)))
-			self.background_files = np.concatenate((self.background_files,np.ones(fin['signal'].shape[0])*int(idx)))
-			self.background_events = np.concatenate((self.background_events,np.arange(fin['signal'].shape[0],dtype=int)))
+			self.background_files = np.concatenate((self.background_files,np.ones(fin['background'].shape[0])*int(idx)))
+			self.background_events = np.concatenate((self.background_events,np.arange(fin['background'].shape[0],dtype=int)))
 
 		self.num_signal = len(self.signal_events)
 		self.num_background = len(self.background_events)
+
+		print self.num_signal
+		print self.num_background
 
 	def __len__(self):
 		max_signal_batches = np.floor(self.num_signal / (self.batch_size*self.batch_ratio))

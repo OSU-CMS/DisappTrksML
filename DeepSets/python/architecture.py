@@ -123,6 +123,58 @@ class DeepSetsArchitecture:
 
         return values
 
+    def convertTrackFromTreeMuons(self, event, track, class_label):
+        hits = []
+        dists = []
+
+        for hit in event.recHits:
+
+            # CSC
+            if hit.detType == 5:
+                station = hit.cscRecHits[0].station
+                time = hit.cscRecHits[0].tpeak
+            # DT
+            elif hit.detType == 6:
+                station = hit.dtRecHits[0].station
+                time = hit.dtRecHits[0].digitime 
+            # FIXME: add other detTypes
+            else: continue
+
+            dEta, dPhi = imageCoordinates(track, hit)
+            if abs(dEta) >= self.eta_range or abs(dPhi) >= self.phi_range: continue
+            
+            hits.append((dEta, dPhi, station, time))
+            dists.append(dEta**2 + dPhi**2)
+
+        # sort by closest hits to track in eta, phi
+        if len(hits) > 0:
+            hits = np.reshape(hits, (len(hits), 4))
+            hits = hits[np.array(dists).argsort()]
+
+        sets = np.zeros(self.input_shape)
+        for i in range(min(len(hits), self.max_hits)):
+            for j in range(4):
+                sets[i][j] = hits[i][j]
+
+        infos = np.array([event.eventNumber, event.lumiBlockNumber, event.runNumber,
+                          class_label,
+                          event.nPV,
+                          track.deltaRToClosestElectron,
+                          track.deltaRToClosestMuon,
+                          track.deltaRToClosestTauHad,
+                          track.eta,
+                          track.phi,
+                          track.dRMinBadEcalChannel,
+                          track.nLayersWithMeasurement,
+                          track.nValidPixelHits])
+
+        values = {
+            'sets' : sets,
+            'infos' : infos,
+        }
+
+        return values
+
     def eventSelection(self, event):
         trackPasses = []
         for track in event.tracks:
@@ -130,7 +182,7 @@ class DeepSetsArchitecture:
                 track.inGap or
                 abs(track.dRMinJet) < 0.5 or
                 abs(track.deltaRToClosestElectron) < 0.15 or
-                abs(track.deltaRToClosestMuon) < 0.15 or
+                # abs(track.deltaRToClosestMuon) < 0.15 or
                 abs(track.deltaRToClosestTauHad) < 0.15):
                 trackPasses.append(False)
             else:
@@ -153,12 +205,12 @@ class DeepSetsArchitecture:
             for i, track in enumerate(event.tracks):
                 if not trackPasses[i]: continue
 
-                if isGenMatched(event, track, 11):
-                    values = self.convertTrackFromTree(event, track, 1)
+                if isGenMatched(event, track, 13):
+                    values = self.convertTrackFromTreeMuons(event, track, 1)
                     signal.append(values['sets'])
                     signal_info.append(values['infos'])
                 else:
-                    values = self.convertTrackFromTree(event, track, 0)
+                    values = self.convertTrackFromTreeMuons(event, track, 0)
                     background.append(values['sets'])
                     background_info.append(values['infos'])
 
@@ -224,10 +276,10 @@ class DeepSetsArchitecture:
 
     def fit_generator(self, train_generator, validation_data, epochs=10):
         self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=['accuracy'])
-
-        self.training_history = self.model.fit_generator(train_generator,
-                                                         validation_data=validation_data,
-                                                         epochs=epochs)
+        
+        self.training_history = self.model.fit(train_generator,
+                                             validation_data=validation_data,
+                                             epochs=epochs)
 
         backup_suffix = datetime.now().strftime('%Y-%M-%d_%H.%M.%S')
         self.save_weights('model_' + backup_suffix + '.h5')

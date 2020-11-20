@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import random
 import pickle
 import datetime
+from keras import optimizers, regularizers, callbacks
 			
 import utils
 import validate
@@ -69,13 +70,13 @@ weightsDir = workDir + '/weights/'
 outputDir = workDir + '/outputFiles/'
 
 ################config parameters################
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_electrons_noRecoReq/"
+dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_sets_electrons/"
 logDir = "/home/" + os.environ["USER"] + "/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 run_validate = True
-nTotE = 500000 
+nTotE = 12000
 val_size = 0.2
-undersample_bkg = 0.5
+undersample_bkg = 0.9
 v = 1
 batch_size = 256
 epochs = 10
@@ -112,20 +113,19 @@ np.save(outputDir+"bkg_events_valBatches", bkg_data[3])
 
 # initialize generators
 train_generator = generator(e_data[0], e_data[1], bkg_data[0], bkg_data[1], 
-					batch_size, dataDir, False, True, True)
+					batch_size, dataDir, False, True, False)
 val_generator = generator(e_data[2], e_data[3], bkg_data[2], bkg_data[3], 
-					batch_size, dataDir, False, True, True)
+					batch_size, dataDir, False, True, False)
 
-model = buildModelWithEventInfo(info_shape=5)
-#model = buildModel()
+model = buildModel()
 
-model.compile(optimizer=keras.optimizers.Adam(), 
+model.compile(optimizer=optimizers.Adam(), 
 			  loss='categorical_crossentropy', 
 			  metrics=metrics)
 
 callbacks = [
-	keras.callbacks.EarlyStopping(patience=patience_count),
-	keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5',
+	callbacks.EarlyStopping(patience=patience_count),
+	callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5',
 									save_best_only=True,
 									monitor=monitor,
 									mode='auto')
