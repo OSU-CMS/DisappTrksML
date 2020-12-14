@@ -12,17 +12,20 @@ from DisappTrksML.DeepSets.architecture import *
 ## PARAMETERS ##
 
 inputDirectory = '/store/user/bfrancis/images_v5/DYJetsToLL/'
+outputDirectory = ""
+fileNumber = 1001
 
 ################
 
 arch = DeepSetsArchitecture()
 
 useCondor = False
+useMultiThreads = False
 
 if len(sys.argv) > 1:
 	useCondor = True
 
-if not useCondor:
+if useMultiThreads:
 	print 'Running multiple threads, resulting files stored here...'
 
 	semaphore = Semaphore(cpu_count() + 1)
@@ -46,14 +49,23 @@ if not useCondor:
 
 	for thread in threads:
 		thread.join()
-else:
+
+elif useCondor:
 	if len(sys.argv) < 4:
-		print 'USAGE: python convertToNumpy.py fileNumber inputDir outputDir'
+		print 'USAGE: python convertToNumpy.py fileIndex fileList inputDir outputDir'
 		sys.exit(-1)
 		
-	fileNumber = sys.argv[1]
-	inputDirectory = sys.argv[2]
-	outputDirectory = sys.argv[3]
+	fileIndex = sys.argv[1]
+	fileList = sys.argv[2]
+	inputDirectory = sys.argv[3]
+	outputDirectory = sys.argv[4]
 
-	arch.convertFileToNumpy(inputDirectory + 'hist_' + fileNumber + '.root')
-	os.system('mv -v hist_' + fileNumber + '.root.npz ' + outputDirectory)
+	inarray = np.loadtxt(fileList,dtype=float)
+	fileNumber = int(inarray[int(fileIndex)])
+
+	arch.convertMCFileToNumpy(inputDirectory + 'hist_' + str(fileNumber) + '.root')
+	os.system('mv -v hist_' + str(fileNumber) + '.root.npz ' + outputDirectory)
+
+else:
+	arch.convertMCFileToNumpy(inputDirectory + 'hist_' + str(fileNumber) + '.root')
+	os.system('mv -v hist_' + str(fileNumber) + '.root.npz ' + outputDirectory)

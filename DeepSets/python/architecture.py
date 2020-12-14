@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import warnings
+warnings.filterwarnings('ignore')
 
 import math
 from datetime import datetime
@@ -11,7 +13,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization
+from tensorflow.keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization, concatenate
 from tensorflow.keras import optimizers, regularizers
 
 import matplotlib.pyplot as plt
@@ -69,12 +71,13 @@ class DeepSetsArchitecture:
     model = None
     training_history = None
 
-    def __init__(self, eta_range=0.25, phi_range=0.25, maxHits=100):
+    def __init__(self, eta_range=0.25, phi_range=0.25, maxHits=100, track_info_shape = 0):
         self.eta_range = eta_range
         self.phi_range = phi_range
         self.max_hits = maxHits
 
         self.input_shape = (self.max_hits, 4)
+        self.track_info_shape = track_info_shape
 
     def set_phi_layers(self, layers):
         self.phi_layers = layers
@@ -182,14 +185,14 @@ class DeepSetsArchitecture:
                 track.inGap or
                 abs(track.dRMinJet) < 0.5 or
                 abs(track.deltaRToClosestElectron) < 0.15 or
-                # abs(track.deltaRToClosestMuon) < 0.15 or
+                abs(track.deltaRToClosestMuon) < 0.15 or
                 abs(track.deltaRToClosestTauHad) < 0.15):
                 trackPasses.append(False)
             else:
                 trackPasses.append(True)
         return (True in trackPasses), trackPasses
 
-    def convertFileToNumpy(self, fileName):
+    def convertMCFileToNumpy(self, fileName):
         inputFile = TFile(fileName, 'read')
         inputTree = inputFile.Get('trackImageProducer/tree')
 
@@ -204,29 +207,61 @@ class DeepSetsArchitecture:
 
             for i, track in enumerate(event.tracks):
                 if not trackPasses[i]: continue
-
-                if isGenMatched(event, track, 13):
-                    values = self.convertTrackFromTreeMuons(event, track, 1)
+                
+                if isGenMatched(event, track, 11):
+                    values = self.convertTrackFromTree(event, track, 1)
                     signal.append(values['sets'])
                     signal_info.append(values['infos'])
                 else:
-                    values = self.convertTrackFromTreeMuons(event, track, 0)
+                    values = self.convertTrackFromTree(event, track, 0)
                     background.append(values['sets'])
                     background_info.append(values['infos'])
 
         outputFileName = fileName.split('/')[-1] + '.npz'
 
+        if len(signal) != 0 or len(background) != 0:
+            np.savez_compressed(outputFileName,
+                                signal=signal,
+                                signal_info=signal_info,
+                                background=background,
+                                background_info=background_info)
+
+            print 'Wrote', outputFileName
+        else:
+            print 'No events found in file'
+
+        inputFile.Close()
+
+    def convertFileToNumpy(self, fileName):
+        inputFile = TFile(fileName, 'read')
+        inputTree = inputFile.Get('trackImageProducer/tree')
+
+        tracks = []
+        infos = []
+
+        for event in inputTree:
+            eventPasses, trackPasses = self.eventSelection(event)
+            if not eventPasses: continue
+
+            for i, track in enumerate(event.tracks):
+                if not trackPasses[i]: continue
+
+                values = self.convertTrackFromTreeMuons(event, track, 1)
+                tracks.append(values['sets'])
+                infos.append(values['infos'])       
+
+        outputFileName = fileName.split('/')[-1] + '.npz'
+
         np.savez_compressed(outputFileName,
-                            signal=signal,
-                            signal_info=signal_info,
-                            background=background,
-                            background_info=background_info)
+                            tracks=tracks,
+                            infos=infos)
 
         print 'Wrote', outputFileName
 
         inputFile.Close()
 
     def buildModel(self):
+
         inputs = Input(shape=(self.input_shape[-1],))
 
         # build phi network for each individual hit
@@ -246,7 +281,8 @@ class DeepSetsArchitecture:
         phi_model = Model(inputs=set_input, outputs=summed)
 
         # define F (rho) network evaluating in the latent space
-        f_inputs = Input(shape=(self.phi_layers[-1],)) # plus any other track/event-wide variable
+        if(self.track_info_shape == 0): f_inputs = Input(shape=(self.phi_layers[-1],)) # plus any other track/event-wide variable
+        else: f_inputs = Input(shape=(self.phi_layers[-1]+self.track_info_shape,))
         f_network = Dense(self.f_layers[0])(f_inputs)
         f_network = Activation('relu')(f_network)
         for layerSize in self.f_layers[1:]:
@@ -259,8 +295,15 @@ class DeepSetsArchitecture:
         # build the DeepSets architecture
         deepset_inputs = Input(shape=self.input_shape)
         latent_space = phi_model(deepset_inputs)
-        deepset_outputs = f_model(latent_space)
-        model = Model(inputs=deepset_inputs, outputs=deepset_outputs)
+        if(self.track_info_shape == 0): 
+            deepset_outputs = f_model(latent_space)
+        else: 
+            info_inputs = Input(shape=(self.track_info_shape,))
+            deepset_inputs_withInfo = concatenate([latent_space,info_inputs])
+            deepset_outputs = f_model(deepset_inputs_withInfo)
+
+        if(self.track_info_shape == 0): model = Model(inputs=deepset_inputs, outputs=deepset_outputs)
+        else: model = Model(inputs=[deepset_inputs,info_inputs], outputs=deepset_outputs)
 
         print(model.summary())
 
@@ -270,24 +313,33 @@ class DeepSetsArchitecture:
         self.model.load_weights(weights_path)
 
     def evaluate_model(self, event, track):
-        converted_arrays = self.convertTrackFromTree(event, track, 1) # class_label doesn't matter
+        converted_arrays = self.convertTrackFromTreeMuons(event, track, 1) # class_label doesn't matter
         prediction = self.model.predict(np.reshape(converted_arrays['sets'], (1, 100, 4)))
-        return prediction[0][1] # p(is electron)
+        return prediction[:,1] # p(is electron)
 
-    def fit_generator(self, train_generator, validation_data, epochs=10):
+    # def evaluate_model(self, event, track):
+    #     converted_arrays = self.convertTrackFromTreeMuons(event, track, 1) # class_label doesn't matter
+    #     prediction = self.model.predict([np.reshape(converted_arrays['sets'], (1, 100, 4)),np.reshape(converted_arrays['infos'],(1,13))[:,[8,9,10,11]]])
+    #     return prediction[:,1] # p(is electron)
+
+    def fit_generator(self, train_generator, validation_data, epochs=10, outdir=""):
         self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=['accuracy'])
         
         self.training_history = self.model.fit(train_generator,
                                              validation_data=validation_data,
                                              epochs=epochs)
 
-        backup_suffix = datetime.now().strftime('%Y-%M-%d_%H.%M.%S')
-        self.save_weights('model_' + backup_suffix + '.h5')
-        pickle.dump(self.training_history, open('trainingHistory_' + backup_suffix + '.pkl', 'wb'))
+        #self.save_weights(outdir+'model.h5')
+        #pickle.dump(self.training_history, open(outdir+'trainingHistory.pkl', 'wb'))
 
     def save_weights(self, outputFileName):
         self.model.save_weights(outputFileName)
         print 'Saved models in file:', outputFileName
+
+    def save_trainingHistory(self, outputFileName):
+        with open(outputFileName, 'wb') as f:
+            pickle.dump(self.training_history.history, f)
+        print 'Saved training history in file:', outputFileName
 
     def displayTrainingHistory(self):
         acc = self.training_history.history['accuracy']

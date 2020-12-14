@@ -2,8 +2,8 @@ import os
 import shutil
 import numpy as np
 
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection/"
-testDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v4_selection/test/"
+dataDir = "/store/user/llavezzo/disappearingTracks/converted_DYJetsToLL_v5/"
+testDir = "/store/user/llavezzo/disappearingTracks/converted_DYJetsToLL_v5/test/"
 
 os.makedirs(testDir)
 

@@ -210,7 +210,7 @@ class DataGeneratorV3(keras.utils.Sequence):
 
 	def __data_generation(self, index):
 
-		X = None
+		X, X_info = None, None
 		X_files = self.signal_files[index * self.num_signal_batch : (index + 1) * self.num_signal_batch].astype(int)
 		X_events = self.signal_events[index * self.num_signal_batch : (index + 1) * self.num_signal_batch].astype(int)
 		files = list(set(X_files))
@@ -218,8 +218,10 @@ class DataGeneratorV3(keras.utils.Sequence):
 			events_this_file = X_events[np.where(X_files == file)]
 			if X is None:
 				X = np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['signal'][events_this_file]
+				X_info = np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['signal_info'][events_this_file]
 			else:
 				X = np.vstack((X,np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['signal'][events_this_file]))
+				X_info = np.vstack((X_info,np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['signal_info'][events_this_file]))
 
 		X_files = self.background_files[index * self.num_background_batch : (index + 1) * self.num_background_batch].astype(int)
 		X_events = self.background_events[index * self.num_background_batch : (index + 1) * self.num_background_batch].astype(int)
@@ -227,11 +229,14 @@ class DataGeneratorV3(keras.utils.Sequence):
 		for file in files:
 			events_this_file = X_events[np.where(X_files == file)]
 			X = np.vstack((X,np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['background'][events_this_file]))
+			X_info = np.vstack((X_info,np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['background_info'][events_this_file]))
 
 		y = np.concatenate((np.ones(self.num_signal_batch), np.zeros(self.num_background_batch)))
 
 		p = np.random.permutation(len(X))
 		X = X[p]
 		y = y[p]
+		X_info = X_info[p]
+		X_info = X_info[:,[8,9,10]]
 
 		return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
