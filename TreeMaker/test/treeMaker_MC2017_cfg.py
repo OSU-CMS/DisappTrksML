@@ -6,6 +6,7 @@
 import FWCore.ParameterSet.Config as cms
 
 from Configuration.StandardSequences.Eras import eras
+from PhysicsTools.PatAlgos.slimming.isolatedTracks_cfi import *
 
 process = cms.Process('PAT',eras.Run2_2017,eras.run2_miniAOD_94XFall17)
 
@@ -29,7 +30,7 @@ process.maxEvents = cms.untracked.PSet(
 # Input source
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring( (
-	'file:/data/users/bfrancis/condor/signalMC/2017/step3/higgsino_300GeV_1000cm/hist_0.root',
+	'file:/data/users/bfrancis/condor/signalMC/2017/step3/700_1000/hist_0.root',
 #        '/store/mc/RunIIFall17DRPremix/ZJetsToNuNu_HT-100To200_13TeV-madgraph/AODSIM/94X_mc2017_realistic_v10-v1/00000/F67AD86D-E915-E811-B51F-0CC47A0AD6AA.root',
     ) ),
     secondaryFileNames = cms.untracked.vstring()
@@ -153,6 +154,11 @@ process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducerMINIAOD",
     tauDecayModeFinding      = cms.InputTag("hpsPFTauDiscriminationByDecayModeFinding"),
     tauElectronDiscriminator = cms.InputTag("hpsPFTauDiscriminationByMVA6LooseElectronRejection"),
     tauMuonDiscriminator     = cms.InputTag("hpsPFTauDiscriminationByLooseMuonRejection3"),
+    
+    dEdxPixel = cms.InputTag ("dedxPixelHarmonic2", ""),
+    dEdxStrip = cms.InputTag ("dedxHarmonic2", ""),
+    isolatedTracks = cms.InputTag("isolatedTracks", ""),
+    isoTrk2dedxHitInfo = cms.InputTag("isolatedTracks", ""),
 
     signalTriggerNames = cms.vstring([
 	'HLT_MET105_IsoTrk50_v',
@@ -184,6 +190,8 @@ process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducerMINIAOD",
 process.trackImageProducerPath = cms.Path(process.trackImageProducer)
 
 process.MINIAODSIMoutput.outputCommands = cms.untracked.vstring('drop *')
+
+process.isolatedTracks.saveDeDxHitInfoCut = cms.string("pt > 1.")
 
 # Path and EndPath definitions
 process.Flag_trackingFailureFilter = cms.Path(process.goodVertices+process.trackingFailureFilter)

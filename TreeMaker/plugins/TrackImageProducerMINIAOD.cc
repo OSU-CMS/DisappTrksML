@@ -32,10 +32,15 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   dtRecSegments_ (cfg.getParameter<edm::InputTag> ("DTRecSegments")),
   rpcRecHits_    (cfg.getParameter<edm::InputTag> ("RPCRecHits")),
 
+  dEdxPixel_ (cfg.getParameter<edm::InputTag> ("dEdxPixel")),
+  dEdxStrip_ (cfg.getParameter<edm::InputTag> ("dEdxStrip")),
+  isoTrk2dedxHitInfo_ (cfg.getParameter<edm::InputTag> ("isoTrk2dedxHitInfo")),
+  isoTracks_ (cfg.getParameter<edm::InputTag> ("isolatedTracks")),  
+
   minGenParticlePt_   (cfg.getParameter<double> ("minGenParticlePt")),
   minTrackPt_         (cfg.getParameter<double> ("minTrackPt")),
   maxRelTrackIso_     (cfg.getParameter<double> ("maxRelTrackIso")),
-
+  
   dataTakingPeriod_ (cfg.getParameter<string> ("dataTakingPeriod"))
 {
   assert(dataTakingPeriod_ == "2017" || dataTakingPeriod_ == "2018");
@@ -62,6 +67,11 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   CSCSegmentsToken_   = consumes<CSCSegmentCollection>     (cscSegments_);
   DTRecSegmentsToken_ = consumes<DTRecSegment4DCollection> (dtRecSegments_);
   RPCRecHitsToken_    = consumes<RPCRecHitCollection>      (rpcRecHits_);
+  
+  dEdxPixelToken_ = consumes<edm::ValueMap<reco::DeDxData> > (dEdxPixel_);
+  dEdxStripToken_ = consumes<edm::ValueMap<reco::DeDxData> > (dEdxStrip_);
+  isoTrk2dedxHitInfoToken_ = consumes<reco::DeDxHitInfoAss> (isoTrk2dedxHitInfo_);
+  isoTrackToken_ = consumes<vector<pat::IsolatedTrack> > (isoTracks_);
 
   signalTriggerNames = cfg.getParameter<vector<string> >("signalTriggerNames");
   metFilterNames = cfg.getParameter<vector<string> >("metFilterNames");
@@ -134,7 +144,19 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   edm::Handle<double> rhoCentralCalo;
   event.getByToken(rhoCentralCaloToken_, rhoCentralCalo);
 
-  const edm::TriggerNames &allTriggerNames = event.triggerNames(*triggers);
+  edm::Handle<edm::ValueMap<reco::DeDxData> > dEdxStrip;
+  event.getByToken (dEdxStripToken_, dEdxStrip);
+
+  edm::Handle<edm::ValueMap<reco::DeDxData> > dEdxPixel;
+  event.getByToken (dEdxPixelToken_, dEdxPixel);
+
+  edm::Handle<reco::DeDxHitInfoAss> isoTrk2dedxHitInfo;
+  event.getByToken(isoTrk2dedxHitInfoToken_, isoTrk2dedxHitInfo);
+
+  edm::Handle<vector<pat::IsolatedTrack> > isoTracks;
+  event.getByToken (isoTrackToken_, isoTracks);
+ 
+ const edm::TriggerNames &allTriggerNames = event.triggerNames(*triggers);
 
   getGeometries(setup);
   getChannelStatusMaps();
@@ -188,7 +210,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   vector<pat::Electron> tagElectrons = getTagElectrons(event, *triggers, *trigObjs, pv, *electrons);
   vector<pat::Muon> tagMuons = getTagMuons(event, *triggers, *trigObjs, pv, *muons);
 
-  getTracks(*tracks, pv, *jets, *electrons, *muons, *taus, tagElectrons, tagMuons, met->at(0));
+  getTracks(*tracks, pv, *jets, *electrons, *muons, *taus, tagElectrons, tagMuons, met->at(0), isoTracks, isoTrk2dedxHitInfo);
 
   if(trackInfos_.size() == 0) return; // only fill tree with passing tracks
 
@@ -204,6 +226,22 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
 
   tree_->Fill();
 
+}
+
+void
+TrackImageProducerMINIAOD::findMatchedIsolatedTrack (const edm::Handle<vector<pat::IsolatedTrack> > &isolatedTracks, edm::Ref<vector<pat::IsolatedTrack> > &matchedIsolatedTrack, double &dRToMatchedIsolatedTrack, const CandidateTrack &track) const
+{
+  dRToMatchedIsolatedTrack = INVALID_VALUE;
+  double maxDeltaR_isolatedTrackMatching_ = 0.01;
+  for(vector<pat::IsolatedTrack>::const_iterator isoTrack = isolatedTracks->begin(); isoTrack != isolatedTracks->end(); isoTrack++) {
+    double dR = deltaR(*isoTrack, track);
+    if(maxDeltaR_isolatedTrackMatching_ >= 0.0 && dR > maxDeltaR_isolatedTrackMatching_) continue;
+    if(dR < dRToMatchedIsolatedTrack || dRToMatchedIsolatedTrack < 0.0) {
+      dRToMatchedIsolatedTrack = dR;
+      matchedIsolatedTrack = edm::Ref<vector<pat::IsolatedTrack> >(isolatedTracks, isoTrack - isolatedTracks->begin());
+    }
+  }
+  return;
 }
 
 void
@@ -303,15 +341,72 @@ TrackImageProducerMINIAOD::getTracks(const vector<CandidateTrack> &tracks,
                                      const vector<pat::Tau> &taus,
                                      const vector<pat::Electron> &tagElectrons,
                                      const vector<pat::Muon> &tagMuons,
-                                     const pat::MET &met)
+                                     const pat::MET &met,
+			             const edm::Handle<vector<pat::IsolatedTrack> > isoTracks, 
+                                     const edm::Handle<reco::DeDxHitInfoAss> isoTrk2dedxHitInfo)
 {
   trackInfos_.clear();
 
-  for(const auto &track : tracks) {
-    // apply track pt cut
-    if(minTrackPt_ > 0 && track.pt() <= minTrackPt_) continue;
+  int itrk = 0;
 
+  for(const auto &track : tracks) {
+    
     TrackInfo info;
+    
+    vector<float> charge(tracks.size());
+    vector<int> isPixelHit(tracks.size());
+    vector<int> pixelSize(tracks.size());
+    vector<int> pixelSizeX(tracks.size());
+    vector<int> pixelSizeY(tracks.size());
+
+    edm::Ref<vector<pat::IsolatedTrack> > matchedIsolatedTrack;
+    double dRToMatchedIsolatedTrack;   
+    findMatchedIsolatedTrack(isoTracks, matchedIsolatedTrack, dRToMatchedIsolatedTrack, track);
+    cout << "General tracks: " << tracks.size() << " Iso Tracks: " << isoTracks->size() << endl;
+    cout << "Matched Track dR: " << dRToMatchedIsolatedTrack << endl;
+    if(dRToMatchedIsolatedTrack == INVALID_VALUE) {
+      //cout << "No matched isolated track" << endl;
+      charge.push_back(-10);
+      isPixelHit.push_back(-10);
+      pixelSizeX.push_back(-10);
+      pixelSizeY.push_back(-10);
+      pixelSize.push_back(-10);
+    }
+    if(dRToMatchedIsolatedTrack != INVALID_VALUE){
+      if(isoTrk2dedxHitInfo->contains(matchedIsolatedTrack.id())) {
+        const reco::DeDxHitInfo * hitInfo = (*isoTrk2dedxHitInfo)[matchedIsolatedTrack].get();
+        if(hitInfo == nullptr) {
+          //edm::LogWarning ("disappTrks_DeDxHitInfoVarProducer") << "Encountered a null DeDxHitInfo object from a pat::IsolatedTrack? Skipping this track...";
+          continue;
+        }
+
+        for(unsigned int iHit = 0; iHit < hitInfo->size(); iHit++) {
+          bool isPixel = (hitInfo->pixelCluster(iHit) != nullptr);
+          bool isStrip = (hitInfo->stripCluster(iHit) != nullptr);
+	  if(!isPixel && !isStrip) continue; // probably shouldn't happen
+          if(isPixel && isStrip) continue;
+
+          // shape selection for strips
+          //if(isStrip && !DeDxTools::shapeSelection(*(hitInfo->stripCluster(iHit)))) continue;
+          float norm = isPixel ? 3.61e-06 : 3.61e-06 * 265;
+
+          charge.push_back(norm * hitInfo->charge(iHit) / hitInfo->pathlength(iHit));
+          isPixelHit.push_back(isPixel);
+
+          pixelSize.push_back(isPixel ? hitInfo->pixelCluster(iHit)->size()   : -1);
+          pixelSizeX.push_back(isPixel ? hitInfo->pixelCluster(iHit)->sizeX() : -1);
+          pixelSizeY.push_back(isPixel ? hitInfo->pixelCluster(iHit)->sizeY() : -1);
+        }
+      } // if isoTrk in association map
+    } //if dRToMatchedIsoTrk != invalid
+    info.isPixel = isPixelHit;
+    info.charge = charge;
+    info.pixelSize = pixelSize;
+    info.pixelSizeX = pixelSizeX;
+    info.pixelSizeY = pixelSizeY;
+
+    //apply track pt cut
+    if(minTrackPt_ > 0 && track.pt() <= minTrackPt_) continue;
 
     info.trackIso = 0.0;
     for(const auto &t : tracks) {
@@ -433,6 +528,7 @@ TrackImageProducerMINIAOD::getTracks(const vector<CandidateTrack> &tracks,
     info.ecalo = 0; // calculated in getRecHits
 
     trackInfos_.push_back(info);
+    itrk++;
   }
 
   return;
