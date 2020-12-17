@@ -159,6 +159,7 @@ process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducerMINIAOD",
     dEdxStrip = cms.InputTag ("dedxHarmonic2", ""),
     isolatedTracks = cms.InputTag("isolatedTracks", ""),
     isoTrk2dedxHitInfo = cms.InputTag("isolatedTracks", ""),
+    genTracks = cms.InputTag("generalTracks", ""),
 
     signalTriggerNames = cms.vstring([
 	'HLT_MET105_IsoTrk50_v',

@@ -37,6 +37,10 @@ struct TrackInfo {
   std::vector<int> pixelSizeX;
   std::vector<int> pixelSizeY;
 
+  double dEdxPixel, dEdxStrip;
+  int numMeasurementsPixel, numMeasurementsStrip;
+  int numSatMeasurementsPixel, numSatMeasurementsStrip;
+
 };
 
 struct CSCRecHitInfo {
