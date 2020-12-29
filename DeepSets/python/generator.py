@@ -1,6 +1,7 @@
 import numpy as np
 from tensorflow import keras
 from collections import Counter
+import sys
 
 class DataGenerator(keras.utils.Sequence):
 
@@ -27,7 +28,7 @@ class DataGenerator(keras.utils.Sequence):
 
 	def load_data(self):
 		for idx in self.file_ids:
-			fin = np.load(self.input_dir + '/hist_' + idx + '.root.npz')
+			fin = np.load(self.input_dir + 'images_' + idx + '.root.npz')
 			print(idx)
 			if self.signal_data is None and self.background_data is None:
 				self.signal_data = fin['signal']
@@ -92,7 +93,7 @@ class DataGeneratorV2(keras.utils.Sequence):
 
 	def load_data(self):
 		for idx in self.file_ids:
-			fin = np.load(self.input_dir + '/hist_' + idx + '.root.npz')
+			fin = np.load(self.input_dir + 'images_' + idx + '.root.npz')
 			if self.signal_data is None and self.background_data is None:
 				self.signal_data = fin['signal']
 				self.background_data = fin['background']
@@ -133,11 +134,9 @@ class DataGeneratorV2(keras.utils.Sequence):
 class DataGeneratorV3(keras.utils.Sequence):
 
 	def __init__(self, 
-				 file_ids, input_dir='.', 
+				 file_ids, input_dir='', 
 				 batch_size=32, 
 				 batch_ratio=0.5,
-				 dim=(100,4), 
-				 n_classes=2, 
 				 shuffle=True):
 		self.file_ids = file_ids
 		self.input_dir = input_dir
@@ -145,8 +144,6 @@ class DataGeneratorV3(keras.utils.Sequence):
 		self.batch_ratio = batch_ratio
 		self.num_signal_batch = int(np.ceil(self.batch_ratio * self.batch_size))
 		self.num_background_batch = self.batch_size - self.num_signal_batch
-		self.dim = dim
-		self.n_classes = n_classes
 		self.shuffle = shuffle
 
 		self.signal_files = np.array([])
@@ -162,7 +159,7 @@ class DataGeneratorV3(keras.utils.Sequence):
 	def create_event_file_lists(self):
 
 		for idx in self.file_ids:
-			fin = np.load(self.input_dir + '/hist_' + idx + '.root.npz')
+			fin = np.load(self.input_dir + 'images_' + idx + '.root.npz')
 			self.signal_files = np.concatenate((self.signal_files,np.ones(fin['signal'].shape[0])*int(idx)))
 			self.signal_events = np.concatenate((self.signal_events,np.arange(fin['signal'].shape[0],dtype=int)))
 			self.background_files = np.concatenate((self.background_files,np.ones(fin['background'].shape[0])*int(idx)))
@@ -175,8 +172,8 @@ class DataGeneratorV3(keras.utils.Sequence):
 		print self.num_background
 
 	def __len__(self):
-		max_signal_batches = np.floor(self.num_signal / (self.batch_size*self.batch_ratio))
-		max_background_batches = np.floor(self.num_background / (self.batch_size*(1-self.batch_ratio)))
+		max_signal_batches = np.floor(self.num_signal / self.num_signal_batch)
+		max_background_batches = np.floor(self.num_background / self.num_background_batch)
 		return int(min(max_signal_batches, max_background_batches))
 
 	def __getitem__(self, index):
@@ -217,19 +214,21 @@ class DataGeneratorV3(keras.utils.Sequence):
 		for file in files:
 			events_this_file = X_events[np.where(X_files == file)]
 			if X is None:
-				X = np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['signal'][events_this_file]
-				X_info = np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['signal_info'][events_this_file]
+				X = np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz')['signal'][events_this_file]
+				X_info = np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz')['signal_info'][events_this_file]
 			else:
-				X = np.vstack((X,np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['signal'][events_this_file]))
-				X_info = np.vstack((X_info,np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['signal_info'][events_this_file]))
+				X = np.vstack((X,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz')['signal'][events_this_file]))
+				X_info = np.vstack((X_info,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz')['signal_info'][events_this_file]))
+
+		if X is None: sys.exit("X is None")
 
 		X_files = self.background_files[index * self.num_background_batch : (index + 1) * self.num_background_batch].astype(int)
 		X_events = self.background_events[index * self.num_background_batch : (index + 1) * self.num_background_batch].astype(int)
 		files = list(set(X_files))
 		for file in files:
 			events_this_file = X_events[np.where(X_files == file)]
-			X = np.vstack((X,np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['background'][events_this_file]))
-			X_info = np.vstack((X_info,np.load(self.input_dir + '/hist_' + str(int(file)) + '.root.npz')['background_info'][events_this_file]))
+			X = np.vstack((X,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz')['background'][events_this_file]))
+			X_info = np.vstack((X_info,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz')['background_info'][events_this_file]))
 
 		y = np.concatenate((np.ones(self.num_signal_batch), np.zeros(self.num_background_batch)))
 
@@ -237,6 +236,6 @@ class DataGeneratorV3(keras.utils.Sequence):
 		X = X[p]
 		y = y[p]
 		X_info = X_info[p]
-		X_info = X_info[:,[8,9,10]]
+		X_info = X_info[:,[4,8,9]]
 
-		return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
+		return [X,X_info], keras.utils.to_categorical(y, num_classes=2)

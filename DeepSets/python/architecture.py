@@ -14,7 +14,7 @@ from tensorflow import keras
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization, concatenate
-from tensorflow.keras import optimizers, regularizers
+from tensorflow.keras import optimizers, regularizers, callbacks
 
 import matplotlib.pyplot as plt
 
@@ -60,18 +60,12 @@ def isGenMatched(event, track, pdgId):
     return (abs(matchID) == pdgId and abs(matchDR2) < 0.1**2)
 
 class DeepSetsArchitecture:
-    eta_range = 0.25
-    phi_range = 0.25
-    max_hits = 100
-
-    # model parameters
-    phi_layers = [64, 64, 256]
-    f_layers = [64, 64, 64]
 
     model = None
     training_history = None
 
-    def __init__(self, eta_range=0.25, phi_range=0.25, maxHits=100, track_info_shape = 0):
+    def __init__(self, eta_range=0.25, phi_range=0.25, maxHits=100,
+        phi_layers = [64, 64, 256], f_layers = [64, 64, 64], track_info_shape = 0):
         self.eta_range = eta_range
         self.phi_range = phi_range
         self.max_hits = maxHits
@@ -79,11 +73,8 @@ class DeepSetsArchitecture:
         self.input_shape = (self.max_hits, 4)
         self.track_info_shape = track_info_shape
 
-    def set_phi_layers(self, layers):
-        self.phi_layers = layers
-
-    def set_f_layers(self, layers):
-        self.f_layers = layers
+        self.phi_layers = phi_layers
+        self.f_layers = f_layers
 
     def convertTrackFromTree(self, event, track, class_label):
         hits = []
@@ -208,7 +199,7 @@ class DeepSetsArchitecture:
             for i, track in enumerate(event.tracks):
                 if not trackPasses[i]: continue
                 
-                if isGenMatched(event, track, 11):
+                if isGenMatched(event, track, 13):
                     values = self.convertTrackFromTree(event, track, 1)
                     signal.append(values['sets'])
                     signal_info.append(values['infos'])
@@ -305,6 +296,8 @@ class DeepSetsArchitecture:
         if(self.track_info_shape == 0): model = Model(inputs=deepset_inputs, outputs=deepset_outputs)
         else: model = Model(inputs=[deepset_inputs,info_inputs], outputs=deepset_outputs)
 
+        print(f_model.summary())
+        print(phi_model.summary())
         print(model.summary())
 
         self.model = model
@@ -322,15 +315,21 @@ class DeepSetsArchitecture:
     #     prediction = self.model.predict([np.reshape(converted_arrays['sets'], (1, 100, 4)),np.reshape(converted_arrays['infos'],(1,13))[:,[8,9,10,11]]])
     #     return prediction[:,1] # p(is electron)
 
-    def fit_generator(self, train_generator, validation_data, epochs=10, outdir=""):
+    def fit_generator(self, train_generator, val_generator, epochs=10, monitor='val_loss',patience_count=3,outdir=""):
         self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=['accuracy'])
         
-        self.training_history = self.model.fit(train_generator,
-                                             validation_data=validation_data,
-                                             epochs=epochs)
+        training_callbacks = [
+            callbacks.EarlyStopping(monitor=monitor,patience=patience_count),
+            callbacks.ModelCheckpoint(filepath=outdir+'model.{epoch}.h5',
+                                            save_best_only=True,
+                                            monitor=monitor,
+                                            mode='auto')
+        ]
 
-        #self.save_weights(outdir+'model.h5')
-        #pickle.dump(self.training_history, open(outdir+'trainingHistory.pkl', 'wb'))
+        self.training_history = self.model.fit(train_generator, validation_data=val_generator,
+                                             callbacks=training_callbacks,
+                                             epochs=epochs,
+                                             verbose=2)
 
     def save_weights(self, outputFileName):
         self.model.save_weights(outputFileName)

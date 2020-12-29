@@ -124,7 +124,7 @@ model.compile(optimizer=optimizers.Adam(),
 			  metrics=metrics)
 
 callbacks = [
-	callbacks.EarlyStopping(patience=patience_count),
+	callbacks.EarlyStopping(monitor=monitor,patience=patience_count),
 	callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5',
 									save_best_only=True,
 									monitor=monitor,
