@@ -74,14 +74,14 @@ for train_index, test_index in kf.split(inputIndices):
 
 	arch.save_trainingHistory(train_params['outdir']+'trainingHistory_'+str(k)+'.pkl')
 
-	infile = open(outdir+"trainingHistory_"+str(k)+".pkl",'rb')
+	infile = open(train_params['outdir']+'trainingHistory_'+str(k)+'.pkl','rb')
 	history = pickle.load(infile)
 
 	if(len(history['val_loss']) == train_params['epochs']):
 		val_loss += history['val_loss'][-1]
 		val_acc += history['val_accuracy'][-1]
 	else:
-		i = train_params['epochs'] - train_params['patience_count'] - 1
+		i = len(history['val_loss']) - train_params['patience_count'] - 1
 		val_loss += history['val_loss'][i]
 		val_acc += history['val_accuracy'][i]
 	infile.close()
