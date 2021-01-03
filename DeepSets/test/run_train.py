@@ -6,15 +6,13 @@ import datetime
 
 if __name__=="__main__":
 
-    logdir = "/data/users/llavezzo/Logs/trainingV4/"
+    logdir = "/data/users/llavezzo/Logs/training_final/"
 
     params = [
-        [[64, 64, 256],[64, 64, 64],0.5,50],
-        [[128,256, 512],[256, 256, 256],0.5,20],
-        [[64, 64, 128],[64,32],0.5,50],
-        [[64, 64, 256],[64, 64, 64],0.1,20],
-        [[128,256, 512],[256, 256, 256],0.1,10],
-        [[32, 64, 128],[64,32],0.1,50]
+        [[128,256, 512],[256, 256, 256],0.5,5,"trainV3_param1_lessepochs/",False,50],
+        [[128,256, 512],[256, 256, 256],0.1,6,"trainV3_param4_lessepochs/",False,50],
+        [[64, 64, 256],[64, 64, 64],0.5,4,"trainV4_param0_lessepochs/",True,100],
+        [[64, 64, 128],[64,32],0.1,50,"trainV2_param5_lessepochs/",False,100]
     ]
 
     np.save('params.npy',params)
@@ -29,7 +27,7 @@ if __name__=="__main__":
     Rank = TARGET.IsLocalSlot
     request_disk = 500MB
     request_memory = 2GB
-    request_cpus = 1
+    request_cpus = 4
     arguments               = $(PROCESS)
     executable              = train_wrapper.sh
     log                     = {0}log_$(PROCESS).log

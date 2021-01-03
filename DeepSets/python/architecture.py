@@ -76,7 +76,7 @@ class DeepSetsArchitecture:
         self.phi_layers = phi_layers
         self.f_layers = f_layers
 
-    def convertTrackFromTree(self, event, track, class_label):
+    def convertTrackFromTreeElectrons(self, event, track, class_label):
         hits = []
 
         for hit in event.recHits:
@@ -200,11 +200,11 @@ class DeepSetsArchitecture:
                 if not trackPasses[i]: continue
                 
                 if isGenMatched(event, track, 13):
-                    values = self.convertTrackFromTree(event, track, 1)
+                    values = self.convertTrackFromTreeMuons(event, track, 1)
                     signal.append(values['sets'])
                     signal_info.append(values['infos'])
                 else:
-                    values = self.convertTrackFromTree(event, track, 0)
+                    values = self.convertTrackFromTreeMuons(event, track, 0)
                     background.append(values['sets'])
                     background_info.append(values['infos'])
 
@@ -302,12 +302,16 @@ class DeepSetsArchitecture:
 
         self.model = model
 
+    def load_model(self, model_path):
+        self.model = keras.models.load_model(model_path)
+
     def load_model_weights(self, weights_path):
         self.model.load_weights(weights_path)
 
     def evaluate_model(self, event, track):
-        converted_arrays = self.convertTrackFromTreeMuons(event, track, 1) # class_label doesn't matter
-        prediction = self.model.predict(np.reshape(converted_arrays['sets'], (1, 100, 4)))
+        event = self.convertTrackFromTreeElectrons(event, track, 1) # class_label doesn't matter
+        prediction = self.model.predict(np.reshape(event['sets'], (1, 100, 4)))
+        #prediction = self.model.predict([np.reshape(event['sets'], (1, 100, 4)),np.reshape(event['infos'],(1,13))[:,[4,8,9]]])
         return prediction[:,1] # p(is electron)
 
     # def evaluate_model(self, event, track):
@@ -315,7 +319,7 @@ class DeepSetsArchitecture:
     #     prediction = self.model.predict([np.reshape(converted_arrays['sets'], (1, 100, 4)),np.reshape(converted_arrays['infos'],(1,13))[:,[8,9,10,11]]])
     #     return prediction[:,1] # p(is electron)
 
-    def fit_generator(self, train_generator, val_generator, epochs=10, monitor='val_loss',patience_count=3,outdir=""):
+    def fit_generator(self, train_generator, val_generator=None, epochs=10, monitor='val_loss',patience_count=3,outdir=""):
         self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=['accuracy'])
         
         training_callbacks = [
@@ -326,14 +330,19 @@ class DeepSetsArchitecture:
                                             mode='auto')
         ]
 
-        self.training_history = self.model.fit(train_generator, validation_data=val_generator,
-                                             callbacks=training_callbacks,
+        self.training_history = self.model.fit(train_generator, 
+                                             #validation_data=val_generator,
+                                             #callbacks=training_callbacks,
                                              epochs=epochs,
                                              verbose=2)
 
+    def save_model(self, outputFileName):
+        self.model.save(outputFileName)
+        print 'Saved model in file:', outputFileName
+
     def save_weights(self, outputFileName):
         self.model.save_weights(outputFileName)
-        print 'Saved models in file:', outputFileName
+        print 'Saved model weights in file:', outputFileName
 
     def save_trainingHistory(self, outputFileName):
         with open(outputFileName, 'wb') as f:

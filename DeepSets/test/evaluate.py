@@ -52,13 +52,14 @@ def evaluateFile(inputFileLabel):
 #######################################
 
 if len(sys.argv) < 4:
-	print 'USAGE: python evaluate.py fileIndex fileList inputDir outputDir'
+	print 'USAGE: python evaluate.py fileIndex fileList modelPath dataDir outputDir'
 	sys.exit(-1)
 
 fileIndex = sys.argv[1]
 fileList = sys.argv[2]
-inputDirectory = sys.argv[3]
-outputDirectory = sys.argv[4]
+modelPath = sys.argv[3]
+dataDir = sys.argv[4]
+outputDir = sys.argv[5]
 
 inputFileLabel = ""
 if int(fileIndex) > 0:
@@ -67,10 +68,10 @@ if int(fileIndex) > 0:
 	inputFileLabel = "hist_"+str(fileNumber)+".root"
 
 arch = DeepSetsArchitecture()
-arch.buildModel()
-arch.load_model_weights('model_2020-07-26_13.07.49.h5')
+arch.load_model(modelPath)
 
-preds, etas = evaluateFile(inputDirectory+inputFileLabel)
+preds = evaluateFile(dataDir+inputFileLabel)
 
+if len(preds)==0: sys.exit("No predictions")
 np.savez_compressed("preds_"+inputFileLabel+".npz",preds=preds)
-os.system('mv -v preds_' + str(inputFileLabel) + '.npz ' + outputDirectory)
+os.system('mv -v preds_' + str(inputFileLabel) + '.npz ' + outputDir)

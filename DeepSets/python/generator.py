@@ -137,7 +137,9 @@ class DataGeneratorV3(keras.utils.Sequence):
 				 file_ids, input_dir='', 
 				 batch_size=32, 
 				 batch_ratio=0.5,
-				 shuffle=True):
+				 shuffle=True,
+				 with_info=False,
+				 maxHits=100):
 		self.file_ids = file_ids
 		self.input_dir = input_dir
 		self.batch_size = batch_size
@@ -145,6 +147,8 @@ class DataGeneratorV3(keras.utils.Sequence):
 		self.num_signal_batch = int(np.ceil(self.batch_ratio * self.batch_size))
 		self.num_background_batch = self.batch_size - self.num_signal_batch
 		self.shuffle = shuffle
+		self.with_info = with_info
+		self.maxHits = maxHits
 
 		self.signal_files = np.array([])
 		self.background_files = np.array([])
@@ -238,4 +242,8 @@ class DataGeneratorV3(keras.utils.Sequence):
 		X_info = X_info[p]
 		X_info = X_info[:,[4,8,9]]
 
-		return [X,X_info], keras.utils.to_categorical(y, num_classes=2)
+		X = X[:,:self.maxHits,:]
+
+		if self.with_info:
+			return [X,X_info], keras.utils.to_categorical(y, num_classes=2)
+		return X, keras.utils.to_categorical(y, num_classes=2)
