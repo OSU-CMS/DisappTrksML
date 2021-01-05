@@ -10,7 +10,7 @@ import numpy as np
 if __name__=="__main__":
 
     dataDir = '/store/user/bfrancis/images_v5/DYJetsToLL_crab/'
-    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_muons/'
+    outDir = '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_genmuons/'
     logDir = '/data/users/llavezzo/Logs/convert/'
     reprocessAllFiles = False
 

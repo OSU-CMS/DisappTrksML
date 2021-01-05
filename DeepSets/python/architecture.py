@@ -120,8 +120,12 @@ class DeepSetsArchitecture:
     def convertTrackFromTreeMuons(self, event, track, class_label):
         hits = []
         dists = []
+        hcal_energy, ecal_energy = [], []
 
         for hit in event.recHits:
+
+            dEta, dPhi = imageCoordinates(track, hit)
+            if abs(dEta) >= self.eta_range or abs(dPhi) >= self.phi_range: continue
 
             # CSC
             if hit.detType == 5:
@@ -131,11 +135,12 @@ class DeepSetsArchitecture:
             elif hit.detType == 6:
                 station = hit.dtRecHits[0].station
                 time = hit.dtRecHits[0].digitime 
-            # FIXME: add other detTypes
-            else: continue
 
-            dEta, dPhi = imageCoordinates(track, hit)
-            if abs(dEta) >= self.eta_range or abs(dPhi) >= self.phi_range: continue
+            # FIXME: add other detTypes
+            else: 
+                if hit.detType == 4: hcal_energy.append(hit.energy)
+                elif hit.detType == 1 or hit.detType == 2: ecal_energy.append(hit.energy)
+                continue
             
             hits.append((dEta, dPhi, station, time))
             dists.append(dEta**2 + dPhi**2)
@@ -160,7 +165,9 @@ class DeepSetsArchitecture:
                           track.phi,
                           track.dRMinBadEcalChannel,
                           track.nLayersWithMeasurement,
-                          track.nValidPixelHits])
+                          track.nValidPixelHits,
+                          ecal_energy,
+                          hcal_energy])
 
         values = {
             'sets' : sets,
@@ -176,7 +183,7 @@ class DeepSetsArchitecture:
                 track.inGap or
                 abs(track.dRMinJet) < 0.5 or
                 abs(track.deltaRToClosestElectron) < 0.15 or
-                abs(track.deltaRToClosestMuon) < 0.15 or
+                # abs(track.deltaRToClosestMuon) < 0.15 or
                 abs(track.deltaRToClosestTauHad) < 0.15):
                 trackPasses.append(False)
             else:
@@ -192,6 +199,22 @@ class DeepSetsArchitecture:
         background = []
         background_info = []
 
+        # for event in inputTree:
+        #     eventPasses, trackPasses = self.eventSelection(event)
+        #     if not eventPasses: continue
+
+        #     for i, track in enumerate(event.tracks):
+        #         if not trackPasses[i]: continue
+                
+        #         if isGenMatched(event, track, 13):
+        #             values = self.convertTrackFromTreeMuons(event, track, 1)
+        #             signal.append(values['sets'])
+        #             signal_info.append(values['infos'])
+        #         else:
+        #             values = self.convertTrackFromTreeMuons(event, track, 0)
+        #             background.append(values['sets'])
+        #             background_info.append(values['infos'])
+
         for event in inputTree:
             eventPasses, trackPasses = self.eventSelection(event)
             if not eventPasses: continue
@@ -199,10 +222,16 @@ class DeepSetsArchitecture:
             for i, track in enumerate(event.tracks):
                 if not trackPasses[i]: continue
                 
-                if isGenMatched(event, track, 13):
+                # only gen-truth muons
+                if not isGenMatched(event, track, 13): continue
+
+                # non-reco muons
+                if abs(track.deltaRToClosestMuon) >= 0.15 :
                     values = self.convertTrackFromTreeMuons(event, track, 1)
                     signal.append(values['sets'])
                     signal_info.append(values['infos'])
+
+                # reco muons
                 else:
                     values = self.convertTrackFromTreeMuons(event, track, 0)
                     background.append(values['sets'])
@@ -310,8 +339,8 @@ class DeepSetsArchitecture:
 
     def evaluate_model(self, event, track):
         event = self.convertTrackFromTreeElectrons(event, track, 1) # class_label doesn't matter
-        prediction = self.model.predict(np.reshape(event['sets'], (1, 100, 4)))
-        #prediction = self.model.predict([np.reshape(event['sets'], (1, 100, 4)),np.reshape(event['infos'],(1,13))[:,[4,8,9]]])
+        #prediction = self.model.predict(np.reshape(event['sets'], (1, 100, 4)))
+        prediction = self.model.predict([np.reshape(event['sets'], (1, 100, 4)),np.reshape(event['infos'],(1,13))[:,[4,8,9]]])
         return prediction[:,1] # p(is electron)
 
     # def evaluate_model(self, event, track):
