@@ -9,7 +9,7 @@ if __name__=="__main__":
     logdir = "/data/users/llavezzo/Logs/train/"
 
     params = [
-        ["ae_train/"]
+        ["ae_train_traditional/"]
     ]
 
     np.save('params.npy',params)

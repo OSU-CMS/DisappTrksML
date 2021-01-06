@@ -19,7 +19,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-class DeepAE:
+class AE:
 
     model = None
     training_history = None
@@ -28,9 +28,8 @@ class DeepAE:
         phi_layers = [128, 64], f_layers = [64, 128], track_info_shape = 0):
         self.eta_range = eta_range
         self.phi_range = phi_range
-        self.max_hits = maxHits
+        self.maxHits = maxHits
 
-        self.input_shape = (self.max_hits, 4)
         self.track_info_shape = track_info_shape
 
         self.phi_layers = phi_layers
@@ -38,57 +37,21 @@ class DeepAE:
 
     def buildModel(self):
 
-        inputs = Input(shape=(self.input_shape[-1],))
+        inputs = Input(shape=(self.maxHits*4))
+        normed = BatchNormalization()(inputs)
+        encoded = Dense(128, activation='relu')(normed)
+        encoded = Dense(64, activation='relu')(encoded)
+        encoded = Dense(32, activation='relu')(encoded)
 
-        # build phi network for each individual hit
-        phi_network = Masking()(inputs)
-        for layerSize in self.phi_layers[:-1]:
-            phi_network = Dense(layerSize)(phi_network)
-            phi_network = Activation('relu')(phi_network)
-            phi_network = BatchNormalization()(phi_network)
-        phi_network = Dense(self.phi_layers[-1])(phi_network)
-        phi_network = Activation('linear')(phi_network)
+        decoded = Dense(64, activation='relu')(encoded)
+        decoded = Dense(128, activation='relu')(decoded)
+        decoded = Dense(self.maxHits*4, activation='sigmoid')(decoded)
 
-        # build summed model for latent space
-        unsummed_model = Model(inputs=inputs, outputs=phi_network)
-        set_input = Input(shape=self.input_shape)
-        phi_set = TimeDistributed(unsummed_model)(set_input)
-        summed = Lambda(lambda x: tf.reduce_sum(x, axis=1))(phi_set)
-        phi_model = Model(inputs=set_input, outputs=summed)
+        autoencoder = keras.Model(inputs, decoded)
 
-        # define F (rho) network evaluating in the latent space
-        if(self.track_info_shape == 0): f_inputs = Input(shape=(self.phi_layers[-1],)) # plus any other track/event-wide variable
-        else: f_inputs = Input(shape=(self.phi_layers[-1]+self.track_info_shape,))
-        f_network = Dense(self.f_layers[0])(f_inputs)
-        f_network = Activation('relu')(f_network)
-        for layerSize in self.f_layers[1:]:
-            f_network = Dense(layerSize)(f_network)
-            f_network = Activation('relu')(f_network)
-        flat_input_size = 1
-        for dim in self.input_shape: flat_input_size *= dim
-        f_network = Dense(flat_input_size)(f_network)
-        f_outputs = Activation('softmax')(f_network)
-        f_outputs = Reshape(self.input_shape)(f_outputs)
-        f_model = Model(inputs=f_inputs, outputs=f_outputs)
+        self.model = autoencoder
 
-        # build the DeepSets architecture
-        deepset_inputs = Input(shape=self.input_shape)
-        latent_space = phi_model(deepset_inputs)
-        if(self.track_info_shape == 0): 
-            deepset_outputs = f_model(latent_space)
-        else: 
-            info_inputs = Input(shape=(self.track_info_shape,))
-            deepset_inputs_withInfo = concatenate([latent_space,info_inputs])
-            deepset_outputs = f_model(deepset_inputs_withInfo)
-
-        if(self.track_info_shape == 0): model = Model(inputs=deepset_inputs, outputs=deepset_outputs)
-        else: model = Model(inputs=[deepset_inputs,info_inputs], outputs=deepset_outputs)
-
-        print(f_model.summary())
-        print(phi_model.summary())
-        print(model.summary())
-
-        self.model = model
+        print(self.model.summary())
 
     def load_model(self, model_path):
         self.model = keras.models.load_model(model_path)

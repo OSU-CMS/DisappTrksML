@@ -6,7 +6,7 @@ import numpy as np
 
 import tensorflow as tf
 
-from deepAE import DeepAE
+from AE import AE
 from generator import DataGenerator
 
 if False:
@@ -32,7 +32,8 @@ generator_params = {
 	'input_dir' : '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_genmuons/',
 	'batch_size' : 512,
 	'shuffle' : True,
-	'maxHits' : 50
+	'maxHits' : 50,
+	'flatten' : True
 }
 train_params = {
 	'epochs':10,
@@ -43,7 +44,7 @@ train_params = {
 
 if(not os.path.isdir(outdir)): os.mkdir(outdir)
 
-arch = DeepAE(**model_params)
+arch = AE(**model_params)
 arch.buildModel()
 
 inputFiles = glob.glob(generator_params['input_dir']+'images_*.root.npz')
