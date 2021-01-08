@@ -247,3 +247,85 @@ class DataGeneratorV3(keras.utils.Sequence):
 		if self.with_info:
 			return [X,X_info], keras.utils.to_categorical(y, num_classes=2)
 		return X, keras.utils.to_categorical(y, num_classes=2)
+
+
+class DataGeneratorV4(keras.utils.Sequence):
+
+	def __init__(self, 
+				 file_ids, input_dir='', 
+				 batch_size=32, 
+				 with_info=False,
+				 maxHits=100):
+		self.file_ids = file_ids
+		self.input_dir = input_dir
+		self.batch_size = batch_size
+		self.with_info = with_info
+		self.maxHits = maxHits
+
+		self.files = np.array([])
+		self.events = np.array([])
+		self.classes = np.array([])
+
+		self.create_event_file_lists()
+
+	def create_event_file_lists(self):
+
+		for idx in self.file_ids:
+			fin = np.load(self.input_dir + 'images_' + idx + '.root.npz')
+			num_signal_file = int(fin['signal'].shape[0])
+			self.files = np.concatenate((self.files,np.ones(num_signal_file)*int(idx)))
+			self.events = np.concatenate((self.events,np.arange(num_signal_file,dtype=int)))
+			self.classes = np.concatenate((self.classes,np.ones(num_signal_file)))
+
+			num_bkg_file = int(fin['background'].shape[0])
+			self.files = np.concatenate((self.files,np.ones(num_bkg_file)*int(idx)))
+			self.events = np.concatenate((self.events,np.arange(num_bkg_file,dtype=int)))
+			self.classes = np.concatenate((self.classes,np.zeros(num_bkg_file)))
+
+		assert len(self.files) == len(self.events) and len(self.files) == len(self.classes)
+ 		print "Found",len(self.files),"events:", len(self.classes[np.where(self.classes==1)]),"signal events and",len(self.classes[np.where(self.classes==0)]),"background events"
+
+ 		self.classes = self.classes.astype(int)
+ 		self.files = self.files.astype(int)
+ 		self.events = self.events.astype(int)
+
+	def __len__(self):
+		return int(np.floor(len(self.files) / self.batch_size))
+
+	def __getitem__(self, index):
+		return self.__data_generation(index)
+
+	def __data_generation(self, index):
+
+		class_labels = ['background','signal']
+		X, X_info = None, None
+		X_files = self.files[index * self.batch_size : (index + 1) * self.batch_size]
+		X_events = self.events[index * self.batch_size : (index + 1) * self.batch_size]
+		X_classes = self.classes[index * self.batch_size : (index + 1) * self.batch_size]
+		
+		for file in list(set(X_files)):
+			events_this_file = X_events[np.where(X_files == file)]
+			classes_this_file = X_classes[np.where(X_files == file)]
+
+			for c in list(set(classes_this_file)):
+				events_this_class = events_this_file[np.where(classes_this_file==c)]
+				if X is None:
+					X = np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz')[class_labels[c]][events_this_class]
+					X_info = np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz')[class_labels[c]+'_info'][events_this_class]
+				else:
+					X = np.vstack((X,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz')[class_labels[c]][events_this_class]))
+					X_info = np.vstack((X_info,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz')[class_labels[c]+'_info'][events_this_class]))
+
+		y = X_info[:,3]
+
+		p = np.random.permutation(len(X))
+		X = X[p]
+		y = y[p]
+		X_info = X_info[p]
+		X_info = X_info[:,[4,8,9]]
+
+		X = X[:,:self.maxHits,:]
+
+		if self.with_info:
+			return [X,X_info], keras.utils.to_categorical(y, num_classes=2)
+		return X, keras.utils.to_categorical(y, num_classes=2)

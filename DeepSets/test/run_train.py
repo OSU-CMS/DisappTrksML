@@ -6,13 +6,11 @@ import datetime
 
 if __name__=="__main__":
 
-    logdir = "/data/users/llavezzo/Logs/training_final/"
+    logdir = "/data/users/llavezzo/Logs/training/"
 
     params = [
-        [[128,256, 512],[256, 256, 256],0.5,5,"trainV3_param1_lessepochs/",False,50],
-        [[128,256, 512],[256, 256, 256],0.1,6,"trainV3_param4_lessepochs/",False,50],
-        [[64, 64, 256],[64, 64, 64],0.5,4,"trainV4_param0_lessepochs/",True,100],
-        [[64, 64, 128],[64,32],0.1,50,"trainV2_param5_lessepochs/",False,100]
+        [[64,64,64,64,128],[128,64,64,64],0.1,20,"test/"],
+        [[64,64,64,64,128],[128,64,64,64],0.01,10,"test2/"],
     ]
 
     np.save('params.npy',params)

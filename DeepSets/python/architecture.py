@@ -16,6 +16,8 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization, concatenate
 from tensorflow.keras import optimizers, regularizers, callbacks
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 # combine EB+EE and muon detectors into ECAL/HCAL/MUO indices
@@ -183,7 +185,7 @@ class DeepSetsArchitecture:
                 track.inGap or
                 abs(track.dRMinJet) < 0.5 or
                 abs(track.deltaRToClosestElectron) < 0.15 or
-                # abs(track.deltaRToClosestMuon) < 0.15 or
+                abs(track.deltaRToClosestMuon) < 0.15 or
                 abs(track.deltaRToClosestTauHad) < 0.15):
                 trackPasses.append(False)
             else:
@@ -289,7 +291,7 @@ class DeepSetsArchitecture:
         for layerSize in self.phi_layers[:-1]:
             phi_network = Dense(layerSize)(phi_network)
             phi_network = Activation('relu')(phi_network)
-            phi_network = BatchNormalization()(phi_network)
+            #phi_network = BatchNormalization()(phi_network)
         phi_network = Dense(self.phi_layers[-1])(phi_network)
         phi_network = Activation('linear')(phi_network)
 
@@ -339,8 +341,8 @@ class DeepSetsArchitecture:
 
     def evaluate_model(self, event, track):
         event = self.convertTrackFromTreeElectrons(event, track, 1) # class_label doesn't matter
-        #prediction = self.model.predict(np.reshape(event['sets'], (1, 100, 4)))
-        prediction = self.model.predict([np.reshape(event['sets'], (1, 100, 4)),np.reshape(event['infos'],(1,13))[:,[4,8,9]]])
+        prediction = self.model.predict(np.reshape(event['sets'], (1, 100, 4)))
+        #prediction = self.model.predict([np.reshape(event['sets'], (1, 100, 4)),np.reshape(event['infos'],(1,13))[:,[4,8,9]]])
         return prediction[:,1] # p(is electron)
 
     # def evaluate_model(self, event, track):
@@ -348,7 +350,7 @@ class DeepSetsArchitecture:
     #     prediction = self.model.predict([np.reshape(converted_arrays['sets'], (1, 100, 4)),np.reshape(converted_arrays['infos'],(1,13))[:,[8,9,10,11]]])
     #     return prediction[:,1] # p(is electron)
 
-    def fit_generator(self, train_generator, val_generator=None, epochs=10, monitor='val_loss',patience_count=3,outdir=""):
+    def fit_generator(self, train_generator, val_generator=None, epochs=10, monitor='val_loss',patience_count=10,outdir=""):
         self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=['accuracy'])
         
         training_callbacks = [
@@ -360,10 +362,10 @@ class DeepSetsArchitecture:
         ]
 
         self.training_history = self.model.fit(train_generator, 
-                                             #validation_data=val_generator,
-                                             #callbacks=training_callbacks,
+                                             validation_data=val_generator,
+                                             callbacks=training_callbacks,
                                              epochs=epochs,
-                                             verbose=2)
+                                             verbose=1)
 
     def save_model(self, outputFileName):
         self.model.save(outputFileName)
@@ -399,3 +401,40 @@ class DeepSetsArchitecture:
         plt.legend()
 
         plt.show()
+
+    def plot_trainingHistory(self,infile,outfile,metric='loss'):
+
+        with open(infile,'rb') as f:
+            history = pickle.load(f)
+
+        loss = history[metric]
+        val_loss = history['val_'+metric]
+
+        epochs = range(1, len(loss) + 1)
+
+        plt.figure()
+        plt.plot(epochs, loss, 'bo', label='Training '+metric)
+        plt.plot(epochs, val_loss, 'b', label='Validation '+metric)
+        plt.title('Training and validation loss')
+        plt.legend()
+
+        plt.savefig(outfile)
+
+    def save_metrics(self, infile, outfile, train_params):
+
+        file = open(infile,'rb')
+        history = pickle.load(file)
+        if(len(history['val_loss']) == train_params['epochs']):
+            val_loss = history['val_loss'][-1]
+            val_acc = history['val_accuracy'][-1]
+        else:
+            i = len(history['val_loss']) - train_params['patience_count'] - 1
+            val_loss = history['val_loss'][i]
+            val_acc = history['val_accuracy'][i]
+        file.close()
+        metrics = {
+            "val_loss":val_loss,
+            "val_acc":val_acc
+        }
+        with open(outfile, 'wb') as f:
+            pickle.dump(metrics, f)

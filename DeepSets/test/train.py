@@ -27,21 +27,23 @@ if(len(sys.argv)>1):
 
 model_params = {
 	'phi_layers':input_params[0],
-	'f_layers':input_params[1],
-	'maxHits':input_params[6]
+	'f_layers':input_params[1]
 }
-if input_params[5]: model_params.update({'track_info_shape':3})
-generator_params = {
+val_generator_params = {
 	'input_dir' : '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_converted/',
-	'batch_size' : 128,
-	'batch_ratio' : input_params[2],
-	'shuffle' : True,
-	'with_info' : input_params[5],
-	'maxHits' : input_params[6]
+	'batch_size' : 256,
+	'with_info' : False,
+	'maxHits' : 100
 }
+train_generator_params = val_generator_params.copy()
+train_generator_params.update({
+	'shuffle': True,
+	'batch_ratio': input_params[2]
+})
 train_params = {
 	'epochs':input_params[3],
-	'outdir':outdir
+	'outdir':outdir,
+	'patience_count':5
 }
 
 if(not os.path.isdir(outdir)): os.mkdir(outdir)
@@ -49,42 +51,25 @@ if(not os.path.isdir(outdir)): os.mkdir(outdir)
 arch = DeepSetsArchitecture(**model_params)
 arch.buildModel()
 
-inputFiles = glob.glob(generator_params['input_dir']+'images_*.root.npz')
+inputFiles = glob.glob(train_generator_params['input_dir']+'images_*.root.npz')
 inputIndices = np.array([f.split('images_')[-1][:-9] for f in inputFiles])
 nFiles = len(inputIndices)
 print('Found', nFiles, 'input files')
 
 file_ids = {
-	'train'      : inputIndices,
-	# 'validation' : inputIndices[test_index]
+	'train'      : inputIndices[:500],
+	'validation' : inputIndices[500:600]
 }
 
-train_generator = DataGeneratorV3(file_ids['train'], **generator_params)
-# val_generator = DataGeneratorV3(file_ids['validation'], **generator_params)
+train_generator = DataGeneratorV3(file_ids['train'], **train_generator_params)
+val_generator = DataGeneratorV4(file_ids['validation'], **val_generator_params)
 
 arch.fit_generator(train_generator=train_generator, 
-					# val_generator=val_generator, 	
+				   val_generator=val_generator, 	
 					**train_params)
 
 arch.save_trainingHistory(train_params['outdir']+'trainingHistory.pkl')
+arch.plot_trainingHistory(train_params['outdir']+'trainingHistory.pkl',train_params['outdir']+'trainingHistory.png','loss')
 arch.save_weights(train_params['outdir']+'model_weights.h5')
 arch.save_model(train_params['outdir']+'model.h5')
-
-# infile = open(train_params['outdir']+'trainingHistory.pkl','rb')
-# history = pickle.load(infile)
-# if(len(history['val_loss']) == train_params['epochs']):
-# 	val_loss = history['val_loss'][-1]
-# 	val_acc = history['val_accuracy'][-1]
-# else:
-# 	i = len(history['val_loss']) - train_params['patience_count'] - 1
-# 	val_loss = history['val_loss'][i]
-# 	val_acc = history['val_accuracy'][i]
-# infile.close()
-
-# metrics = {
-# 	"val_loss":val_loss,
-# 	"val_acc":val_acc
-# }
-
-# with open(outdir+"metrics.pkl", 'wb') as f:
-#     pickle.dump(metrics, f)
+arch.save_metrics(train_params['outdir']+'trainingHistory.pkl',train_params['outdir']+"metrics.pkl", train_params)

@@ -4,7 +4,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-dataDir = '/store/user/llavezzo/disappearingTracks/SingleEle2017F_validation/trainV4_param0_lessepochs/'
+dataDir = '/store/user/llavezzo/disappearingTracks/SingleEle2017F_validation/trainV3_param1_lessepochs/'
 
 preds = []
 
@@ -16,10 +16,10 @@ for file in os.listdir(dataDir):
 	for pr in p: preds.append(pr)
 
 preds = np.array(preds)
-count = np.count_nonzero(preds>0.5)
+count = np.count_nonzero(preds>0.3)
 
 print("Found",count,"electrons from",len(preds),"true electrons")
 
 plt.hist(preds)
 plt.xlabel("Classifier Output")
-plt.savefig("trainV4_param0_lessepochs/classifier_ouput_SingleEle2017F.png")
+plt.savefig("classifier_ouput_SingleEle2017F.png")

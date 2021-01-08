@@ -10,10 +10,10 @@ import numpy as np
 if __name__=="__main__":
 
     dataDir = '/store/user/bfrancis/images_v5/SingleEle_2017F/'
-    outDir = '/store/user/llavezzo/disappearingTracks/SingleEle2017F_validation/trainV4_param0_lessepochs/'
+    outDir = '/store/user/llavezzo/disappearingTracks/SingleEle2017F_validation/test/'
     logDir = '/data/users/llavezzo/Logs/evaluate/'
     reprocessAllFiles = True
-    modelFile = 'trainV4_param0_lessepochs/model.h5'
+    modelFile = '/share/scratch0/llavezzo/CMSSW_11_1_3/src/DisappTrksML/DeepSets/test/kfold_results/trainV2_param5_lessepochs/model.h5'
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
     if(not os.path.isdir(logDir)): os.mkdir(logDir)
