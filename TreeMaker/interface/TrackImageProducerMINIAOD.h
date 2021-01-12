@@ -71,6 +71,10 @@
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
 #include "DataFormats/Math/interface/deltaPhi.h"
+#include "DataFormats/TrackReco/interface/DeDxHitInfo.h"
+#include "RecoTracker/DeDx/interface/DeDxTools.h"
+#include "DataFormats/TrackReco/interface/DeDxData.h"
+#include "DataFormats/PatCandidates/interface/IsolatedTrack.h"
 
 using namespace std;
 
@@ -85,13 +89,18 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       void analyze(const edm::Event &, const edm::EventSetup &);
 
       void getGeometries(const edm::EventSetup &);
-
+      void findMatchedIsolatedTrack (const edm::Handle<vector<pat::IsolatedTrack> >&isolatedTracks, 
+                                     edm::Ref<vector<pat::IsolatedTrack> >&matchedIsolatedTrack, 
+                                     double &dRToMatchedIsolatedTrack, const CandidateTrack &track) const;
+      void findMatchedGenTrack (const edm::Handle<vector<reco::Track> >&genTracks,
+                                     edm::Ref<vector<reco::Track> >&matchedGenTrack,
+                                     double &dRToMatchedGenTrack, const CandidateTrack &track) const;
       int countGoodPrimaryVertices(const vector<reco::Vertex> &) const;
       int countGoodJets(const vector<pat::Jet> &) const;
       double getMaxDijetDeltaPhi(const vector<pat::Jet> &) const;
       double getLeadingJetMetPhi(const vector<pat::Jet> &, const pat::MET &) const;
 
-      void getTracks(const vector<CandidateTrack> &, 
+      void getTracks(const edm::Handle<vector<CandidateTrack> > tracks, 
                      const reco::Vertex &, 
                      const vector<pat::Jet> &,
                      const vector<pat::Electron> &,
@@ -99,7 +108,12 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
                      const vector<pat::Tau> &,
                      const vector<pat::Electron> &tagElectrons,
                      const vector<pat::Muon> &tagMuons,
-                     const pat::MET &);
+                     const pat::MET &, 
+                     const edm::Handle<vector<pat::IsolatedTrack> >, 
+		     const edm::Handle<reco::DeDxHitInfoAss>,
+                     const edm::Handle<edm::ValueMap<reco::DeDxData> > dEdxStrip,
+                     const edm::Handle<edm::ValueMap<reco::DeDxData> > dEdxPixel,
+                     const edm::Handle<vector<reco::Track> > genTracks);
 
       void getRecHits(const edm::Event &);
       void getGenParticles(const reco::CandidateView &);
@@ -153,11 +167,11 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       edm::InputTag HBHERecHits_;
       edm::InputTag cscSegments_, dtRecSegments_, rpcRecHits_;
 
-      const double minGenParticlePt_;
-      const double minTrackPt_;
-      const double maxRelTrackIso_;
-
-      const string dataTakingPeriod_;
+      edm::InputTag dEdxPixel_;
+      edm::InputTag dEdxStrip_;
+      edm::InputTag isoTrk2dedxHitInfo_;     
+      edm::InputTag isoTracks_;
+      edm::InputTag genTracks_;
 
       edm::EDGetTokenT<edm::TriggerResults>                   triggersToken_;
       edm::EDGetTokenT<vector<pat::TriggerObjectStandAlone> > trigObjsToken_;
@@ -181,6 +195,12 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       edm::EDGetTokenT<DTRecSegment4DCollection>   DTRecSegmentsToken_;
       edm::EDGetTokenT<RPCRecHitCollection>        RPCRecHitsToken_;
 
+      edm::EDGetTokenT<edm::ValueMap<reco::DeDxData> > dEdxPixelToken_;
+      edm::EDGetTokenT<edm::ValueMap<reco::DeDxData> > dEdxStripToken_;
+      edm::EDGetTokenT<reco::DeDxHitInfoAss> isoTrk2dedxHitInfoToken_;
+      edm::EDGetTokenT<vector<pat::IsolatedTrack> >isoTrackToken_;
+      edm::EDGetTokenT<vector<reco::Track> > genTracksToken_;
+      
       edm::ESHandle<CaloGeometry> caloGeometry_;
       edm::ESHandle<CSCGeometry>  cscGeometry_;
       edm::ESHandle<DTGeometry>   dtGeometry_;
@@ -195,6 +215,12 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       vector<RecHitInfo> recHitInfos_;
       vector<GenParticleInfo> genParticleInfos_;
       
+      const double minGenParticlePt_;
+      const double minTrackPt_;
+      const double maxRelTrackIso_;
+
+      const string dataTakingPeriod_;
+ 
       // event information  
       int nPV_;
       unsigned long long eventNumber_;

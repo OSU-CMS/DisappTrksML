@@ -30,6 +30,17 @@ struct TrackInfo {
   //        3 = 0b11 : in both an OS and SS pair
   unsigned int isTagProbeElectron, isTagProbeMuon;
   unsigned int isTagProbeTauToElectron, isTagProbeTauToMuon;
+
+  std::vector<int> isPixel;
+  std::vector<float> charge;
+  std::vector<int> pixelSize;
+  std::vector<int> pixelSizeX;
+  std::vector<int> pixelSizeY;
+
+  double dEdxPixel, dEdxStrip;
+  int numMeasurementsPixel, numMeasurementsStrip;
+  int numSatMeasurementsPixel, numSatMeasurementsStrip;
+
 };
 
 struct CSCRecHitInfo {
