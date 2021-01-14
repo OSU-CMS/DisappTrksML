@@ -33,9 +33,14 @@ struct TrackInfo {
 
   std::vector<int> isPixel;
   std::vector<float> charge;
-  std::vector<int> pixelSize;
-  std::vector<int> pixelSizeX;
-  std::vector<int> pixelSizeY;
+  std::vector<int> pixelHitSize;
+  std::vector<int> pixelHitSizeX;
+  std::vector<int> pixelHitSizeY;
+  std::vector<bool> stripShapeSelection;
+  std::vector<float> hitPosX;
+  std::vector<float> hitPosY;
+  std::vector<float> hitPosZ;
+  std::vector<int> hitLayerId;
 
   double dEdxPixel, dEdxStrip;
   int numMeasurementsPixel, numMeasurementsStrip;
