@@ -6,6 +6,7 @@
 #include "Geometry/CaloGeometry/interface/CaloCellGeometry.h"
 
 #include "OSUT3Analysis/AnaTools/interface/CommonUtils.h"
+#include "RecoTracker/DeDx/interface/DeDxTools.h"
 
 #include "TLorentzVector.h"
 
@@ -377,85 +378,6 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
     
     TrackInfo info;
     
-    /*cout << "Track number " << itrk << endl;
-    cout << "dEdxStrip size " << dEdxStrip->size() << endl;
-    cout << "dEdxPixel size " << dEdxPixel->size() << endl;
-    //cout << "Ref pt " << trackRef->pt() << endl;
-    vector<float> charge(tracks.size());
-    vector<int> isPixelHit(tracks.size());
-    vector<int> pixelSize(tracks.size());
-    vector<int> pixelSizeX(tracks.size());
-    vector<int> pixelSizeY(tracks.size());
-
-    edm::Ref<vector<pat::IsolatedTrack> > matchedIsolatedTrack;
-    double dRToMatchedIsolatedTrack;   
-    findMatchedIsolatedTrack(isoTracks, matchedIsolatedTrack, dRToMatchedIsolatedTrack, track);
-    cout << "General tracks: " << tracks.size() << " Iso Tracks: " << isoTracks->size() << endl;
-    cout << "Matched Track dR: " << dRToMatchedIsolatedTrack << endl;
-    if(dRToMatchedIsolatedTrack == INVALID_VALUE) {
-      //cout << "No matched isolated track" << endl;
-      charge.push_back(-10);
-      isPixelHit.push_back(-10);
-      pixelSizeX.push_back(-10);
-      pixelSizeY.push_back(-10);
-      pixelSize.push_back(-10);
-    }
-    if(dRToMatchedIsolatedTrack != INVALID_VALUE){
-      if(isoTrk2dedxHitInfo->contains(matchedIsolatedTrack.id())) {
-        const reco::DeDxHitInfo * hitInfo = (*isoTrk2dedxHitInfo)[matchedIsolatedTrack].get();
-        if(hitInfo == nullptr) {
-          //edm::LogWarning ("disappTrks_DeDxHitInfoVarProducer") << "Encountered a null DeDxHitInfo object from a pat::IsolatedTrack? Skipping this track...";
-          continue;
-        }
-
-        for(unsigned int iHit = 0; iHit < hitInfo->size(); iHit++) {
-          bool isPixel = (hitInfo->pixelCluster(iHit) != nullptr);
-          bool isStrip = (hitInfo->stripCluster(iHit) != nullptr);
-	  if(!isPixel && !isStrip) continue; // probably shouldn't happen
-          if(isPixel && isStrip) continue;
-
-          // shape selection for strips
-          //if(isStrip && !DeDxTools::shapeSelection(*(hitInfo->stripCluster(iHit)))) continue;
-          float norm = isPixel ? 3.61e-06 : 3.61e-06 * 265;
-
-          charge.push_back(norm * hitInfo->charge(iHit) / hitInfo->pathlength(iHit));
-          isPixelHit.push_back(isPixel);
-
-          pixelSize.push_back(isPixel ? hitInfo->pixelCluster(iHit)->size()   : -1);
-          pixelSizeX.push_back(isPixel ? hitInfo->pixelCluster(iHit)->sizeX() : -1);
-          pixelSizeY.push_back(isPixel ? hitInfo->pixelCluster(iHit)->sizeY() : -1);
-        }
-      } // if isoTrk in association map
-    } //if dRToMatchedIsoTrk != invalid
-    info.isPixel = isPixelHit;
-    info.charge = charge;
-    info.pixelSize = pixelSize;
-    info.pixelSizeX = pixelSizeX;
-    info.pixelSizeY = pixelSizeY;
-    
-    edm::Ref<vector<reco::Track> > matchedGenTrack;
-    double dRToMatchedGenTrack;
-    findMatchedGenTrack(genTracks, matchedGenTrack, dRToMatchedGenTrack, track);
-    if(dRToMatchedGenTrack == INVALID_VALUE){
-      info.dEdxPixel = -10;
-      info.numMeasurementsPixel = -10;
-      info.numSatMeasurementsPixel = -10;
-      info.dEdxStrip = -10;
-      info.numMeasurementsStrip = -10;
-      info.numSatMeasurementsStrip = -10;
-    }
-    else{
-      const reco::DeDxData &dEdxDataPixel = (*dEdxPixel)[matchedGenTrack];
-      const reco::DeDxData &dEdxDataStrip = (*dEdxStrip)[matchedGenTrack];
-    
-      info.dEdxPixel = dEdxDataPixel.dEdx();
-      info.numMeasurementsPixel = dEdxDataPixel.numberOfMeasurements();
-      info.numSatMeasurementsPixel = dEdxDataPixel.numberOfSaturatedMeasurements();
-      info.dEdxStrip = dEdxDataStrip.dEdx();
-      info.numMeasurementsStrip = dEdxDataStrip.numberOfMeasurements();
-      info.numSatMeasurementsStrip = dEdxDataStrip.numberOfSaturatedMeasurements();
-    }*/
-
     //apply track pt cut
     if(minTrackPt_ > 0 && track.pt() <= minTrackPt_) continue;
 
@@ -478,9 +400,14 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
     
     vector<float> charge(tracks->size());
     vector<int> isPixelHit(tracks->size());
-    vector<int> pixelSize(tracks->size());
-    vector<int> pixelSizeX(tracks->size());
-    vector<int> pixelSizeY(tracks->size());
+    vector<int> pixelHitSize(tracks->size());
+    vector<int> pixelHitSizeX(tracks->size());
+    vector<int> pixelHitSizeY(tracks->size());
+    vector<bool> stripShapeSelection(tracks->size());
+    vector<float> hitPosX(tracks->size());
+    vector<float> hitPosY(tracks->size());
+    vector<float> hitPosZ(tracks->size());
+    vector<int> hitLayerId(tracks->size());
 
     edm::Ref<vector<pat::IsolatedTrack> > matchedIsolatedTrack;
     double dRToMatchedIsolatedTrack;
@@ -491,9 +418,14 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
       //cout << "No matched isolated track" << endl;
       charge.push_back(-10);
       isPixelHit.push_back(-10);
-      pixelSizeX.push_back(-10);
-      pixelSizeY.push_back(-10);
-      pixelSize.push_back(-10);
+      pixelHitSizeX.push_back(-10);
+      pixelHitSizeY.push_back(-10);
+      pixelHitSize.push_back(-10);
+      stripShapeSelection.push_back(-10);
+      hitPosX.push_back(-50);
+      hitPosY.push_back(-50);
+      hitPosZ.push_back(-50);
+      hitLayerId.push_back(-10);
     }
 
     if(dRToMatchedIsolatedTrack != INVALID_VALUE){
@@ -511,24 +443,35 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
           if(isPixel && isStrip) continue;
 
           // shape selection for strips
-          //if(isStrip && !DeDxTools::shapeSelection(*(hitInfo->stripCluster(iHit)))) continue;
+          if(isStrip && DeDxTools::shapeSelection(*(hitInfo->stripCluster(iHit)))) stripShapeSelection.push_back(true);
+          else stripShapeSelection.push_back(false);
+
           float norm = isPixel ? 3.61e-06 : 3.61e-06 * 265;
 
+          PXBDetId thisDetId = PXBDetId(hitInfo->detId(iHit));   
+          hitLayerId.push_back(thisDetId.layer());
+ 
           charge.push_back(norm * hitInfo->charge(iHit) / hitInfo->pathlength(iHit));
           isPixelHit.push_back(isPixel);
-
-          pixelSize.push_back(isPixel ? hitInfo->pixelCluster(iHit)->size()   : -1);
-          pixelSizeX.push_back(isPixel ? hitInfo->pixelCluster(iHit)->sizeX() : -1);
-          pixelSizeY.push_back(isPixel ? hitInfo->pixelCluster(iHit)->sizeY() : -1);
+          hitPosX.push_back(hitInfo->pos(iHit).x());
+          hitPosY.push_back(hitInfo->pos(iHit).y());
+          hitPosZ.push_back(hitInfo->pos(iHit).z());
+          pixelHitSize.push_back(isPixel ? hitInfo->pixelCluster(iHit)->size()   : -1);
+          pixelHitSizeX.push_back(isPixel ? hitInfo->pixelCluster(iHit)->sizeX() : -1);
+          pixelHitSizeY.push_back(isPixel ? hitInfo->pixelCluster(iHit)->sizeY() : -1);
         }
       } // if isoTrk in association map
     } //if dRToMatchedIsoTrk != invalid
     info.isPixel = isPixelHit;
     info.charge = charge;
-    info.pixelSize = pixelSize;
-    info.pixelSizeX = pixelSizeX;
-    info.pixelSizeY = pixelSizeY;
- 
+    info.pixelHitSize = pixelHitSize;
+    info.pixelHitSizeX = pixelHitSizeX;
+    info.pixelHitSizeY = pixelHitSizeY;
+    info.stripShapeSelection = stripShapeSelection;
+    info.hitPosX = hitPosX;
+    info.hitPosY = hitPosY;
+    info.hitPosZ = hitPosZ;
+    info.hitLayerId = hitLayerId;
 
     edm::Ref<vector<reco::Track> > matchedGenTrack;
     double dRToMatchedGenTrack;
