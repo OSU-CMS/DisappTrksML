@@ -8,18 +8,18 @@ import matplotlib.pyplot as plt
 def print_kfold_metrics(folders):
 	indices, val_losses, val_accs = [], [], []
 	for folder in folders:
-		with open(folder+'/metrics.pkl','rb') as f:
+		with open(folder+'/kfold_metrics.pkl','rb') as f:
 			metrics = pickle.load(f)
 		indices.append(folder)
 		val_losses.append(metrics['val_loss'])
-		val_accs.append(metrics['val_acc'])
+		val_accs.append(metrics['val_accuracy'])
 
 	plt.scatter(indices,val_losses,label="validation loss")
 	plt.xlabel("Parameter Index")
 	plt.legend()
 	plt.xticks(rotation = 90)
 	plt.subplots_adjust(bottom=0.3)
-	plt.savefig("results_loss.png")
+	plt.savefig("kfold_results_loss.png")
 	plt.clf()
 
 	plt.scatter(indices,val_accs,label="validation accuracy")
@@ -27,7 +27,7 @@ def print_kfold_metrics(folders):
 	plt.legend()
 	plt.xticks(rotation = 90)
 	plt.subplots_adjust(bottom=0.3)
-	plt.savefig("results_acc.png")
+	plt.savefig("kfold_results_acc.png")
 
 def plot_history(infile,outfile):
 
@@ -50,7 +50,4 @@ def plot_history(infile,outfile):
 
 #####################
 
-infiles = ['trainV2_param5/trainingHistory_'+str(i)+'.pkl' for i in range(5)]
-outfiles = ['trainV2_param5/trainingHistory_'+str(i)+'.png' for i in range(5)]
-for infile, outfile in zip(infiles, outfiles): 
-	plot_history(infile,outfile)
+print_kfold_metrics(["kfold"+str(i) for i in range(0,10)])

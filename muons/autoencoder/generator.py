@@ -83,7 +83,7 @@ class DataGenerator(keras.utils.Sequence):
 
 		if(self.flatten):
 
-			for i in range(X.shape[-1]): X[:,:,i] = normalize(X[:,:,i])
+			#for i in range(X.shape[-1]): X[:,:,i] = normalize(X[:,:,i])
 
 			X = np.reshape(X,(self.batch_size,self.maxHits*4))
 

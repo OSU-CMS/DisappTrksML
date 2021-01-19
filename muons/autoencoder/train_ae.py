@@ -3,6 +3,7 @@ warnings.filterwarnings('ignore')
 import glob, os, sys
 from datetime import datetime
 import numpy as np
+import pickle
 
 import tensorflow as tf
 
@@ -26,13 +27,13 @@ if(len(sys.argv)>1):
 	outdir = input_params[0]
 
 model_params = {
-	'maxHits':50
+	'maxHits':20
 }
 generator_params = {
-	'input_dir' : '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_genmuons/',
-	'batch_size' : 512,
+	'input_dir' : '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_muons/',
+	'batch_size' : 256,
 	'shuffle' : True,
-	'maxHits' : 50,
+	'maxHits' : 20,
 	'flatten' : True
 }
 train_params = {
@@ -53,8 +54,8 @@ nFiles = len(inputIndices)
 print('Found', nFiles, 'input files')
 
 file_ids = {
-	'train'      : inputIndices[:200],
-	'validation' : inputIndices[200:250]
+	'train'      : inputIndices[:100],
+	'validation' : inputIndices[500:510]
 }
 
 train_generator = DataGenerator(file_ids['train'], **generator_params)
@@ -69,10 +70,10 @@ arch.plotHistory('ae_train/trainingHistory.pkl','ae_train/trainingHistory.png','
 arch.save_weights(train_params['outdir']+'model_weights.h5')
 arch.save_model(train_params['outdir']+'model.h5')
 
-events = np.load('muons.npy.npz',allow_pickle=True)['sets']
-events = np.reshape(events,(len(events),100,4))[:,:50,:]
-preds = arch.model.predict(events)
-np.savez_compressed("ae_preds_muons.npy", events=events, preds=preds)
+# events = np.load('muons.npy.npz',allow_pickle=True)['sets']
+# events = np.reshape(events,(len(events),100,4))[:,:50,:]
+# preds = arch.model.predict(events)
+# np.savez_compressed("ae_preds_muons.npy", events=events, preds=preds)
 
 infile = open(train_params['outdir']+'trainingHistory.pkl','rb')
 history = pickle.load(infile)

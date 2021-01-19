@@ -71,7 +71,7 @@ class AE:
     #     return prediction[:,1] # p(is electron)
 
     def fit_generator(self, train_generator, val_generator=None, epochs=10, monitor='val_loss',patience_count=3,outdir=""):
-        self.model.compile(optimizer=optimizers.Adam(), loss='binary_crossentropy')
+        self.model.compile(optimizer=optimizers.Adam(), loss=tf.keras.losses.MeanSquaredLogarithmicError())
         
         training_callbacks = [
             callbacks.EarlyStopping(monitor=monitor,patience=patience_count),

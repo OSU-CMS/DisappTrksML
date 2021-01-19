@@ -78,48 +78,7 @@ class DeepSetsArchitecture:
         self.phi_layers = phi_layers
         self.f_layers = f_layers
 
-    def convertTrackFromTreeElectrons(self, event, track, class_label):
-        hits = []
-
-        for hit in event.recHits:
-            dEta, dPhi = imageCoordinates(track, hit)
-            if abs(dEta) >= self.eta_range or abs(dPhi) >= self.phi_range:
-                continue
-            detIndex = detectorIndex(hit.detType)
-            energy = hit.energy if detIndex != 2 else 1
-            hits.append((dEta, dPhi, energy, detIndex))
-
-        if len(hits) > 0:
-            hits = np.reshape(hits, (len(hits), 4))
-            hits = hits[hits[:, 2].argsort()]
-            hits = np.flip(hits, axis=0)
-            assert np.max(hits[:, 2]) == hits[0, 2]
-
-        sets = np.zeros(self.input_shape)
-        for i in range(min(len(hits), self.max_hits)):
-            for j in range(4):
-                sets[i][j] = hits[i][j]
-
-        infos = np.array([event.eventNumber, event.lumiBlockNumber, event.runNumber,
-                          class_label,
-                          event.nPV,
-                          track.deltaRToClosestElectron,
-                          track.deltaRToClosestMuon,
-                          track.deltaRToClosestTauHad,
-                          track.eta,
-                          track.phi,
-                          track.dRMinBadEcalChannel,
-                          track.nLayersWithMeasurement,
-                          track.nValidPixelHits])
-
-        values = {
-            'sets' : sets,
-            'infos' : infos,
-        }
-
-        return values
-
-    def convertTrackFromTreeMuons(self, event, track, class_label):
+    def convertTrackFromTree(self, event, track, class_label):
         hits = []
         dists = []
         hcal_energy, ecal_energy = [], []
@@ -168,8 +127,8 @@ class DeepSetsArchitecture:
                           track.dRMinBadEcalChannel,
                           track.nLayersWithMeasurement,
                           track.nValidPixelHits,
-                          ecal_energy,
-                          hcal_energy])
+                          np.sum(ecal_energy),
+                          np.sum(hcal_energy)])
 
         values = {
             'sets' : sets,
@@ -185,7 +144,7 @@ class DeepSetsArchitecture:
                 track.inGap or
                 abs(track.dRMinJet) < 0.5 or
                 abs(track.deltaRToClosestElectron) < 0.15 or
-                abs(track.deltaRToClosestMuon) < 0.15 or
+                #abs(track.deltaRToClosestMuon) < 0.15 or
                 abs(track.deltaRToClosestTauHad) < 0.15):
                 trackPasses.append(False)
             else:
@@ -207,15 +166,19 @@ class DeepSetsArchitecture:
 
             for i, track in enumerate(event.tracks):
                 if not trackPasses[i]: continue
-                
-                if isGenMatched(event, track, 13):
-                    values = self.convertTrackFromTreeMuons(event, track, 1)
+             
+                # gen-matched, reconstructed muons
+                if isGenMatched(event, track, 13) and (abs(track.deltaRToClosestMuon) < 0.15):
+                    values = self.convertTrackFromTree(event, track, 1)
                     signal.append(values['sets'])
                     signal_info.append(values['infos'])
-                else:
-                    values = self.convertTrackFromTreeMuons(event, track, 0)
+
+                # non gen-muons, non reconstructed muons
+                elif (not isGenMatched(event, track, 13)) and (not (abs(track.deltaRToClosestMuon) < 0.15)):
+                    values = self.convertTrackFromTree(event, track, 0)
                     background.append(values['sets'])
                     background_info.append(values['infos'])
+
 
         # for event in inputTree:
         #     eventPasses, trackPasses = self.eventSelection(event)
@@ -229,13 +192,13 @@ class DeepSetsArchitecture:
 
         #         # non-reco muons
         #         if abs(track.deltaRToClosestMuon) >= 0.15 :
-        #             values = self.convertTrackFromTreeMuons(event, track, 1)
+        #             values = self.convertTrackFromTree(event, track, 1)
         #             signal.append(values['sets'])
         #             signal_info.append(values['infos'])
 
         #         # reco muons
         #         else:
-        #             values = self.convertTrackFromTreeMuons(event, track, 0)
+        #             values = self.convertTrackFromTree(event, track, 0)
         #             background.append(values['sets'])
         #             background_info.append(values['infos'])
 
@@ -268,7 +231,7 @@ class DeepSetsArchitecture:
             for i, track in enumerate(event.tracks):
                 if not trackPasses[i]: continue
 
-                values = self.convertTrackFromTreeMuons(event, track, 1)
+                values = self.convertTrackFromTree(event, track, 1)
                 tracks.append(values['sets'])
                 infos.append(values['infos'])       
 
@@ -346,7 +309,7 @@ class DeepSetsArchitecture:
         return prediction[:,1] # p(is electron)
 
     # def evaluate_model(self, event, track):
-    #     converted_arrays = self.convertTrackFromTreeMuons(event, track, 1) # class_label doesn't matter
+    #     converted_arrays = self.convertTrackFromTree(event, track, 1) # class_label doesn't matter
     #     prediction = self.model.predict([np.reshape(converted_arrays['sets'], (1, 100, 4)),np.reshape(converted_arrays['infos'],(1,13))[:,[8,9,10,11]]])
     #     return prediction[:,1] # p(is electron)
 
@@ -363,9 +326,9 @@ class DeepSetsArchitecture:
 
         self.training_history = self.model.fit(train_generator, 
                                              validation_data=val_generator,
-                                             callbacks=training_callbacks,
+                                             #callbacks=training_callbacks,
                                              epochs=epochs,
-                                             verbose=1)
+                                             verbose=2)
 
     def save_model(self, outputFileName):
         self.model.save(outputFileName)
