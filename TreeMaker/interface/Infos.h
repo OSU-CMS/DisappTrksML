@@ -3,6 +3,51 @@
 
 #include <vector>
 
+struct TrackDeDxInfo {
+  int   isPixel;
+  float charge;
+  int   pixelHitSize, pixelHitSizeX, pixelHitSizeY;
+  bool  stripShapeSelection;
+  float hitPosX, hitPosY, hitPosZ;
+  int   hitLayerId;
+
+  TrackDeDxInfo() {
+    isPixel = -10;
+    charge  = -10;
+    pixelHitSize  = -10;
+    pixelHitSizeX = -10;
+    pixelHitSizeY = -10;
+    stripShapeSelection = false;
+    hitPosX = -50;
+    hitPosY = -50;
+    hitPosZ = -50;
+    hitLayerId = -10;
+  }
+
+  TrackDeDxInfo(int isPixel_,
+                float charge_,
+                int pixelHitSize_,
+                int pixelHitSizeX_,
+                int pixelHitSizeY_,
+                bool stripShapeSelection_,
+                float hitPosX_,
+                float hitPosY_,
+                float hitPosZ_,
+                int hitLayerId_) {
+    isPixel = isPixel_;
+    charge = charge_;
+    pixelHitSize = pixelHitSize_;
+    pixelHitSizeX = pixelHitSizeX_;
+    pixelHitSizeY = pixelHitSizeY_;
+    stripShapeSelection = stripShapeSelection_;
+    hitPosX = hitPosX_;
+    hitPosY = hitPosY_;
+    hitPosZ = hitPosZ_;
+    hitLayerId = hitLayerId_;
+  }
+
+};
+
 struct TrackInfo {
   double deltaRToClosestElectron, deltaRToClosestMuon, deltaRToClosestTauHad;
   double dRMinJet;
@@ -12,10 +57,14 @@ struct TrackInfo {
 
   double trackIso;
   double px, py, pz, pt;
+  double ptError;
   double eta, phi;
-  int nValidPixelHits, nValidHits;
-  int missingInnerHits, missingMiddleHits, missingOuterHits, nLayersWithMeasurement;
+  int nValidPixelHits, nValidHits, numberOfValidMuonHits;
+  int missingInnerHits, missingMiddleHits, missingOuterHits, nLayersWithMeasurement, pixelLayersWithMeasurement;
   double d0, dz;
+  double normalizedChi2;
+  bool highPurityFlag;
+  int charge;
 
   bool inGap;
 
@@ -31,21 +80,13 @@ struct TrackInfo {
   unsigned int isTagProbeElectron, isTagProbeMuon;
   unsigned int isTagProbeTauToElectron, isTagProbeTauToMuon;
 
-  std::vector<int> isPixel;
-  std::vector<float> charge;
-  std::vector<int> pixelHitSize;
-  std::vector<int> pixelHitSizeX;
-  std::vector<int> pixelHitSizeY;
-  std::vector<bool> stripShapeSelection;
-  std::vector<float> hitPosX;
-  std::vector<float> hitPosY;
-  std::vector<float> hitPosZ;
-  std::vector<int> hitLayerId;
-
   double dEdxPixel, dEdxStrip;
   int numMeasurementsPixel, numMeasurementsStrip;
   int numSatMeasurementsPixel, numSatMeasurementsStrip;
 
+  std::vector<TrackDeDxInfo> dEdxInfo;
+
+  TrackInfo() { dEdxInfo.clear(); }
 };
 
 struct CSCRecHitInfo {

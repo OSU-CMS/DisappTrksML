@@ -396,39 +396,20 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
     info.pz = track.pz();
     info.eta = track.eta();
     info.pt = track.pt();
+    info.ptError = track.ptError();
     info.phi = track.phi();
-    
-    vector<float> charge(tracks->size());
-    vector<int> isPixelHit(tracks->size());
-    vector<int> pixelHitSize(tracks->size());
-    vector<int> pixelHitSizeX(tracks->size());
-    vector<int> pixelHitSizeY(tracks->size());
-    vector<bool> stripShapeSelection(tracks->size());
-    vector<float> hitPosX(tracks->size());
-    vector<float> hitPosY(tracks->size());
-    vector<float> hitPosZ(tracks->size());
-    vector<int> hitLayerId(tracks->size());
+    info.charge = track.charge();
+
+    info.dEdxInfo.clear();
 
     edm::Ref<vector<pat::IsolatedTrack> > matchedIsolatedTrack;
     double dRToMatchedIsolatedTrack;
     findMatchedIsolatedTrack(isoTracks, matchedIsolatedTrack, dRToMatchedIsolatedTrack, track);
-    cout << "General tracks: " << tracks->size() << " Iso Tracks: " << isoTracks->size() << endl;
-    cout << "Matched Track dR: " << dRToMatchedIsolatedTrack << endl;
-    if(dRToMatchedIsolatedTrack == INVALID_VALUE) {
-      //cout << "No matched isolated track" << endl;
-      charge.push_back(-10);
-      isPixelHit.push_back(-10);
-      pixelHitSizeX.push_back(-10);
-      pixelHitSizeY.push_back(-10);
-      pixelHitSize.push_back(-10);
-      stripShapeSelection.push_back(-10);
-      hitPosX.push_back(-50);
-      hitPosY.push_back(-50);
-      hitPosZ.push_back(-50);
-      hitLayerId.push_back(-10);
-    }
 
-    if(dRToMatchedIsolatedTrack != INVALID_VALUE){
+    if(dRToMatchedIsolatedTrack == INVALID_VALUE) {
+      info.dEdxInfo.push_back(TrackDeDxInfo());
+    }
+    else {
       if(isoTrk2dedxHitInfo->contains(matchedIsolatedTrack.id())) {
         const reco::DeDxHitInfo * hitInfo = (*isoTrk2dedxHitInfo)[matchedIsolatedTrack].get();
         if(hitInfo == nullptr) {
@@ -442,36 +423,27 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
           if(!isPixel && !isStrip) continue; // probably shouldn't happen
           if(isPixel && isStrip) continue;
 
-          // shape selection for strips
-          if(isStrip && DeDxTools::shapeSelection(*(hitInfo->stripCluster(iHit)))) stripShapeSelection.push_back(true);
-          else stripShapeSelection.push_back(false);
-
           float norm = isPixel ? 3.61e-06 : 3.61e-06 * 265;
 
-          PXBDetId thisDetId = PXBDetId(hitInfo->detId(iHit));   
-          hitLayerId.push_back(thisDetId.layer());
- 
-          charge.push_back(norm * hitInfo->charge(iHit) / hitInfo->pathlength(iHit));
-          isPixelHit.push_back(isPixel);
-          hitPosX.push_back(hitInfo->pos(iHit).x());
-          hitPosY.push_back(hitInfo->pos(iHit).y());
-          hitPosZ.push_back(hitInfo->pos(iHit).z());
-          pixelHitSize.push_back(isPixel ? hitInfo->pixelCluster(iHit)->size()   : -1);
-          pixelHitSizeX.push_back(isPixel ? hitInfo->pixelCluster(iHit)->sizeX() : -1);
-          pixelHitSizeY.push_back(isPixel ? hitInfo->pixelCluster(iHit)->sizeY() : -1);
+          PXBDetId thisDetId = PXBDetId(hitInfo->detId(iHit));  
+
+          info.dEdxInfo.push_back(
+            TrackDeDxInfo(isPixel,
+                          norm * hitInfo->charge(iHit) / hitInfo->pathlength(iHit),
+                          isPixel ? hitInfo->pixelCluster(iHit)->size()  : -1,
+                          isPixel ? hitInfo->pixelCluster(iHit)->sizeX() : -1,
+                          isPixel ? hitInfo->pixelCluster(iHit)->sizeY() : -1,
+                          isStrip ? DeDxTools::shapeSelection(*(hitInfo->stripCluster(iHit))) : false,
+                          hitInfo->pos(iHit).x(),
+                          hitInfo->pos(iHit).y(),
+                          hitInfo->pos(iHit).z(),
+                          thisDetId.layer()));
         }
       } // if isoTrk in association map
+      else {
+        info.dEdxInfo.push_back(TrackDeDxInfo()); // if somehow the matched isoTrk isn't in the hitInfo?
+      }
     } //if dRToMatchedIsoTrk != invalid
-    info.isPixel = isPixelHit;
-    info.charge = charge;
-    info.pixelHitSize = pixelHitSize;
-    info.pixelHitSizeX = pixelHitSizeX;
-    info.pixelHitSizeY = pixelHitSizeY;
-    info.stripShapeSelection = stripShapeSelection;
-    info.hitPosX = hitPosX;
-    info.hitPosY = hitPosY;
-    info.hitPosZ = hitPosZ;
-    info.hitLayerId = hitLayerId;
 
     edm::Ref<vector<reco::Track> > matchedGenTrack;
     double dRToMatchedGenTrack;
@@ -518,10 +490,12 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
 
     info.nValidPixelHits        = track.hitPattern().numberOfValidPixelHits();
     info.nValidHits             = track.hitPattern().numberOfValidHits();
+    info.numberOfValidMuonHits  = track.hitPattern().numberOfValidMuonHits();
     info.missingInnerHits       = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_INNER_HITS);
     info.missingMiddleHits      = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::TRACK_HITS);
     info.missingOuterHits       = track.hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_OUTER_HITS);
     info.nLayersWithMeasurement = track.hitPattern().trackerLayersWithMeasurement();
+    info.pixelLayersWithMeasurement = track.hitPattern().pixelLayersWithMeasurement();
 
     // d0 wrt pv (2d) = (vertex - pv) cross p / |p|
     info.d0 = ((track.vx() - pv.x()) * track.py() - (track.vy() - pv.y()) * track.px()) / track.pt(); 
@@ -529,6 +503,9 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
     // dz wrt pv (2d) = (v_z - pv_z) - p_z * [(vertex - pv) dot p / |p|^2]
     info.dz = track.vz() - pv.z() -
       ((track.vx() - pv.x()) * track.px() + (track.vy() - pv.y()) * track.py()) * track.pz() / track.pt() / track.pt();
+
+    info.normalizedChi2 = track.normalizedChi2();
+    info.highPurityFlag = track.quality(reco::TrackBase::highPurity);
 
     info.deltaRToClosestElectron = -1;
     for(const auto &electron : electrons) {

@@ -5,7 +5,7 @@ import sys
 import math
 import ctypes
 
-from ROOT import TChain, TFile, TTree, TH1D, TH2D, TCanvas, THStack, gROOT, TLegend, TGraph, TMarker
+from ROOT import TChain, TFile, TTree, TH1D, TH2D, TCanvas, THStack, gROOT, gStyle, TLegend, TGraph, TMarker
 
 from tensorflow.keras.layers import concatenate
 
@@ -334,6 +334,10 @@ def getROC(h_ele, h_mu, h_fake, h_signal, nlayers):
 
     graph = TGraph()
 
+    best_sOverRootB = 1
+    best_cut = h1d_bkg.GetBinLowEdge(h1d_bkg.GetNbinsX() + 1)
+    best_cut_x = best_cut_y = 1
+
     i = 0
     for j in reversed(range(h1d_bkg.GetNbinsX())):
         n_pass_bkg = h1d_bkg.Integral(1, j+1)
@@ -342,42 +346,83 @@ def getROC(h_ele, h_mu, h_fake, h_signal, nlayers):
         graph.SetPoint(i, n_pass_bkg / n_bkg if n_bkg > 0 else 0, n_pass_sig / n_sig if n_sig > 0 else 0)
         i += 1
 
-    return graph
+        if n_pass_bkg > 0 and n_sig > 0 and n_bkg > 0:
+            sOverRootB = n_pass_sig / n_sig / math.sqrt(n_pass_bkg / n_bkg)
+            if sOverRootB > best_sOverRootB:
+                best_sOverRootB = sOverRootB
+                best_cut = h1d_bkg.GetBinLowEdge(j+2)
+                best_cut_x = n_pass_bkg / n_bkg
+                best_cut_y = n_pass_sig / n_sig
 
-def plotStack(h_ele, h_muon, h_fake, h_signal, nlayers, output_prefix, canvas):
+    return (graph, best_cut, best_cut_x, best_cut_y)
+
+def getWP(h_ele, h_ele_sigma, h_mu, h_mu_sigma, h_fake, h_fake_sigma, h_signal, h_signal_sigma, nlayers):
     ibin = h_ele.GetYaxis().FindBin(nlayers)
 
-    hs = THStack('hs_' + str(nlayers), '')
+    bkg_ele  = h_ele.ProjectionX   ('ele_'  + str(nlayers), ibin, ibin if nlayers < 6 else -1)
+    bkg_muon = h_mu.ProjectionX  ('muon_' + str(nlayers), ibin, ibin if nlayers < 6 else -1)
+    bkg_fake = h_fake.ProjectionX  ('fake_' + str(nlayers), ibin, ibin if nlayers < 6 else -1)
+    signal   = h_signal.ProjectionX('sig_'  + str(nlayers), ibin, ibin if nlayers < 6 else -1)
+
+    bkg_ele_sigma  = h_ele_sigma.ProjectionX   ('ele_'  + str(nlayers), ibin, ibin if nlayers < 6 else -1)
+    bkg_muon_sigma = h_mu_sigma.ProjectionX  ('muon_' + str(nlayers), ibin, ibin if nlayers < 6 else -1)
+    bkg_fake_sigma = h_fake_sigma.ProjectionX  ('fake_' + str(nlayers), ibin, ibin if nlayers < 6 else -1)
+    signal_sigma   = h_signal_sigma.ProjectionX('sig_'  + str(nlayers), ibin, ibin if nlayers < 6 else -1)
+
+    ibin = bkg_ele.FindBin(0.2)
+    n_pass_bkg = bkg_ele.Integral(1, ibin) + bkg_muon.Integral(1, ibin) + bkg_fake.Integral(1, ibin)
+    n_pass_signal = signal.Integral(1, ibin)
+
+    ibin = bkg_ele_sigma.FindBin(2.0)
+    n_pass_bkg_sigma = bkg_ele_sigma.Integral(0, ibin) + bkg_muon_sigma.Integral(0, ibin) + bkg_fake_sigma.Integral(0, ibin)
+    n_pass_signal_sigma = signal_sigma.Integral(0, ibin)
+
+    change_bkg = n_pass_bkg / n_pass_bkg_sigma if n_pass_bkg_sigma > 0 else 1.0
+    change_signal = n_pass_signal / n_pass_signal_sigma if n_pass_signal_sigma > 0 else 1.0
+
+    return (change_bkg, change_signal)
+
+def plotStack(h_ele, h_muon, h_fake, h_signal, nlayers, output_prefix, canvas, rebin=-1):
+    ibin = h_ele.GetYaxis().FindBin(nlayers)
 
     bkg_ele  = h_ele.ProjectionX   ('ele_'  + str(nlayers), ibin, ibin if nlayers < 6 else -1)
     bkg_muon = h_muon.ProjectionX  ('muon_' + str(nlayers), ibin, ibin if nlayers < 6 else -1)
     bkg_fake = h_fake.ProjectionX  ('fake_' + str(nlayers), ibin, ibin if nlayers < 6 else -1)
     signal   = h_signal.ProjectionX('sig_'  + str(nlayers), ibin, ibin if nlayers < 6 else -1)
 
-    bkg_ele.Rebin(300)
+    bkg_ele.SetFillStyle(1001)
     bkg_ele.SetFillColor(400 - 7) # kYellow-7
     bkg_ele.SetLineColor(1)
+    bkg_ele.Add(bkg_muon)
+    bkg_ele.Add(bkg_fake)
 
-    bkg_muon.Rebin(300)
+    bkg_muon.SetFillStyle(1001)
     bkg_muon.SetFillColor(632) # kRed
     bkg_muon.SetLineColor(1)
+    bkg_muon.Add(bkg_fake)
 
-    bkg_fake.Rebin(300)
+    bkg_fake.SetFillStyle(1001)
     bkg_fake.SetFillColor(8) # ~green
     bkg_fake.SetLineColor(1)
         
-    signal.Rebin(300)
     signal.SetLineColor(1)
     signal.SetLineWidth(3)
 
-    hs.Add(bkg_ele)
-    hs.Add(bkg_muon)
-    hs.Add(bkg_fake)
+    if rebin > 0:
+        bkg_ele.Rebin(rebin)
+        bkg_muon.Rebin(rebin)
+        bkg_fake.Rebin(rebin)
+        signal.Rebin(rebin)
 
-    hs.Draw()
+    bkg_ele.GetXaxis().SetTitle('Discriminant')
+    bkg_ele.GetYaxis().SetTitle('Events')
+
+    bkg_ele.Draw('hist')
+    bkg_muon.Draw('hist same')
+    bkg_fake.Draw('hist same')
     signal.Draw('same')
 
-    legend = TLegend(0.65, 0.75, 0.93, 0.88)
+    legend = TLegend(0.55, 0.7, 0.85, 0.85)
     legend.SetBorderSize(0)
     legend.SetFillColor(0)
     legend.SetFillStyle(0)
@@ -389,20 +434,38 @@ def plotStack(h_ele, h_muon, h_fake, h_signal, nlayers, output_prefix, canvas):
     legend.AddEntry(signal, 'Higgsino 300_1000', 'L')
     legend.Draw('same')
 
-    hs.GetXaxis().SetTitle('Discriminant')
-    hs.GetYaxis().SetTitle('Events')
-
     canvas.SaveAs(output_prefix + '_' + str(nlayers) + '.pdf')
 
-def analyze(datasets):
+def printChanges(label, h_sigma, h_disc, disc_cut, nlayers, iClone):
+    ibin = h_sigma.GetYaxis().FindBin(nlayers)
+    iClone += 1
+
+    h_sigma_proj = h_sigma.ProjectionX('sigma_proj_' + str(iClone), ibin, ibin if nlayers < 6 else -1)
+    h_disc_proj  = h_disc.ProjectionX( 'disc_proj_' + str(iClone), ibin, ibin if nlayers < 6 else -1)
+
+    n_pass_sigma = h_sigma_proj.Integral(0, h_sigma_proj.FindBin(2.0))
+    n_pass_disc = h_disc_proj.Integral(0, h_disc_proj.FindBin(disc_cut))
+
+    eff_sigma = n_pass_sigma / h_sigma_proj.Integral() if h_sigma_proj.Integral() > 0 else 0
+    eff_disc = n_pass_disc / h_disc_proj.Integral() if h_disc_proj.Integral() > 0 else 0
+
+    eff_ratio = eff_disc / eff_sigma if eff_sigma > 0 else 0
+
+    print label, eff_ratio
+
+    return label + ' ' + str(eff_ratio)
+
+def analyze(datasets, inputDir='.'):
 
     gROOT.SetBatch()
+    gStyle.SetOptStat(0)
+    gStyle.SetOptTitle(0)
 
     canvas = TCanvas("c1", "c1", 800, 800)
 
-    input_ele = TFile('output_electrons.root', 'read')
-    input_muon = TFile('output_muons.root', 'read')
-    input_fake = TFile('output_fake.root', 'read')
+    input_ele = TFile(inputDir + '/output_electrons.root', 'read')
+    input_muon = TFile(inputDir + '/output_muons.root', 'read')
+    input_fake = TFile(inputDir + '/output_fake.root', 'read')
 
     h_disc_ele = input_ele.Get('disc')
     h_disc_muon = input_muon.Get('disc')
@@ -416,7 +479,7 @@ def analyze(datasets):
     h_sigma_signal = {}
     for dataset in datasets:
         if not dataset.startswith('higgsino'): continue
-        fin = TFile('output_' + dataset + '.root', 'read')
+        fin = TFile(inputDir + '/output_' + dataset + '.root', 'read')
 
         h_disc = fin.Get('disc')
         h_sigma = fin.Get('sigma')
@@ -434,42 +497,58 @@ def analyze(datasets):
         { 'sigma_%d_%s' % (i, sig) : getROC(h_sigma_ele, h_sigma_muon, h_sigma_fake, h_sigma_signal[sig], i) for i in [4, 5, 6] for sig in h_disc_signal }
     )
 
-    roc_optimums = {}
-    for curve_name in roc_curves:
-        m_x = m_y = m_cut = 0
-        eff_bkg = eff_sig = ctypes.c_double(0)
-
-        if curve_name.startswith('sigma'):
-            roc_curves[curve_name].GetPoint(2800, eff_bkg, eff_sig)
-            m_x = eff_bkg.value
-            m_y = eff_bkg.value
-            m_cut = 2.0
-        else:
-            max_val = -1
-            n = roc_curves[curve_name].GetN()
-            for i in range(n):
-                roc_curves[curve_name].GetPoint(i, eff_bkg, eff_sig)
-                if eff_bkg.value == 0: continue
-                sOverRootB = eff_sig.value / math.sqrt(eff_bkg.value)
-                if sOverRootB > max_val:
-                    max_val = sOverRootB
-                    m_x = eff_bkg.value
-                    m_y = eff_sig.value
-                    # cuts range [0, 1]; max - i*max/n
-                    m_cut = 1. - i / n
-            print 'Optimal cut for', curve_name, '=', m_cut
-
-        roc_optimums[curve_name] = TMarker(m_x, m_y, 29)
-
     fout = TFile('durp.root', 'recreate')
     for curve_name in roc_curves:
-        roc_curves[curve_name].Write(curve_name)
-        roc_optimums[curve_name].Write(curve_name + '_optimal')
+        roc_curves[curve_name][0].Write(curve_name)
+        print 'Optimal cut for', curve_name, '=', roc_curves[curve_name][1]
+        m = TMarker(roc_curves[curve_name][2], roc_curves[curve_name][3], 29)
+        m.Write(curve_name + '_optimal')
     fout.Close()
 
     for i in [4, 5, 6]:
-        plotStack(h_disc_ele, h_disc_muon, h_disc_fake, h_disc_signal['higgsino_300_1000'], i, 'discriminant', canvas)
-        plotStack(h_sigma_ele, h_sigma_muon, h_sigma_fake, h_sigma_signal['higgsino_300_1000'], i, 'sigma', canvas)
+        plotStack(h_disc_ele, h_disc_muon, h_disc_fake, h_disc_signal['higgsino_300_1000'], i, 'discriminant', canvas, rebin=5)
+        plotStack(h_sigma_ele, h_sigma_muon, h_sigma_fake, h_sigma_signal['higgsino_300_1000'], i, 'sigma', canvas, rebin=5)
+
+    for dataset in h_disc_signal:
+        for i in [4, 5, 6]:
+            wp = getWP(h_disc_ele, h_sigma_ele, h_disc_muon, h_sigma_muon, h_disc_fake, h_sigma_fake, h_disc_signal[dataset], h_sigma_signal[dataset], i)
+            print dataset, '--', wp
+
+    iClone = -1
+
+    print '\nComparing disc < 0.3 to fiducial map method:\n'
+    printChanges('Electrons nLayers=4',  h_sigma_ele, h_disc_ele, 0.3, 4, iClone)
+    printChanges('Electrons nLayers=5',  h_sigma_ele, h_disc_ele, 0.3, 5, iClone)
+    printChanges('Electrons nLayers>=6', h_sigma_ele, h_disc_ele, 0.3, 6, iClone)
+
+    printChanges('Muons nLayers=4',  h_sigma_muon, h_disc_muon, 0.3, 4, iClone)
+    printChanges('Muons nLayers=5',  h_sigma_muon, h_disc_muon, 0.3, 5, iClone)
+    printChanges('Muons nLayers>=6', h_sigma_muon, h_disc_muon, 0.3, 6, iClone)
+
+    printChanges('Fakes nLayers=4',  h_sigma_fake, h_disc_fake, 0.3, 4, iClone)
+    printChanges('Fakes nLayers=5',  h_sigma_fake, h_disc_fake, 0.3, 5, iClone)
+    printChanges('Fakes nLayers>=6', h_sigma_fake, h_disc_fake, 0.3, 6, iClone)
+
+    extra_samples = {
+        10    : ['0p' + str(i) for i in range(2, 10)] + [str(i) for i in range(0, 10)],
+        100   : [str(i*10) for i in range(2, 10)],
+        1000  : [str(i*100) for i in range(2, 10)],
+        10000 : [str(i*1000) for i in range(2, 10)],
+    }
+
+    for i in [4, 5, 6]:
+        print 'NLAYERS: ', i
+        for mass in range(100, 1000, 100):
+            for lifetime in [10, 100, 1000, 10000]:
+                datasetName = 'higgsino_%d_%d' % (mass, lifetime)
+                change_string = printChanges('Higgsino_%dGeV_%dcm_94X' % (mass, lifetime), 
+                                             h_sigma_signal[datasetName], 
+                                             h_disc_signal[datasetName], 
+                                             0.3, 
+                                             i,
+                                             iClone)
+                for extra_lifetime in extra_samples[lifetime]:
+                    print change_string.replace('Higgsino_%dGeV_%dcm_94X' % (mass, lifetime), 'Higgsino_%dGeV_%scm_94X' % (mass, extra_lifetime))
 
 #######################################
 
@@ -480,15 +559,10 @@ datasets = {
 }
 
 datasets.update(
-    { 'higgsino_%d_1000' % mass : '/data/users/bfrancis/condor/2017/images_higgsino_%d_1000/hist_*.root' % mass for mass in range(100, 1000, 100) }
+    { 'higgsino_%d_%d' % (mass, lifetime) : '/store/user/bfrancis/images_v5/higgsino_%d_%d/hist_*.root' % (mass, lifetime) for mass in range(100, 1000, 100) for lifetime in [10, 100, 1000, 10000] }
 )
 
-datasets.update(
-    { 'higgsino_%d_10000' % mass : '/data/users/bfrancis/condor/2017/images_higgsino_%d_10000/hist_*.root' % mass for mass in range(100, 1000, 100) }
-)
+#for dataset in datasets:
+#   processDataset(dataset, datasets[dataset])
 
-for dataset in datasets:
-   processDataset(dataset, datasets[dataset])
-
-analyze(datasets)
-
+analyze(datasets, 'save_noReco')
