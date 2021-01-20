@@ -7,10 +7,10 @@ import pickle
 
 import tensorflow as tf
 
-from AE import AE
-from generator import DataGenerator
+from AE import *
+from generator import *
 
-if False:
+if True:
 	# limit CPU usage
 	config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
 									intra_op_parallelism_threads = 4,
@@ -34,7 +34,8 @@ generator_params = {
 	'batch_size' : 256,
 	'shuffle' : True,
 	'maxHits' : 20,
-	'flatten' : True
+	'flatten' : True,
+	'normalize' : True
 }
 train_params = {
 	'epochs':10,
@@ -54,8 +55,8 @@ nFiles = len(inputIndices)
 print('Found', nFiles, 'input files')
 
 file_ids = {
-	'train'      : inputIndices[:100],
-	'validation' : inputIndices[500:510]
+	'train'      : inputIndices[:200],
+	'validation' : inputIndices[500:550]
 }
 
 train_generator = DataGenerator(file_ids['train'], **generator_params)
@@ -66,7 +67,7 @@ arch.fit_generator(train_generator=train_generator,
 					**train_params)
 
 arch.save_trainingHistory(train_params['outdir']+'trainingHistory.pkl')
-arch.plotHistory('ae_train/trainingHistory.pkl','ae_train/trainingHistory.png','loss')
+arch.plotHistory(train_params['outdir']+'trainingHistory.pkl',train_params['outdir']+'trainingHistory.png','loss')
 arch.save_weights(train_params['outdir']+'model_weights.h5')
 arch.save_model(train_params['outdir']+'model.h5')
 

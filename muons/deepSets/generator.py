@@ -44,8 +44,7 @@ class BalancedGenerator(keras.utils.Sequence):
 		self.num_signal = len(self.signal_events)
 		self.num_background = len(self.background_events)
 
-		print self.num_signal
-		print self.num_background
+		print "Found", self.num_signal + self.num_background,"events:", self.num_signal,"signal events and",self.num_background,"background events"
 
 	def __len__(self):
 		max_signal_batches = np.floor(self.num_signal / self.num_signal_batch)

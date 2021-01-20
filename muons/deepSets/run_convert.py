@@ -43,7 +43,7 @@ if __name__=="__main__":
     Rank = TARGET.IsLocalSlot
     request_disk = 500MB
     request_memory = 2GB
-    request_cpus = 1
+    request_cpus = 2
     executable              = convert_wrapper.sh
     arguments               = $(PROCESS) {1} {2} {3}
     log                     = {4}log_$(PROCESS).log

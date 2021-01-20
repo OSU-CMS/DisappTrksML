@@ -27,16 +27,16 @@ if(len(sys.argv)>1):
 	outdir = input_params[0]
 
 model_params = {
-	'phi_layers':[400,256,128],
+	'phi_layers':[256,128,64],
 	'f_layers':[128,64,64],
-	'maxHits' : 100,
+	'maxHits' : 30,
 	'track_info_shape': 5
 }
 val_generator_params = {
 	'input_dir' : '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_genmuons_bkg/',
 	'batch_size' : 256,
 	'with_info' : True,
-	'maxHits' : 100
+	'maxHits' : 30
 }
 train_generator_params = val_generator_params.copy()
 train_generator_params.update({
@@ -60,8 +60,8 @@ nFiles = len(inputIndices)
 print('Found', nFiles, 'input files')
 
 file_ids = {
-	'train'      : inputIndices[:10],
-	'validation' : inputIndices[10:15]
+	'train'      : inputIndices[:300],
+	'validation' : inputIndices[300:350]
 }
 
 train_generator = BalancedGenerator(file_ids['train'], **train_generator_params)

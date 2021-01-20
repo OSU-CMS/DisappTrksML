@@ -2,7 +2,6 @@ import numpy as np
 from tensorflow import keras
 from collections import Counter
 import sys
-from sklearn.preprocessing import normalize
 
 class DataGenerator(keras.utils.Sequence):
 
@@ -12,7 +11,8 @@ class DataGenerator(keras.utils.Sequence):
 				 shuffle=True,
 				 with_info=False,
 				 maxHits=100,
-				 flatten=False):
+				 flatten=False,
+				 normalize=False):
 		self.file_ids = file_ids
 		self.input_dir = input_dir
 		self.batch_size = batch_size
@@ -20,6 +20,7 @@ class DataGenerator(keras.utils.Sequence):
 		self.with_info = with_info
 		self.maxHits = maxHits
 		self.flatten = flatten
+		self.normalize = normalize
 
 		self.files = np.array([])
 		self.events = np.array([])
@@ -80,6 +81,8 @@ class DataGenerator(keras.utils.Sequence):
 		X = X[p]
 
 		X = X[:,:self.maxHits,:]
+
+		if(self.normalize): X = np.divide(X + np.array([0.25,0.25,0,200]),np.array([0.5,0.5,4,1200]))
 
 		if(self.flatten):
 

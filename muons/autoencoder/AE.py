@@ -85,7 +85,7 @@ class AE:
                                              validation_data=val_generator,
                                              callbacks=training_callbacks,
                                              epochs=epochs,
-                                             verbose=1)
+                                             verbose=2)
 
     def save_model(self, outputFileName):
         self.model.save(outputFileName)
