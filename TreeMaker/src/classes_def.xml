@@ -9,6 +9,9 @@
   <class name="CSCRecHitInfo"/>
   <class name="std::vector<CSCRecHitInfo>"/>
 
+  <class name="DTRecHitInfo"/>
+  <class name="std::vector<DTRecHitInfo>"/>
+
   <class name="RecHitInfo"/>
   <class name="std::vector<RecHitInfo>"/>
 
