@@ -144,7 +144,7 @@ class DeepSetsArchitecture:
                 track.inGap or
                 abs(track.dRMinJet) < 0.5 or
                 abs(track.deltaRToClosestElectron) < 0.15 or
-                #abs(track.deltaRToClosestMuon) < 0.15 or
+                abs(track.deltaRToClosestMuon) < 0.15 or
                 abs(track.deltaRToClosestTauHad) < 0.15):
                 trackPasses.append(False)
             else:
@@ -217,7 +217,7 @@ class DeepSetsArchitecture:
 
         inputFile.Close()
 
-    def convertFileToNumpy(self, fileName):
+    def convertSignalFileToNumpy(self, fileName):
         inputFile = TFile(fileName, 'read')
         inputTree = inputFile.Get('trackImageProducer/tree')
 
@@ -230,6 +230,7 @@ class DeepSetsArchitecture:
 
             for i, track in enumerate(event.tracks):
                 if not trackPasses[i]: continue
+                #if not track.isTagProbeMuon: continue
 
                 values = self.convertTrackFromTree(event, track, 1)
                 tracks.append(values['sets'])
@@ -238,7 +239,7 @@ class DeepSetsArchitecture:
         outputFileName = fileName.split('/')[-1] + '.npz'
 
         np.savez_compressed(outputFileName,
-                            tracks=tracks,
+                            sets=tracks,
                             infos=infos)
 
         print 'Wrote', outputFileName
@@ -326,7 +327,7 @@ class DeepSetsArchitecture:
 
         self.training_history = self.model.fit(train_generator, 
                                              validation_data=val_generator,
-                                             #callbacks=training_callbacks,
+                                             callbacks=training_callbacks,
                                              epochs=epochs,
                                              verbose=2)
 

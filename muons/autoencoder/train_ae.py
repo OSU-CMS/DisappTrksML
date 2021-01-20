@@ -80,11 +80,11 @@ infile = open(train_params['outdir']+'trainingHistory.pkl','rb')
 history = pickle.load(infile)
 if(len(history['val_loss']) == train_params['epochs']):
 	val_loss = history['val_loss'][-1]
-	val_acc = history['val_accuracy'][-1]
+	val_acc = history['val_acc'][-1]
 else:
 	i = len(history['val_loss']) - train_params['patience_count'] - 1
 	val_loss = history['val_loss'][i]
-	val_acc = history['val_accuracy'][i]
+	val_acc = history['val_acc'][i]
 infile.close()
 
 metrics = {

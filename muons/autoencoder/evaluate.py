@@ -12,12 +12,13 @@ from AE import AE
 
 # initialize the model with the weights
 fileDir = 'ae_genmuons_bkg/'
-model_file = 'model.4.h5'
+model_file = 'model.8.h5'
 arch = AE()
 arch.load_model(fileDir+model_file)
 
 # predict muon reco failures
 muons = np.load('truthMuons_recoFailed.npz',allow_pickle=True)['sets']
+muons = np.divide(muons + np.array([0.25,0.25,0,200]),np.array([0.5,0.5,4,1200]))
 muons = np.reshape(muons[:,:20,:],(len(muons),20*4))
 muon_preds = arch.model.predict(muons)
 np.savez_compressed(fileDir+"muon_failures_preds.npy", events=muons, preds=muon_preds)
@@ -33,8 +34,6 @@ for i in range(700,750):
 	data = np.load(bkgDir+'images_'+str(inputIndices[i])+'.root.npz',allow_pickle=True)['background']
 
 	data = np.divide(data + np.array([0.25,0.25,0,200]),np.array([0.5,0.5,4,1200]))
-	assert len(data[np.where(data < 0)]) == 0, data[np.where(data < 0)]
-	assert len(data[np.where(data > 1)]) == 0, data[np.where(data > 1)]
 
 	data = np.reshape(data[:,:20,:],(len(data),20*4))
 	if bkg_events is None: bkg_events = data
@@ -42,9 +41,13 @@ for i in range(700,750):
 	if bkg_preds is None: bkg_preds = arch.model.predict(bkg_events)
 	else: bkg_preds = np.concatenate((bkg_preds,arch.model.predict(data)))
 	assert bkg_preds.shape == bkg_events.shape
+
+	for t, p in zip(data[0],arch.model.predict(data)[0]):
+		print round(t,3), "\t\t", round(p,3)
+	sys.exit(0)
+
 np.savez_compressed(fileDir + "background_preds.npy", events=bkg_events, preds=bkg_preds)
 
-sys.exit(0)
 def calc_losses(events,preds):
     losses = []
     for event, pred in zip(events, preds):
