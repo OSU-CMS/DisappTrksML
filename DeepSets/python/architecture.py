@@ -291,7 +291,7 @@ class DeepSetsArchitecture:
         for layerSize in self.phi_layers[:-1]:
             phi_network = Dense(layerSize)(phi_network)
             phi_network = Activation('relu')(phi_network)
-            phi_network = BatchNormalization()(phi_network)
+            #phi_network = BatchNormalization()(phi_network)
         phi_network = Dense(self.phi_layers[-1])(phi_network)
         phi_network = Activation('linear')(phi_network)
 

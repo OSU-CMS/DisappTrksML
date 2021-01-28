@@ -111,7 +111,7 @@ class BalancedGenerator(keras.utils.Sequence):
 		X = X[p]
 		y = y[p]
 		X_info = X_info[p]
-		X_info = X_info[:,[4,8,9,13,14]]
+		X_info = X_info[:,[4,8,9,13,14,15,16]]
 
 		X = X[:,:self.maxHits,:]
 
@@ -195,7 +195,7 @@ class Generator(keras.utils.Sequence):
 		X = X[p]
 		y = y[p]
 		X_info = X_info[p]
-		X_info = X_info[:,[4,8,9,13,14]]
+		X_info = X_info[:,[4,8,9,13,14,15,16]]
 
 		X = X[:,:self.maxHits,:]
 

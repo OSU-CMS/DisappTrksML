@@ -9,8 +9,8 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/bfrancis/images_v5/SingleMu_2017F/'
-    outDir = '/store/user/llavezzo/disappearingTracks/SingleMu_2017F_converted/'
+    dataDir = '/store/user/mcarrigan/Images-v6-DYJets-MC2017/'
+    outDir = '/store/user/llavezzo/disappearingTracks/nonRecoGenMuons_v6/'
     logDir = '/data/users/llavezzo/Logs/convert/'
     reprocessAllFiles = False
 
@@ -26,7 +26,7 @@ if __name__=="__main__":
             alreadyProcessedFiles.append(numFile)
     files = []
     for filename in os.listdir(dataDir):
-        if('.root' in filename and 'hist' in filename):
+        if('.root' in filename and 'images' in filename):
             index1 = filename.find("_")
             index2 = filename.find(".root")
             numFile = int(filename[index1+1:index2])

@@ -27,12 +27,13 @@ if(len(sys.argv)>1):
 
 model_params = {
 	'phi_layers':input_params[0],
-	'f_layers':input_params[1]
+	'f_layers':input_params[1],
+	'track_info_shape' : 4
 }
 val_generator_params = {
 	'input_dir' : '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_converted/',
 	'batch_size' : 256,
-	'with_info' : False,
+	'with_info' : True,
 	'maxHits' : 100
 }
 train_generator_params = val_generator_params.copy()
