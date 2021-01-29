@@ -146,7 +146,7 @@ class DeepSetsArchitecture:
                 track.inGap or
                 abs(track.dRMinJet) < 0.5 or
                 abs(track.deltaRToClosestElectron) < 0.15 or
-                #abs(track.deltaRToClosestMuon) < 0.15 or
+                abs(track.deltaRToClosestMuon) < 0.15 or
                 abs(track.deltaRToClosestTauHad) < 0.15):
                 trackPasses.append(False)
             else:
@@ -169,23 +169,40 @@ class DeepSetsArchitecture:
             for i, track in enumerate(event.tracks):
                 if not trackPasses[i]: continue
              
-                # # gen-matched, reconstructed muons
-                # if isGenMatched(event, track, 13) and (abs(track.deltaRToClosestMuon) < 0.15):
-                #     values = self.convertTrackFromTree(event, track, 1)
-                #     signal.append(values['sets'])
-                #     signal_info.append(values['infos'])
-
-                # # non gen-muons, non reconstructed muons
-                # elif (not isGenMatched(event, track, 13)) and (not (abs(track.deltaRToClosestMuon) < 0.15)):
-                #     values = self.convertTrackFromTree(event, track, 0)
-                #     background.append(values['sets'])
-                #     background_info.append(values['infos'])
-
-                # gen-muons, non reconstructed
-                if (isGenMatched(event, track, 13)) and (not (abs(track.deltaRToClosestMuon) < 0.15)):
-                    values = self.convertTrackFromTree(event, track, 0)
+                # gen-matched, reconstructed muons
+                if isGenMatched(event, track, 13) and (abs(track.deltaRToClosestMuon) < 0.15):
+                    values = self.convertTrackFromTree(event, track, 1)
                     signal.append(values['sets'])
                     signal_info.append(values['infos'])
+
+                # non gen-muons, non reconstructed muons
+                elif (not isGenMatched(event, track, 13)) and (not (abs(track.deltaRToClosestMuon) < 0.15)):
+                    values = self.convertTrackFromTree(event, track, 0)
+                    background.append(values['sets'])
+                    background_info.append(values['infos'])
+
+
+        # for event in inputTree:
+        #     eventPasses, trackPasses = self.eventSelection(event)
+        #     if not eventPasses: continue
+
+        #     for i, track in enumerate(event.tracks):
+        #         if not trackPasses[i]: continue
+                
+        #         # only gen-truth muons
+        #         if not isGenMatched(event, track, 13): continue
+
+        #         # non-reco muons
+        #         if abs(track.deltaRToClosestMuon) >= 0.15 :
+        #             values = self.convertTrackFromTree(event, track, 1)
+        #             signal.append(values['sets'])
+        #             signal_info.append(values['infos'])
+
+        #         # reco muons
+        #         else:
+        #             values = self.convertTrackFromTree(event, track, 0)
+        #             background.append(values['sets'])
+        #             background_info.append(values['infos'])
 
         outputFileName = fileName.split('/')[-1] + '.npz'
 
@@ -240,7 +257,7 @@ class DeepSetsArchitecture:
         for layerSize in self.phi_layers[:-1]:
             phi_network = Dense(layerSize)(phi_network)
             phi_network = Activation('relu')(phi_network)
-            #phi_network = BatchNormalization()(phi_network)
+            phi_network = BatchNormalization()(phi_network)
         phi_network = Dense(self.phi_layers[-1])(phi_network)
         phi_network = Activation('linear')(phi_network)
 
