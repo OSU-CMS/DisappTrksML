@@ -240,7 +240,7 @@ class DataGeneratorV3(keras.utils.Sequence):
 		X = X[p]
 		y = y[p]
 		X_info = X_info[p]
-		X_info = X_info[:,[4,8,9]]
+		X_info = X_info[:,[4,8,9,12]]
 
 		X = X[:,:self.maxHits,:]
 
@@ -322,7 +322,7 @@ class DataGeneratorV4(keras.utils.Sequence):
 		X = X[p]
 		y = y[p]
 		X_info = X_info[p]
-		X_info = X_info[:,[4,8,9]]
+		X_info = X_info[:,[4,8,9,12]]
 
 		X = X[:,:self.maxHits,:]
 

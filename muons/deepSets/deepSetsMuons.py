@@ -128,7 +128,9 @@ class DeepSetsArchitecture:
                           track.nLayersWithMeasurement,
                           track.nValidPixelHits,
                           np.sum(ecal_energy),
-                          np.sum(hcal_energy)])
+                          np.sum(hcal_energy),
+                          track.ptError,
+                          track.normalizedChi2])
 
         values = {
             'sets' : sets,

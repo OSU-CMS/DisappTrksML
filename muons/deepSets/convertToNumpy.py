@@ -9,9 +9,9 @@ from deepSetsMuons import *
 
 ## PARAMETERS ##
 
-inputDirectory = '/store/user/bfrancis/images_v5/SingleMu_2017F/'
+inputDirectory = '/store/user/bfrancis/images_v6/SingleMu_2017F_wIso/0000/'
 outputDirectory = ""
-fileNumber = 1
+fileNumber = 100
 
 ################
 
@@ -61,9 +61,9 @@ elif useCondor:
 	inarray = np.loadtxt(fileList,dtype=float)
 	fileNumber = int(inarray[int(fileIndex)])
 
-	arch.convertSignalFileToNumpy(inputDirectory + 'hist_' + str(fileNumber) + '.root')
-	os.system('mv -v hist_' + str(fileNumber) + '.root.npz ' + outputDirectory)
+	arch.convertSignalFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
+	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)
 
 else:
-	arch.convertSignalFileToNumpy(inputDirectory + 'hist_' + str(fileNumber) + '.root')
-	os.system('mv -v hist_' + str(fileNumber) + '.root.npz ' + outputDirectory)
+	arch.convertSignalFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
+	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)
