@@ -34,8 +34,8 @@ def loadData(dataDir):
     # load the dataset
     file_count = 0
     for filename in os.listdir(dataDir):
-        print("Loading...", filename)
-        if file_count > 10: break
+        print("Loading...", dataDir + filename)
+        #if file_count > 10: break
         myfile = np.load(dataDir+filename)
         fakes = np.array(myfile["fake_infos"])
         reals = np.array(myfile["real_infos"])
@@ -51,8 +51,6 @@ def loadData(dataDir):
     print("Number of fake tracks:", len(fakeTracks))
     print("Number of real tracks:", len(realTracks))
 
-    print("FakeTracks shape", np.shape(fakeTracks))
-
     #combine all data and shuffle
     allTracks = np.concatenate((fakeTracks, realTracks))
 
@@ -61,14 +59,13 @@ def loadData(dataDir):
 
     allTracks = allTracks[indices]
     allTracks = np.reshape(allTracks, (-1,156))
-    print("allTracks shape", np.shape(allTracks))
-    print("allTracks", allTracks[0])
+    allTracks = np.tanh(allTracks)
     allTruth = np.concatenate((np.ones(len(fakeTracks)), np.zeros(len(realTracks))))
     allTruth = allTruth[indices]
 
     #split data into train and test
 
-    trainTracks, testTracks, trainTruth, testTruth = train_test_split(allTracks, allTruth, test_size = 0.2)
+    trainTracks, testTracks, trainTruth, testTruth = train_test_split(allTracks, allTruth, test_size = 0.3)
     return trainTracks, testTracks, trainTruth, testTruth
 
 
@@ -135,7 +132,7 @@ if __name__ == "__main__":
     monitor: which variable to monitor with patience_count
     """
 
-    dataDir = "/store/user/mcarrigan/fakeTracks/converted_v1/"
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_v1/"]
     #logDir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
     #run_validate = True
@@ -159,7 +156,7 @@ if __name__ == "__main__":
         class_weights = bool(params[1])
         undersample_bkg = float(params[2])
         epochs = int(params[3])
-        dataDir = str(params[4])
+        dataDir = params[4]
 
     # create output directories
     os.system('mkdir '+str(workDir))
@@ -167,12 +164,46 @@ if __name__ == "__main__":
     os.system('mkdir '+str(weightsDir))
     os.system('mkdir '+str(outputDir))
     
-    trainTracks, testTracks, trainTruth, testTruth = loadData(dataDir)
- 
+    for i, dataSet in enumerate(dataDir):
+        if i == 0:
+            trainTracks, testTracks, trainTruth, testTruth = loadData(str(dataSet))
+            valTracks, testTracks, valTruth, testTruth = train_test_split(testTracks, testTruth, test_size = 0.5)
+        else:
+            trainTracks2, testTracks2, trainTruth2, testTruth2 = loadData(str(dataSet))
+            valTracks2, testTracks2, valTruth2, testTruth2 = train_test_split(testTracks2, testTruth2, test_size = 0.5)
+            trainTracks = np.concatenate((trainTracks, trainTracks2))
+            trainTruth = np.concatenate((trainTruth, trainTruth2))
+            testTracks = np.concatenate((testTracks, testTracks2))
+            testTruth = np.concatenate((testTruth, testTruth2))
+            valTracks = np.concatenate((valTracks, valTracks2))
+            valTruth = np.concatenate((valTruth, valTruth2))
+
+    print("Train Tracks " + str(trainTracks.shape))
+    print("Train Truth " + str(trainTruth.shape))
+    print("Test Tracks " + str(testTracks.shape))
+    print("Test Truth " + str(testTruth.shape))
+    print("Val Tracks " + str(valTracks.shape))
+    print("Val Truth " + str(valTruth.shape))
+
+    indices = np.arange(len(trainTracks))
+    np.random.shuffle(indices)   
+    trainTracks = trainTracks[indices]
+    trainTruth = trainTruth[indices]
+    
+    indices = np.arange(len(testTracks))
+    np.random.shuffle(indices)
+    testTracks = testTracks[indices]
+    testTruth = testTruth[indices]
+
+    indices = np.arange(len(valTracks))
+    np.random.shuffle(indices)
+    valTracks = valTracks[indices]
+    valTruth = valTruth[indices]         
+
     model = buildModel(filters, metrics)
 
     # fit the keras model on the dataset
-    history = model.fit(trainTracks, trainTruth, epochs=epochs, batch_size=batch_size, verbose=1)
+    history = model.fit(trainTracks, trainTruth, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(valTracks, valTruth))
 
     # make class predictions with the model
     predictions = model.predict_classes(testTracks)

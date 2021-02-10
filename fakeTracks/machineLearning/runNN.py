@@ -10,11 +10,14 @@ import numpy as np
 
 if __name__=="__main__":
 
-    folder = "fakeTracks_2_8"
+    folder = "fakeTracks_2_10"
     logDir = "/data/users/mcarrigan/Logs/"
-    dataDir = "/store/user/mcarrigan/fakeTracks/converted_v1/"
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_v1/"]
     #[filters, class_weights, undersampling, epochs, dataDir]
-    params = [[[12, 8], False, -1, 10, dataDir], [[64, 32, 12, 6], False, -1, 10, dataDir], [[128, 64, 24, 6], False, -1, 10, dataDir]]
+    params = [[[12, 8], False, -1, 100, dataDir], 
+              [[64, 32, 12, 6], False, -1, 100, dataDir], 
+              [[128, 64, 24, 6], False, -1, 100, dataDir], 
+              [[512, 256, 128, 64, 32, 16,8], False, -1, 100, dataDir]]
     np.save('params.npy',params)
     njobs = len(params)
 

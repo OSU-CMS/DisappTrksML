@@ -76,17 +76,17 @@ def plotHistory(history, variables, plotDir, outputfile = 'metricPlots.root'):
         g1.SetTitle(var)
         g1.GetXaxis().SetTitle("Epochs")
         g1.GetYaxis().SetTitle(var)
-        #metricVal = history.history["val_" + var]
-        #g2 = r.TGraph(len(metric), np.arange(len(metricVal)).astype('float64'), np.array(metricVal).astype('float64'))
-        #g2.Draw("SAME")
-        #g2.SetLineColor(2)
+        metricVal = history.history["val_" + var]
+        g2 = r.TGraph(len(metric), np.arange(len(metricVal)).astype('float64'), np.array(metricVal).astype('float64'))
+        g2.Draw("SAME")
+        g2.SetLineColor(2)
         l1 = r.TLegend(0.7, 0.7, 0.8, 0.8)
         l1.AddEntry(g1, var, "l")
-        #l1.AddEntry(g2, "val_" + str(var), "l")
+        l1.AddEntry(g2, "val_" + str(var), "l")
         l1.Draw()
         c1.Write(pltName)
         g1.Write(var)
-        #g2.Write()
+        g2.Write("val_"+str(var))
     out.Close()
 
 
