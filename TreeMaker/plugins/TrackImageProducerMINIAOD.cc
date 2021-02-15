@@ -286,6 +286,7 @@ TrackImageProducerMINIAOD::getGeometries(const edm::EventSetup &setup) {
     throw cms::Exception("FatalError") << "Unable to find MuonGeometryRecord (RPC) in event!\n";
 
   setup.get<EcalChannelStatusRcd>().get(ecalStatus_);
+  setup.get<TrackerTopologyRcd>().get(trackerTopology_);
 }
 
 int
@@ -365,7 +366,7 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
                                      const vector<pat::Electron> &tagElectrons,
                                      const vector<pat::Muon> &tagMuons,
                                      const pat::MET &met,
-			             const edm::Handle<vector<pat::IsolatedTrack> > isoTracks, 
+                                     const edm::Handle<vector<pat::IsolatedTrack> > isoTracks, 
                                      const edm::Handle<reco::DeDxHitInfoAss> isoTrk2dedxHitInfo,
                                      const edm::Handle<edm::ValueMap<reco::DeDxData> > dEdxStrip,
                                      const edm::Handle<edm::ValueMap<reco::DeDxData> > dEdxPixel,
@@ -425,8 +426,6 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
 
           float norm = isPixel ? 3.61e-06 : 3.61e-06 * 265;
 
-          PXBDetId thisDetId = PXBDetId(hitInfo->detId(iHit));  
-
           info.dEdxInfo.push_back(
             TrackDeDxInfo(isPixel,
                           norm * hitInfo->charge(iHit) / hitInfo->pathlength(iHit),
@@ -437,7 +436,7 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
                           hitInfo->pos(iHit).x(),
                           hitInfo->pos(iHit).y(),
                           hitInfo->pos(iHit).z(),
-                          thisDetId.layer()));
+                          trackerTopology_->layer(hitInfo->detId(iHit))));
         }
       } // if isoTrk in association map
       else {
