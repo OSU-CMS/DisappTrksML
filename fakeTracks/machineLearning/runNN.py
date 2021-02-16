@@ -10,7 +10,7 @@ import numpy as np
 
 if __name__=="__main__":
 
-    folder = "fakeTracks_2_10"
+    folder = "fakeTracks_2_15"
     logDir = "/data/users/mcarrigan/Logs/"
     dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_v1/"]
     #[filters, class_weights, undersampling, epochs, dataDir]
@@ -33,7 +33,7 @@ if __name__=="__main__":
     request_cpus = 3
     executable              = run_wrapper.sh
     arguments               = {0} $(PROCESS)
-    log                     = {2}{0}log_$(PROCESS).log
+    log                     = {2}{0}/log_$(PROCESS).log
     output                  = {2}{0}/out_$(PROCESS).txt
     error                   = {2}{0}/error_$(PROCESS).txt
     should_transfer_files   = Yes
