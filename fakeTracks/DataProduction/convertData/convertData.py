@@ -55,6 +55,8 @@ for class_label,tree in zip([0,1],[realTree,fakeTree]):
             numSatMeasurementsPixel = track.numSatMeasurementsPixel
             numSatMeasurementsStrip = track.numSatMeasurementsStrip
             if(abs(eta) > 1.4): continue
+            track_info = [trackIso, eta, phi, nValidPixelHits, nValidHits, missingOuterHits, dEdxPixel, dEdxStrip, numMeasurementsPixel, 
+                          numMeasurementsStrip, numSatMeasurementsPixel, numSatMeasurementsStrip]
             nLayers = np.zeros((16, 9))
             
             for iHit, hit in enumerate(track.dEdxInfo):
@@ -78,9 +80,10 @@ for class_label,tree in zip([0,1],[realTree,fakeTree]):
 
                 
 
+            track_info = np.concatenate((track_info, nLayers.flatten()))
 
-        if(class_label == 0): real_infos.append(nLayers)
-        if(class_label == 1): fake_infos.append(nLayers)
+            if(class_label == 0): real_infos.append(track_info)
+            if(class_label == 1): fake_infos.append(track_info)
 
 
 np.savez_compressed("events_" + str(fileNum) + ".npz", fake_infos = fake_infos, real_infos = real_infos)

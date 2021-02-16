@@ -9,9 +9,9 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/mcarrigan/fakeTracks/selection_v1/'
-    outDir = '/store/user/mcarrigan/fakeTracks/converted_v1/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_v1/'
+    dataDir = '/store/user/mcarrigan/fakeTracks/selection_aMC_v1/'
+    outDir = '/store/user/mcarrigan/fakeTracks/converted_aMC_v1/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_aMC_v1/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
