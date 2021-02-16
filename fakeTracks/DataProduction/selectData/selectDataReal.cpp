@@ -33,6 +33,7 @@ T1 deltaR (T1 eta1, T2 phi1, T3 eta2, T4 phi2) {
 
 bool trackSelection(TrackInfo track){
 
+    //isolated track selection
     if(!(abs(track.eta) < 2.4)) return false;
     if(!(track.pt > 55)) return false;
     if(track.inGap) return false;
@@ -40,14 +41,26 @@ bool trackSelection(TrackInfo track){
     if(!(track.nValidHits >= 4)) return false;
     if(!(track.missingInnerHits == 0)) return false;
     if(!(track.missingMiddleHits == 0)) return false;
+    if(!(track.trackIso /track.pt < 0.05)) return false;
+    //if(!(abs(track.d0) < 0.02)) return false;
+    if(!(abs(track.dz) < 0.5)) return false;
+    if(!(abs(track.dRMinJet) > 0.5)) return false;
+
+    //candidate track selection
+    if(!(abs(track.deltaRToClosestElectron) > 0.15)) return false;
+    if(!(abs(track.deltaRToClosestMuon) > 0.15)) return false;
+    if(!(abs(track.deltaRToClosestTauHad) > 0.15)) return false;   
     
+    //disappearing track selection
+    if(!(track.missingOuterHits >= 3)) return false;
+    if(!(track.ecalo < 10)) return false;
     return true;
 
 }
 
 
 
-void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v6-DYJets-MC2017/", TString filelist = ""){
+void selectDataReal(int fileNum = 1, TString dataDir = "/store/user/bfrancis/images_v6/ZtoMuMu_2017F_noIsoCut/0000/", TString filelist = ""){
     
     if(filelist.Length()>0){
         string line;
@@ -80,6 +93,12 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
     unsigned long long eventNumber;
     unsigned int lumiBlockNumber;
     unsigned int runNumber;
+    bool passMETFilters;
+    int numGoodPVs;
+    double metNoMu;
+    double numGoodJets;
+    double dijetDeltaPhiMax;
+    double leadingJetMetPhi;
 
     myTree->SetBranchAddress("tracks", &v_tracks);
     myTree->SetBranchAddress("recHits", &v_recHits);
@@ -88,6 +107,12 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
     myTree->SetBranchAddress("eventNumber", &eventNumber);
     myTree->SetBranchAddress("lumiBlockNumber", &lumiBlockNumber);
     myTree->SetBranchAddress("runNumber", &runNumber);
+    myTree->SetBranchAddress("passMETFilters", &passMETFilters);
+    myTree->SetBranchAddress("numGoodPVs", &numGoodPVs);
+    myTree->SetBranchAddress("metNoMu", &metNoMu);
+    myTree->SetBranchAddress("numGoodJets", &numGoodJets);
+    myTree->SetBranchAddress("dijetDeltaPhiMax", &dijetDeltaPhiMax);
+    myTree->SetBranchAddress("leadingJetMetPhi", &leadingJetMetPhi);
 
     TString newFileName = "hist_" + int_tstring(fileNum) + ".root";
     TFile * newFile = new TFile(newFileName, "recreate");
@@ -119,41 +144,33 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
         v_tracks_real->clear();
 
         myTree->GetEvent(ievent);
+        
+        //basic selection
+        /*if(!passMETFilters) continue;
+        if(!(numGoodPVs >= 1)) continue;
+        if(!(metNoMu > 120)) continue;
+        if(!(numGoodJets >= 1)) continue;
+        if(!(dijetDeltaPhiMax < 2.5)) continue;
+        if(!(leadingJetMetPhi > 0.5)) continue;*/
+
+
 
         for(const auto &track : *v_tracks){
             
             //look to see if track passes general selections
             if(!trackSelection(track)) continue;
 
-
-            float genMatchedDR(-1);
-            //check to see if track is gen matched
-            for(const auto &genParticle : *v_genParticles){
-            
-                if(genParticle.pt < 10) continue;
-
-                float thisDR = deltaR(genParticle.eta, genParticle.phi, track.eta, track.phi);
-                if(genMatchedDR == -1 || thisDR < genMatchedDR) genMatchedDR = thisDR;
-                
-                //IF GEN Matched what is the particle?
-
-            }//end of gen particle loop
-
-            if(genMatchedDR > 0.1) v_tracks_fake->push_back(track);
-            else v_tracks_real->push_back(track);            
+            v_tracks_real->push_back(track);            
 
         }//end of tracks loop
     
-    if(v_tracks_fake->size() > 0) fakeTree->Fill();
     if(v_tracks_real->size() > 0) realTree->Fill();
 
     }//end of event loop
 
 
     cout << "Saving file " << newFileName << " with" << endl;
-    cout << fakeTree->GetEntries() << " fake tracks and" << endl;
     cout << realTree->GetEntries() << " real tracks." << endl;
-
     newFile->Write();
 
 }//end of selectData function
