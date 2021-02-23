@@ -44,7 +44,7 @@ for class_label,tree in zip([0,1],[realTree,fakeTree]):
 
         for iTrack, track in enumerate(event.tracks):
             nLayersWithMeasurement = track.nLayersWithMeasurement
-            if(nLayersWithMeasurement == layers): continue
+            if(nLayersWithMeasurement != layers): continue
             eta = track.eta
             if(abs(eta) > 1.4): continue
             trackd0 = track.d0
