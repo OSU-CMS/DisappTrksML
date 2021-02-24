@@ -426,6 +426,12 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
           
           //subdet Id = {1, pbx}, {2, pxf}, {3, tib}, {4, tid}, {5, tob}, {6, tec}
           int subDet = hitInfo->detId(iHit).subdetId();
+          if(subDet == PixelSubdetector::PixelBarrel) subDet = 1;
+          else if (subDet == PixelSubdetector::PixelEndcap) subDet = 2;
+          else if(subDet == StripSubdetector::TIB) subDet = 3;  //N.B. in CMSSW_11 StripSubdetector -> SiStripSubdetector
+          else if (subDet == StripSubdetector::TID) subDet = 4;
+          else if (subDet == StripSubdetector::TOB) subDet = 5;
+          else if (subDet == StripSubdetector::TEC) subDet = 6;
 
           float norm = isPixel ? 3.61e-06 : 3.61e-06 * 265;
 
