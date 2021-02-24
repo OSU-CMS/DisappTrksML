@@ -423,11 +423,14 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
           bool isStrip = (hitInfo->stripCluster(iHit) != nullptr);
           if(!isPixel && !isStrip) continue; // probably shouldn't happen
           if(isPixel && isStrip) continue;
+          
+          //subdet Id = {1, pbx}, {2, pxf}, {3, tib}, {4, tid}, {5, tob}, {6, tec}
+          int subDet = hitInfo->detId(iHit).subdetId();
 
           float norm = isPixel ? 3.61e-06 : 3.61e-06 * 265;
 
           info.dEdxInfo.push_back(
-            TrackDeDxInfo(isPixel,
+            TrackDeDxInfo(subDet,
                           norm * hitInfo->charge(iHit) / hitInfo->pathlength(iHit),
                           isPixel ? hitInfo->pixelCluster(iHit)->size()  : -1,
                           isPixel ? hitInfo->pixelCluster(iHit)->sizeX() : -1,
@@ -436,7 +439,7 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
                           hitInfo->pos(iHit).x(),
                           hitInfo->pos(iHit).y(),
                           hitInfo->pos(iHit).z(),
-                          trackerTopology_->layer(hitInfo->detId(iHit))));
+                          trackerTopology_->layer(hitInfo->detId(iHit)))); // gives layer within sub detector
         }
       } // if isoTrk in association map
       else {
