@@ -29,7 +29,7 @@ model_params = {
 	'phi_layers':input_params[0],
 	'f_layers':input_params[1],
 }
-if(input_params[5]): model_params.update('track_info_shape' : 4)
+if(input_params[5]): model_params.update({'track_info_shape' : 4})
 val_generator_params = {
 	'input_dir' : '/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_converted/',
 	'batch_size' : 256,
@@ -52,15 +52,20 @@ if(not os.path.isdir(outdir)): os.mkdir(outdir)
 arch = DeepSetsArchitecture(**model_params)
 arch.buildModel()
 
+# load file names and split train/validation
 inputFiles = glob.glob(train_generator_params['input_dir']+'images_*.root.npz')
 inputIndices = np.array([f.split('images_')[-1][:-9] for f in inputFiles])
 nFiles = len(inputIndices)
+inputIndices = np.random.permutation(inputIndices)
 print('Found', nFiles, 'input files')
-
 file_ids = {
-	'train'      : inputIndices[:500],
-	'validation' : inputIndices[500:600]
+	'train'      : inputIndices[:int(nFiles*.8)],
+	'validation' : inputIndices[int(nFiles*.8):]
 }
+
+# save train/validation file names
+np.savetxt(train_params['outdir']+'train_files.txt', file_ids['train'], delimiter=',', fmt='%s')
+np.savetxt(train_params['outdir']+'validation_files.txt', file_ids['validation'], delimiter=',', fmt='%s')
 
 train_generator = DataGeneratorV3(file_ids['train'], **train_generator_params)
 val_generator = DataGeneratorV4(file_ids['validation'], **val_generator_params)

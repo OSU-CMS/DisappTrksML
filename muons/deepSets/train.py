@@ -8,7 +8,7 @@ import tensorflow as tf
 from sklearn.model_selection import KFold
 
 from deepSetsMuons import *
-from generator import *
+from generatorV2 import *
 
 if False:
 	# limit CPU usage
@@ -27,16 +27,20 @@ if(len(sys.argv)>1):
 	outdir = input_params[0]
 
 model_params = {
-	'phi_layers':[256,128,64],
-	'f_layers':[128,64,64],
+	'phi_layers':[128,64,32],
+	'f_layers':[64,32],
 	'maxHits' : 40,
-	'track_info_shape': 7
+	'phi_layers_calos':[128,64,32],
+	'f_layers_calos':[64,32],
+	'maxHits_calos' : 40,
+	# 'track_info_shape': 7
 }
 val_generator_params = {
-	'input_dir' : '/store/user/llavezzo/disappearingTracks/recoGenMuons_nonRecoBkg_v6/',
+	'input_dir' : '/store/user/llavezzo/disappearingTracks/recoGenMuons_nonRecoBkg_v6_withCalos/',
 	'batch_size' : 256,
-	'with_info' : True,
-	'maxHits' : 40
+	'with_info' : False,
+	'maxHits' : 40,
+	'maxHits_calos' : 40,
 }
 train_generator_params = val_generator_params.copy()
 train_generator_params.update({
@@ -61,7 +65,7 @@ print('Found', nFiles, 'input files')
 
 file_ids = {
 	'train'      : inputIndices[:100],
-	'validation' : inputIndices[100:150]
+	'validation' : inputIndices[200:220]
 }
 
 train_generator = BalancedGenerator(file_ids['train'], **train_generator_params)
