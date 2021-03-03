@@ -11,7 +11,7 @@ from deepSetsMuons import *
 
 inputDirectory = '/store/user/bfrancis/images_v6/SingleMu_2017F_wIso/0000/'
 outputDirectory = ""
-fileNumber = 100
+fileNumber = 2
 
 ################
 

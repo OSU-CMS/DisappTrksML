@@ -345,13 +345,28 @@ class DeepSetsArchitecture:
         #prediction = self.model.predict([np.reshape(event['sets'], (1, 100, 4)),np.reshape(event['infos'],(1,13))[:,[4,8,9]]])
         return prediction[:,1] # p(is electron)
 
-    # def evaluate_model(self, event, track):
-    #     converted_arrays = self.convertTrackFromTreeMuons(event, track, 1) # class_label doesn't matter
-    #     prediction = self.model.predict([np.reshape(converted_arrays['sets'], (1, 100, 4)),np.reshape(converted_arrays['infos'],(1,13))[:,[8,9,10,11]]])
-    #     return prediction[:,1] # p(is electron)
+    def evaluate_npy(self, fname, track_info=False, obj='sets'):
 
-    def fit_generator(self, train_generator, val_generator=None, epochs=10, monitor='val_loss',patience_count=10,outdir=""):
-        self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=['accuracy'])
+        data = np.load(fname, allow_pickle=True)
+
+        if(data[obj].shape[0] == 0): return True, 0
+        sets = data[obj][:,:self.max_hits]
+
+        x = [sets]
+
+        if(track_info):
+            if obj == 'sets': info = data['infos'][:,[4,8,9,12]]
+            else: info = data[obj+'_infos'][:,[4,8,9,12]]
+            x.append(info)
+            
+        return False, self.model.predict(x,)
+
+    def fit_generator(self, train_generator, val_generator=None, 
+                        epochs=10, monitor='val_loss',patience_count=10,
+                        metrics = ['accuracy'],
+                        outdir=""):
+
+        self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=metrics)
         
         training_callbacks = [
             callbacks.EarlyStopping(monitor=monitor,patience=patience_count),
@@ -464,3 +479,20 @@ class DeepSetsArchitecture:
 
         with open(outfile, 'wb') as f:
             pickle.dump(metrics, f)
+
+    # expects [c1,c1] = TP, [c2,c2] = TN
+    def calc_binary_metrics(self, confusion_matrix, c1=1, c2=0):
+        
+        TP = confusion_matrix[c1][c1]
+        FP = confusion_matrix[c2][c1]
+        FN = confusion_matrix[c1][c2]
+        TN = confusion_matrix[c2][c2]
+
+        if((TP+FP) == 0): precision = 0
+        else: precision = TP / (TP + FP)
+        if((TP+FN) == 0): recall = 0
+        else: recall = TP / (TP + FN)
+
+        f1 = TP / (TP + 0.5*(FP + FN))
+
+        return precision, recall, f1

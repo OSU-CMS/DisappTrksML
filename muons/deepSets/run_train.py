@@ -6,10 +6,10 @@ import datetime
 
 if __name__=="__main__":
 
-    logdir = "/data/users/llavezzo/Logs/muon_classificationV3/"
+    logdir = "/data/users/llavezzo/Logs/muon_classification/"
     
     params = [
-        ["trainV3/"]
+        ["train_calos/"]
     ]
 
     np.save('params.npy',params)
