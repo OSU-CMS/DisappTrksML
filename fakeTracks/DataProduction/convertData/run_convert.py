@@ -9,9 +9,11 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/mcarrigan/fakeTracks/selection_aMC_v1/'
-    outDir = '/store/user/mcarrigan/fakeTracks/converted_aMC_v1/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_aMC_v1/'
+    layers = -1
+    dataDir = '/store/user/mcarrigan/fakeTracks/selection_v7_aMCNLO/'
+    #dataDir = '/store/user/mcarrigan/fakeTracks/selection_aMC_v1/'
+    outDir = '/store/user/mcarrigan/fakeTracks/converted_madgraph_4PlusLayer_v7p1/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_madgraph_4PlusLayer_v7p1/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
@@ -45,16 +47,16 @@ if __name__=="__main__":
     request_memory = 2048MB
     request_cpus = 1
     executable              = wrapper.sh
-    arguments               = $(PROCESS) {1} {2} {3}
-    log                     = {4}log_$(PROCESS).log
-    output                  = {4}out_$(PROCESS).txt
-    error                   = {4}error_$(PROCESS).txt
+    arguments               = $(PROCESS) {1} {2} {3} {4}
+    log                     = {5}log_$(PROCESS).log
+    output                  = {5}out_$(PROCESS).txt
+    error                   = {5}error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
     transfer_input_files = {2}, wrapper.sh, convertData.py, Infos.h
     getenv = true
     queue {0}
-    """.format(len(files),dataDir,filelist,outDir, logDir)
+    """.format(len(files),dataDir,filelist,outDir,layers,logDir)
 
     f.write(submitLines)
     f.close()
