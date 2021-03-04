@@ -135,8 +135,13 @@ class DeepSetsArchitecture:
 						  track.nValidPixelHits,
 						  np.sum(ecal_energy),
 						  np.sum(hcal_energy),
+						  track.pt,
 						  track.ptError,
-						  track.normalizedChi2])
+						  track.normalizedChi2,
+						  track.dEdxPixel,
+						  track.dEdxStrip,
+						  track.d0,
+						  track.dz])
 
 		values = {
 			'sets' : sets,
@@ -194,7 +199,7 @@ class DeepSetsArchitecture:
 				track.inGap or
 				abs(track.dRMinJet) < 0.5 or
 				abs(track.deltaRToClosestElectron) < 0.15 or
-				abs(track.deltaRToClosestMuon) < 0.15 or
+				# abs(track.deltaRToClosestMuon) < 0.15 or
 				abs(track.deltaRToClosestTauHad) < 0.15):
 				trackPasses.append(False)
 			else:
@@ -220,45 +225,22 @@ class DeepSetsArchitecture:
 				if not trackPasses[i]: continue
 			 
 				# gen-matched, reconstructed muons
-				if isGenMatched(event, track, 13) and (abs(track.deltaRToClosestMuon) < 0.15):
+				if isGenMatched(event, track, 13) and (not (abs(track.deltaRToClosestMuon) < 0.15)):
 					values = self.convertTrackFromTree(event, track, 1)
 					signal.append(values['sets'])
 					signal_info.append(values['infos'])
 
-					values = self.convertTrackFromTreeElectrons(event, track, 1)
-					signal_calos.append(values['sets'])
+					# values = self.convertTrackFromTreeElectrons(event, track, 1)
+					# signal_calos.append(values['sets'])
 
 				# non gen-muons, non reconstructed muons
-				elif (not isGenMatched(event, track, 13)) and (not (abs(track.deltaRToClosestMuon) < 0.15)):
-					values = self.convertTrackFromTree(event, track, 0)
-					background.append(values['sets'])
-					background_info.append(values['infos'])
+				# elif (not isGenMatched(event, track, 13)) and (not (abs(track.deltaRToClosestMuon) < 0.15)):
+				# 	values = self.convertTrackFromTree(event, track, 0)
+				# 	background.append(values['sets'])
+				# 	background_info.append(values['infos'])
 
-					values = self.convertTrackFromTreeElectrons(event, track, 0)
-					background_calos.append(values['sets'])
-
-
-		# for event in inputTree:
-		#     eventPasses, trackPasses = self.eventSelection(event)
-		#     if not eventPasses: continue
-
-		#     for i, track in enumerate(event.tracks):
-		#         if not trackPasses[i]: continue
-				
-		#         # only gen-truth muons
-		#         if not isGenMatched(event, track, 13): continue
-
-		#         # non-reco muons
-		#         if abs(track.deltaRToClosestMuon) >= 0.15 :
-		#             values = self.convertTrackFromTree(event, track, 1)
-		#             signal.append(values['sets'])
-		#             signal_info.append(values['infos'])
-
-		#         # reco muons
-		#         else:
-		#             values = self.convertTrackFromTree(event, track, 0)
-		#             background.append(values['sets'])
-		#             background_info.append(values['infos'])
+					# values = self.convertTrackFromTreeElectrons(event, track, 0)
+					# background_calos.append(values['sets'])
 
 		outputFileName = fileName.split('/')[-1] + '.npz'
 
@@ -267,9 +249,9 @@ class DeepSetsArchitecture:
 								signal=signal,
 								signal_info=signal_info,
 								background=background,
-								background_info=background_info,
-								signal_calos = signal_calos,
-								background_calos = background_calos)
+								background_info=background_info)
+								# signal_calos = signal_calos,
+								# background_calos = background_calos)
 
 			print 'Wrote', outputFileName
 		else:
@@ -284,6 +266,8 @@ class DeepSetsArchitecture:
 		tracks = []
 		infos = []
 		calos = []
+		recoMuons = []
+		recoMuons_infos = []
 
 		for event in inputTree:
 			eventPasses, trackPasses = self.eventSelection(event)
@@ -293,20 +277,28 @@ class DeepSetsArchitecture:
 				if not trackPasses[i]: continue
 				if not track.isTagProbeMuon: continue
 
-				values = self.convertTrackFromTree(event, track, 1)
-				tracks.append(values['sets'])
-				infos.append(values['infos'])       
+				if(abs(track.deltaRToClosestMuon) < 0.15):
+					values = self.convertTrackFromTree(event, track, 0)
+					recoMuons.append(values['sets'])
+					recoMuons_infos.append(values['infos'])
 
-				values = self.convertTrackFromTreeElectrons(event, track, 1)
-				calos.append(values['sets'])
+				elif(not(abs(track.deltaRToClosestMuon) < 0.15)):
+					values = self.convertTrackFromTree(event, track, 1)
+					tracks.append(values['sets'])
+					infos.append(values['infos'])
+
+				# values = self.convertTrackFromTreeElectrons(event, track, 1)
+				# calos.append(values['sets'])
 
 		outputFileName = fileName.split('/')[-1] + '.npz'
 
 		if len(tracks) > 0:
 			np.savez_compressed(outputFileName,
-								sets=tracks,
-								infos=infos,
-								calos=_calos)
+								recoMuons=recoMuons,
+								recoMuons_infos=recoMuons_infos,
+								signal=tracks,
+								signal_infos=infos)
+								# calos=_calos)
 			print 'Wrote', outputFileName
 		else:
 			print 'No events passed the selections'
