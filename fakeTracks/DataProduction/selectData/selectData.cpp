@@ -45,6 +45,23 @@ bool trackSelection(TrackInfo track){
 
 }
 
+bool signalSelection(TrackInfo track){
+
+    if(!(track.trackIso /track.pt < 0.05)) return false;
+    //if(!(abs(track.d0) < 0.02)) return false;
+    if(!(abs(track.dz) < 0.5)) return false;
+    if(!(abs(track.dRMinJet) > 0.5)) return false;
+
+    //candidate track selection
+    if(!(abs(track.deltaRToClosestElectron) > 0.15)) return false;
+    if(!(abs(track.deltaRToClosestMuon) > 0.15)) return false;
+    if(!(abs(track.deltaRToClosestTauHad) > 0.15)) return false;
+
+    //disappearing track selection
+    if(!(track.missingOuterHits >= 3)) return false;
+    if(!(track.ecalo < 10)) return false;
+    return true;
+}
 
 
 void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v6-DYJets-MC2017/", TString filelist = ""){
@@ -65,9 +82,10 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
         }
     }
 
-
+    bool signalMC = false;
 
     TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
+    //TString filename = dataDir + "hist_" + int_tstring(fileNum) + ".root";
     TFile* myFile = TFile::Open(filename, "read");
     if(myFile == nullptr) return;
     TTree * myTree = (TTree*)myFile->Get("trackImageProducer/tree");
@@ -124,21 +142,23 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
             
             //look to see if track passes general selections
             if(!trackSelection(track)) continue;
-
+            if(signalMC) if(!signalSelection(track)) continue;
 
             float genMatchedDR(-1);
+            int genMatchedId(0);
             //check to see if track is gen matched
             for(const auto &genParticle : *v_genParticles){
             
                 if(genParticle.pt < 10) continue;
-
                 float thisDR = deltaR(genParticle.eta, genParticle.phi, track.eta, track.phi);
-                if(genMatchedDR == -1 || thisDR < genMatchedDR) genMatchedDR = thisDR;
-                
-                //IF GEN Matched what is the particle?
+                if(genMatchedDR == -1 || thisDR < genMatchedDR){
+                    genMatchedDR = thisDR;
+                    genMatchedId = genParticle.pdgId;
+                }
 
             }//end of gen particle loop
-
+            
+            if(signalMC) if(genMatchedId != 1000024 && genMatchedId != 1000022) continue;
             if(genMatchedDR > 0.1) v_tracks_fake->push_back(track);
             else v_tracks_real->push_back(track);            
 
