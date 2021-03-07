@@ -10,8 +10,8 @@ class BalancedGenerator(keras.utils.Sequence):
 				 batch_size=32, 
 				 batch_ratio=0.5,
 				 shuffle=True,
-				 with_info=False,
-				 maxHits=100):
+				 info_indices=False,
+				 max_hits=100):
 		self.file_ids = file_ids
 		self.input_dir = input_dir
 		self.batch_size = batch_size
@@ -19,8 +19,9 @@ class BalancedGenerator(keras.utils.Sequence):
 		self.num_signal_batch = int(np.ceil(self.batch_ratio * self.batch_size))
 		self.num_background_batch = self.batch_size - self.num_signal_batch
 		self.shuffle = shuffle
-		self.with_info = with_info
-		self.maxHits = maxHits
+		self.info_indices = info_indices
+		self.with_info = not(type(self.info_indices) == bool)
+		self.max_hits = max_hits
 
 		self.signal_files = np.array([])
 		self.background_files = np.array([])
@@ -35,7 +36,7 @@ class BalancedGenerator(keras.utils.Sequence):
 	def create_event_file_lists(self):
 
 		for idx in self.file_ids:
-			fin = np.load(self.input_dir + 'images_' + idx + '.root.npz')
+			fin = np.load(self.input_dir + 'hist_' + idx + '.root.npz')
 			self.signal_files = np.concatenate((self.signal_files,np.ones(fin['signal'].shape[0])*int(idx)))
 			self.signal_events = np.concatenate((self.signal_events,np.arange(fin['signal'].shape[0],dtype=int)))
 			self.background_files = np.concatenate((self.background_files,np.ones(fin['background'].shape[0])*int(idx)))
@@ -89,11 +90,11 @@ class BalancedGenerator(keras.utils.Sequence):
 		for file in files:
 			events_this_file = X_events[np.where(X_files == file)]
 			if X is None:
-				X = np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)['signal'][events_this_file]
-				X_info = np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)['signal_info'][events_this_file]
+				X = np.load(self.input_dir + 'hist_' + str(int(file)) + '.root.npz', allow_pickle=True)['signal'][events_this_file]
+				X_info = np.load(self.input_dir + 'hist_' + str(int(file)) + '.root.npz', allow_pickle=True)['signal_info'][events_this_file]
 			else:
-				X = np.vstack((X,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)['signal'][events_this_file]))
-				X_info = np.vstack((X_info,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)['signal_info'][events_this_file]))
+				X = np.vstack((X,np.load(self.input_dir + 'hist_' + str(int(file)) + '.root.npz', allow_pickle=True)['signal'][events_this_file]))
+				X_info = np.vstack((X_info,np.load(self.input_dir + 'hist_' + str(int(file)) + '.root.npz', allow_pickle=True)['signal_info'][events_this_file]))
 
 		if X is None: sys.exit("X is None")
 
@@ -102,8 +103,8 @@ class BalancedGenerator(keras.utils.Sequence):
 		files = list(set(X_files))
 		for file in files:
 			events_this_file = X_events[np.where(X_files == file)]
-			X = np.vstack((X,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)['background'][events_this_file]))
-			X_info = np.vstack((X_info,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)['background_info'][events_this_file]))
+			X = np.vstack((X,np.load(self.input_dir + 'hist_' + str(int(file)) + '.root.npz', allow_pickle=True)['background'][events_this_file]))
+			X_info = np.vstack((X_info,np.load(self.input_dir + 'hist_' + str(int(file)) + '.root.npz', allow_pickle=True)['background_info'][events_this_file]))
 
 		y = np.concatenate((np.ones(self.num_signal_batch), np.zeros(self.num_background_batch)))
 
@@ -111,9 +112,9 @@ class BalancedGenerator(keras.utils.Sequence):
 		X = X[p]
 		y = y[p]
 		X_info = X_info[p]
-		X_info = X_info[:,[4,8,9,13,14,15,16]]
+		X_info = X_info[:,self.info_indices]
 
-		X = X[:,:self.maxHits,:]		
+		X = X[:,:self.max_hits,:]		
 
 		if self.with_info:
 			return [X,X_info], keras.utils.to_categorical(y, num_classes=2)
@@ -125,13 +126,14 @@ class Generator(keras.utils.Sequence):
 	def __init__(self, 
 				 file_ids, input_dir='', 
 				 batch_size=32, 
-				 with_info=False,
-				 maxHits=100):
+				 info_indices=False,
+				 max_hits=100):
 		self.file_ids = file_ids
 		self.input_dir = input_dir
 		self.batch_size = batch_size
-		self.with_info = with_info
-		self.maxHits = maxHits
+		self.info_indices = info_indices
+		self.with_info = not(type(self.info_indices) == bool)
+		self.max_hits = max_hits
 
 		self.files = np.array([])
 		self.events = np.array([])
@@ -142,7 +144,7 @@ class Generator(keras.utils.Sequence):
 	def create_event_file_lists(self):
 
 		for idx in self.file_ids:
-			fin = np.load(self.input_dir + 'images_' + idx + '.root.npz')
+			fin = np.load(self.input_dir + 'hist_' + idx + '.root.npz')
 			num_signal_file = int(fin['signal'].shape[0])
 			self.files = np.concatenate((self.files,np.ones(num_signal_file)*int(idx)))
 			self.events = np.concatenate((self.events,np.arange(num_signal_file,dtype=int)))
@@ -181,11 +183,11 @@ class Generator(keras.utils.Sequence):
 			for c in list(set(classes_this_file)):
 				events_this_class = events_this_file[np.where(classes_this_file==c)]
 				if X is None:
-					X = np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)[class_labels[c]][events_this_class]
-					X_info = np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)[class_labels[c]+'_info'][events_this_class]
+					X = np.load(self.input_dir + 'hist_' + str(int(file)) + '.root.npz', allow_pickle=True)[class_labels[c]][events_this_class]
+					X_info = np.load(self.input_dir + 'hist_' + str(int(file)) + '.root.npz', allow_pickle=True)[class_labels[c]+'_info'][events_this_class]
 				else:
-					X = np.vstack((X,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)[class_labels[c]][events_this_class]))
-					X_info = np.vstack((X_info,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)[class_labels[c]+'_info'][events_this_class]))
+					X = np.vstack((X,np.load(self.input_dir + 'hist_' + str(int(file)) + '.root.npz', allow_pickle=True)[class_labels[c]][events_this_class]))
+					X_info = np.vstack((X_info,np.load(self.input_dir + 'hist_' + str(int(file)) + '.root.npz', allow_pickle=True)[class_labels[c]+'_info'][events_this_class]))
 
 		y = X_info[:,3]
 
@@ -193,9 +195,9 @@ class Generator(keras.utils.Sequence):
 		X = X[p]
 		y = y[p]
 		X_info = X_info[p]
-		X_info = X_info[:,[4,8,9,13,14,15,16]]
+		X_info = X_info[:,self.info_indices]
 
-		X = X[:,:self.maxHits,:]
+		X = X[:,:self.max_hits,:]
 
 		if self.with_info:
 			return [X,X_info], keras.utils.to_categorical(y, num_classes=2)

@@ -9,13 +9,13 @@ from deepSetsMuons import *
 
 ## PARAMETERS ##
 
-inputDirectory = '/store/user/bfrancis/images_v6/SingleMu_2017F_wIso/0000/'
+inputDirectory = '/store/user/mcarrigan/AMSB/images_v7/images_higgsino_700GeV_1000cm_step3/'
 outputDirectory = ""
 fileNumber = 2
 
 ################
 
-arch = DeepSetsArchitecture()
+arch = DeepSetsArchitecture(eta_range=1.0, phi_range=1.0,max_hits=20)
 
 useCondor = False
 useMultiThreads = False
@@ -61,9 +61,9 @@ elif useCondor:
 	inarray = np.loadtxt(fileList,dtype=float)
 	fileNumber = int(inarray[int(fileIndex)])
 
-	arch.convertSignalFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
-	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)
+	arch.convertAMSBFileToNumpy(inputDirectory + 'hist_' + str(fileNumber) + '.root')
+	os.system('mv -v hist_' + str(fileNumber) + '.root.npz ' + outputDirectory)
 
 else:
-	arch.convertSignalFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
-	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)
+	arch.convertAMSBFileToNumpy(inputDirectory + 'hist_' + str(fileNumber) + '.root')
+	os.system('mv -v hist_' + str(fileNumber) + '.root.npz ' + outputDirectory)

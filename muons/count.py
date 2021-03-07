@@ -2,7 +2,7 @@ import os, sys
 import numpy as np
 import pickle as pkl
 
-dataDir = "/store/user/llavezzo/disappearingTracks/SingleMu_2017F_wIso_V2/"
+dataDir = "/store/user/llavezzo/disappearingTracks/SingleMu_2017F_wIso_dR1p0/"
 
 eCounts = {}
 bkgCounts = {}
@@ -44,7 +44,7 @@ for file in os.listdir(dataDir):
 print("signal",signal)
 print("bkg",bkg)
 
-np.savez_compressed("nonRecoProbeMuons.npz",signal=muons,infos=infos)
+np.savez_compressed("nonRecoProbeMuons.npz",signal=muons,signal_infos=infos)
 
 # with open(dataDir+'sCounts.pkl', 'wb') as f:
 # 	pkl.dump(eCounts,f)

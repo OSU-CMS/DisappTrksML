@@ -66,13 +66,13 @@ class DeepSetsArchitecture:
 	model = None
 	training_history = None
 
-	def __init__(self, eta_range=0.25, phi_range=0.25, maxHits=100,
+	def __init__(self, eta_range=0.25, phi_range=0.25, max_hits=100,
 		phi_layers = [64, 64, 256], f_layers = [64, 64, 64], track_info_shape = 0,
-		maxHits_calos = 100, phi_layers_calos= [64, 64, 256], f_layers_calos= [64, 64, 64]):
+		max_hits_calos = 100, phi_layers_calos= [64, 64, 256], f_layers_calos= [64, 64, 64]):
 		self.eta_range = eta_range
 		self.phi_range = phi_range
-		self.max_hits = maxHits
-		self.max_hits_calos = maxHits_calos
+		self.max_hits = max_hits
+		self.max_hits_calos = max_hits_calos
 
 		self.input_shape = (self.max_hits, 4)
 		self.input_shape_calos = (self.max_hits_calos, 4)
@@ -225,10 +225,10 @@ class DeepSetsArchitecture:
 				if not trackPasses[i]: continue
 			 
 				# gen-matched, reconstructed muons
-				if isGenMatched(event, track, 13) and (not (abs(track.deltaRToClosestMuon) < 0.15)):
-					values = self.convertTrackFromTree(event, track, 1)
-					signal.append(values['sets'])
-					signal_info.append(values['infos'])
+				# if isGenMatched(event, track, 13) and (not (abs(track.deltaRToClosestMuon) < 0.15)):
+				# 	values = self.convertTrackFromTree(event, track, 1)
+				# 	signal.append(values['sets'])
+				# 	signal_info.append(values['infos'])
 
 					# values = self.convertTrackFromTreeElectrons(event, track, 1)
 					# signal_calos.append(values['sets'])
@@ -241,6 +241,16 @@ class DeepSetsArchitecture:
 
 					# values = self.convertTrackFromTreeElectrons(event, track, 0)
 					# background_calos.append(values['sets'])
+
+				if isGenMatched(event, track, 13):
+					values = self.convertTrackFromTree(event, track, 1)
+					signal.append(values['sets'])
+					signal_info.append(values['infos'])
+
+				else:
+					values = self.convertTrackFromTree(event, track, 0)
+					background.append(values['sets'])
+					background_info.append(values['infos'])
 
 		outputFileName = fileName.split('/')[-1] + '.npz'
 
@@ -305,6 +315,43 @@ class DeepSetsArchitecture:
 
 		inputFile.Close()
 
+	def convertAMSBFileToNumpy(self, fileName):
+		inputFile = TFile(fileName, 'read')
+		inputTree = inputFile.Get('trackImageProducer/tree')
+
+		signal = []
+		signal_infos = []
+		signal_calos = []
+
+		for event in inputTree:
+			eventPasses, trackPasses = self.signalSelection(event)
+			if not eventPasses: continue
+
+			for i, track in enumerate(event.tracks):
+				if not trackPasses[i]: continue
+
+				if not (isGenMatched(event, track, 1000022) or isGenMatched(event, track, 1000024)): continue
+
+				values = self.convertTrackFromTree(event, track, 1)
+				signal.append(values['sets'])
+				signal_infos.append(values['infos'])
+
+				# values = self.convertTrackFromTreeElectrons(event, track, 1)
+				# signal_calos.append(values['sets'])
+
+		outputFileName = fileName.split('/')[-1] + '.npz'
+
+		if len(signal) > 0:
+			np.savez_compressed(outputFileName,
+								signal=signal,
+								signal_infos=signal_infos)
+								# signal_calos=signal_calos)
+			print 'Wrote', outputFileName
+		else:
+			print 'No events passed the selections'
+
+		inputFile.Close()
+
 	def buildModel(self):
 
 		inputs = Input(shape=(self.input_shape[-1],))
@@ -356,7 +403,7 @@ class DeepSetsArchitecture:
 
 		self.model = model
 
-	def buildModel2(self):
+	def buildTwoHeadedModel(self):
 
 		inputs = Input(shape=(self.input_shape[-1],))
 
@@ -445,7 +492,7 @@ class DeepSetsArchitecture:
 		#prediction = self.model.predict([np.reshape(event['sets'], (1, 100, 4)),np.reshape(event['infos'],(1,13))[:,[4,8,9]]])
 		return prediction[:,1] # p(is electron)
 
-	def evaluate_npy(self, fname, calos=False, track_info=False, obj='sets'):
+	def evaluate_npy(self, fname, calos=False, info_indices=False, obj='sets'):
 
 		data = np.load(fname, allow_pickle=True)
 
@@ -458,12 +505,54 @@ class DeepSetsArchitecture:
 			else: calos = data[obj+'_calos'][:,:40]
 			x.append(calos)
 
-		if(track_info):
-			if obj == 'sets': info = data['infos'][:,[4,8,9,13,14,15,16]]
-			else: info = data[obj+'_infos'][:,[4,8,9,13,14,15,16]]
+		if(type(info_indices) != bool):
+			if obj == 'sets': info = data['infos'][:,info_indices]
+			else: info = data[obj+'_infos'][:,info_indices]
 			x.append(info)
 			
 		return False, self.model.predict(x,)
+
+	def signalSelection(self, event):
+
+		eventPasses = (event.firesGrandOrTrigger == 1 and
+				   event.passMETFilters == 1 and
+				   event.numGoodPVs >= 1 and
+				   event.metNoMu > 120 and
+				   event.numGoodJets >= 1 and
+				   event.dijetDeltaPhiMax <= 2.5 and
+				   abs(event.leadingJetMetPhi) > 0.5)
+
+		trackPasses = [False] * len(event.tracks)
+
+		if not eventPasses:
+			return eventPasses, trackPasses
+
+		for i, track in enumerate(event.tracks):
+			if (not abs(track.eta) < 2.1 or
+				not track.pt > 55 or
+				track.inGap == 0 or
+				not (track.phi < 2.7 or track.eta < 0 or track.eta > 1.42)): # 2017 eta-phi low efficiency
+				continue
+
+			if (not track.dRMinBadEcalChannel >= 0.05 or
+				not track.nValidPixelHits >= 4 or
+				not track.nValidHits >= 4 or
+				not track.missingInnerHits == 0 or
+				not track.missingMiddleHits == 0 or
+				not track.trackIso / track.pt < 0.05 or
+				not abs(track.d0) < 0.02 or
+				not abs(track.dz) < 0.5 or
+				not abs(track.dRMinJet) > 0.5 or
+				not abs(track.deltaRToClosestElectron) > 0.15 or
+				not abs(track.deltaRToClosestMuon) > 0.15 or
+				not abs(track.deltaRToClosestTauHad) > 0.15 or
+				not track.ecalo < 10 or
+				not track.missingOuterHits >= 3):
+				continue
+
+			trackPasses[i] = True
+
+		return (True in trackPasses), trackPasses
 
 	def fit_generator(self, train_generator, val_generator=None, epochs=10, monitor='val_loss',patience_count=10,outdir=""):
 		self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=['accuracy'])
@@ -480,7 +569,7 @@ class DeepSetsArchitecture:
 											 validation_data=val_generator,
 											 callbacks=training_callbacks,
 											 epochs=epochs,
-											 verbose=1)
+											 verbose=2)
 
 	def save_model(self, outputFileName):
 		self.model.save(outputFileName)

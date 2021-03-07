@@ -10,9 +10,9 @@ class BalancedGenerator(keras.utils.Sequence):
 				 batch_size=32, 
 				 batch_ratio=0.5,
 				 shuffle=True,
-				 with_info=False,
 				 maxHits=100,
-				 maxHits_calos=100):
+				 maxHits_calos=100,
+				 info_indices=False):
 		self.file_ids = file_ids
 		self.input_dir = input_dir
 		self.batch_size = batch_size
@@ -23,6 +23,8 @@ class BalancedGenerator(keras.utils.Sequence):
 		self.with_info = with_info
 		self.maxHits = maxHits
 		self.maxHits_calos = maxHits_calos
+		self.info_indices = info_indices
+		self.with_info = not(type(info_indices) == bool)
 
 		self.signal_files = np.array([])
 		self.background_files = np.array([])
@@ -118,7 +120,7 @@ class BalancedGenerator(keras.utils.Sequence):
 		y = y[p]
 		if(self.with_info):
 			X_info = X_info[p]
-			X_info = X_info[:,[4,8,9,13,14,15,16]]
+			X_info = X_info[:,self.info_indices]
 
 		X = X[:,:self.maxHits,:]
 		X_calos =  X_calos[:,:self.maxHits,:]
@@ -133,16 +135,17 @@ class Generator(keras.utils.Sequence):
 	def __init__(self, 
 				 file_ids, input_dir='', 
 				 batch_size=32, 
-				 with_info=False,
 				 maxHits=100,
-				 maxHits_calos=100):
+				 maxHits_calos=100, 
+				 info_indices=False):
 		self.file_ids = file_ids
 		self.input_dir = input_dir
 		self.batch_size = batch_size
-		self.with_info = with_info
 		self.maxHits = maxHits
 		self.maxHits_calos = maxHits_calos
-
+		self.info_indices = info_indices
+		self.with_info = not(type(info_indices) == bool)
+		
 		self.files = np.array([])
 		self.events = np.array([])
 		self.classes = np.array([])
@@ -207,7 +210,7 @@ class Generator(keras.utils.Sequence):
 		y = y[p]
 		if(self.with_info):
 			X_info = X_info[p]
-			X_info = X_info[:,[4,8,9,13,14,15,16]]
+			X_info = X_info[:,self.info_indices]
 
 		X = X[:,:self.maxHits,:]
 

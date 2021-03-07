@@ -71,7 +71,7 @@ train_generator = DataGeneratorV3(file_ids['train'], **train_generator_params)
 val_generator = DataGeneratorV4(file_ids['validation'], **val_generator_params)
 
 arch.fit_generator(train_generator=train_generator, 
-				   val_generator=val_generator, 	
+				   val_generator=None, 	
 					**train_params)
 
 arch.save_trainingHistory(train_params['outdir']+'trainingHistory.pkl')
