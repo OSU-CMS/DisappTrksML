@@ -68,7 +68,7 @@ class DeepSetsArchitecture:
 
 	def __init__(self, eta_range=0.25, phi_range=0.25, max_hits=100,
 		phi_layers = [64, 64, 256], f_layers = [64, 64, 64], track_info_shape = 0,
-		max_hits_calos = 100, phi_layers_calos= [64, 64, 256], f_layers_calos= [64, 64, 64]):
+		max_hits_calos = 100, phi_layers_calos= [64, 64, 256]):
 		self.eta_range = eta_range
 		self.phi_range = phi_range
 		self.max_hits = max_hits
@@ -79,10 +79,8 @@ class DeepSetsArchitecture:
 		self.track_info_shape = track_info_shape
 
 		self.phi_layers = phi_layers
-		self.f_layers = f_layers
-
 		self.phi_layers_calos = phi_layers_calos
-		self.f_layers_calos = f_layers_calos
+		self.f_layers = f_layers
 
 	def convertTrackFromTree(self, event, track, class_label):
 		hits = []
@@ -246,11 +244,15 @@ class DeepSetsArchitecture:
 					values = self.convertTrackFromTree(event, track, 1)
 					signal.append(values['sets'])
 					signal_info.append(values['infos'])
+					values = self.convertTrackFromTreeElectrons(event, track, 1)
+					signal_calos.append(values['sets'])
 
 				else:
 					values = self.convertTrackFromTree(event, track, 0)
 					background.append(values['sets'])
 					background_info.append(values['infos'])
+					values = self.convertTrackFromTreeElectrons(event, track, 0)
+					background_calos.append(values['sets'])
 
 		outputFileName = fileName.split('/')[-1] + '.npz'
 
@@ -259,9 +261,9 @@ class DeepSetsArchitecture:
 								signal=signal,
 								signal_info=signal_info,
 								background=background,
-								background_info=background_info)
-								# signal_calos = signal_calos,
-								# background_calos = background_calos)
+								background_info=background_info,
+								signal_calos = signal_calos,
+								background_calos = background_calos)
 
 			print 'Wrote', outputFileName
 		else:
@@ -447,7 +449,7 @@ class DeepSetsArchitecture:
 		if(self.track_info_shape == 0): 
 			f_inputs = Input(shape=(self.phi_layers[-1] + self.phi_layers_calos[-1],)) # plus any other track/event-wide variable
 		else: 
-			f_inputs = Input(shape=(self.phi_layers[-1]+ self.phi_layers_calos[-1] + self.track_info_shape,))
+			f_inputs = Input(shape=(self.phi_layers[-1]*2 + self.track_info_shape,))
 		f_network = Dense(self.f_layers[0])(f_inputs)
 		f_network = Activation('relu')(f_network)
 		for layerSize in self.f_layers[1:]:
@@ -471,8 +473,8 @@ class DeepSetsArchitecture:
 			deepset_inputs_withInfo = concatenate([latent_space,latent_space_calos,info_inputs])
 			deepset_outputs = f_model(deepset_inputs_withInfo)
 
-		if(self.track_info_shape == 0): model = Model(inputs=deepset_inputs, outputs=deepset_outputs)
-		else: model = Model(inputs=[deepset_inputs,info_inputs], outputs=deepset_outputs)
+		if(self.track_info_shape == 0): model = Model(inputs=[deepset_inputs,deepset_inputs_calos], outputs=deepset_outputs)
+		else: model = Model(inputs=[deepset_inputs,deepset_inputs_calos,info_inputs], outputs=deepset_outputs)
 
 		print(f_model.summary())
 		print(phi_model.summary())

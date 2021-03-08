@@ -34,9 +34,9 @@ if __name__=="__main__":
         # [[400,128],[128,64],0.1,40,"kfold23_noBatchNorm/", True],
         # [[400,128],[128,64],0.01,20,"kfold24_noBatchNorm/", True]
 
-        [[400,128],[128,64,32,32,32,32,32],0.01,25,"kfold14_noBatchNorm_finalTrainV2/", True],
-        [[400,256,128], [128,128,64,32],0.5,15,"kfold19_noBatchNorm_finalTrainV2/", True],
-        [[64,64,256],[64,64,64],0.1,20,"kfold17_noBatchNorm_finalTrainV2/", True],
+        [[400,128],[128,64,32,32,32,32,32],0.01,25,"kfold14_noBatchNorm_finalTrainV3/", True],
+        [[400,256,128], [128,128,64,32],0.5,15,"kfold19_noBatchNorm_finalTrainV3/", True],
+        [[64,64,256],[64,64,64],0.1,20,"kfold17_noBatchNorm_finalTrainV3/", True],
 
     ]
 

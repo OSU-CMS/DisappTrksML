@@ -1,77 +1,48 @@
-#!/usr/bin/env python
+import numpy as np
+import glob, os, sys
 
-import os
-import sys
-import math
-import ctypes
-
-from ROOT import TChain, TFile, TTree, TH1D, TH2D, TCanvas, THStack, gROOT, TLegend, TGraph, TMarker
-
-from tensorflow.keras.layers import concatenate
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 from DisappTrksML.DeepSets.architecture import *
 
-def eventSelection( event):
-        trackPasses = []
-        for track in event.tracks:
-            if (abs(track.eta) >= 2.4 or
-                track.inGap or
-                abs(track.dRMinJet) < 0.5 or
-                abs(track.deltaRToClosestElectron) < 0.15 or
-                abs(track.deltaRToClosestMuon) < 0.15 or
-                abs(track.deltaRToClosestTauHad) < 0.15 or
-                (not track.isTagProbeElectron)):
-                trackPasses.append(False)
-            else:
-                trackPasses.append(True)
-        return (True in trackPasses), trackPasses
+# parameters
+dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_converted/"
+modelFile = 'kfold14_noBatchNorm_finalTrainV2/model.18.h5'
+outDir = "kfold14_noBatchNorm_finalTrainV2/"
+fileRange = [0,100]				# set to -1 if not interested
 
-def evaluateFile(inputFileLabel):
+# initialize architecture and load the weights/model
+arch = DeepSetsArchitecture(max_hits=100)
+arch.load_model(modelFile)
 
-	inputFile = TFile(inputFileLabel,"READ")
-	tree = inputFile.Get("trackImageProducer/tree")
+# iterate over desired files and predict
+cm = np.zeros((2,2))
+inputFiles = np.loadtxt("kfold14_noBatchNorm_finalTrainV2.txt")
 
-	nEvents = tree.GetEntries()
-	print '\nAdded', nEvents, 'events from file:', inputFileLabel, '\n'
+for iFile in inputFiles:
+	print(i)
 
-	preds = []
+	# evaluate file
+	for obj in ['signal','background']
+		preds, skip = arch.evaluate_npy(iFile, track_info=False, obj=obj)
+		if skip: continue
 
-	for iEvent, event in enumerate(tree):
-		
-		eventPasses, trackPasses = eventSelection(event)
+		# fill confusion matrix
+		if obj == 'signal':
+			cm[1,1] += np.count_nonzero(preds[:,1] > 0.5)
+			cm[1,0]+= np.count_nonzero(preds[:,1] <= 0.5)
+		elif obj == 'background':
+			cm[0,1] += np.count_nonzero(bkg_preds[:,1] > 0.5)
+			cm[0,0]+= np.count_nonzero(bkg_preds[:,1] <= 0.5)
 
-		if not eventPasses: continue
+# calculate metrics
+precision, recall, f1 = arch.calc_binary_metrics(cm)
 
-		for iTrack, track in enumerate(event.tracks):
-			if not trackPasses[iTrack]: continue
-			
-			preds.append(arch.evaluate_model(event, track))
+# count number of total predictions
+nPreds = np.sum(cm)
 
-	return preds
-
-#######################################
-
-if len(sys.argv) < 4:
-	print 'USAGE: python evaluate.py fileIndex fileList modelPath dataDir outputDir'
-	sys.exit(-1)
-
-fileIndex = sys.argv[1]
-fileList = sys.argv[2]
-modelPath = sys.argv[3]
-dataDir = sys.argv[4]
-outputDir = sys.argv[5]
-
-inputFileLabel = ""
-if int(fileIndex) > 0:
-	inarray = np.loadtxt(fileList,dtype=float)
-	fileNumber = int(inarray[int(fileIndex)])
-	inputFileLabel = "hist_"+str(fileNumber)+".root"
-
-arch = DeepSetsArchitecture()
-arch.load_model(modelPath)
-
-preds = evaluateFile(dataDir+inputFileLabel)
-
-if len(preds)==0: sys.exit("No predictions")
-np.savez_compressed("preds_"+inputFileLabel+".npz",preds=preds)
-os.system('mv -v preds_' + str(inputFileLabel) + '.npz ' + outputDir)
+# save to file
+metrics = [precision, recall, f1, nPreds]
+np.savetxt(outDir + "/evaluation_metrics.csv", metrics, delimiter=",")

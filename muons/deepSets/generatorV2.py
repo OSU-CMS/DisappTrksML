@@ -10,8 +10,8 @@ class BalancedGenerator(keras.utils.Sequence):
 				 batch_size=32, 
 				 batch_ratio=0.5,
 				 shuffle=True,
-				 maxHits=100,
-				 maxHits_calos=100,
+				 max_hits=100,
+				 max_hits_calos=100,
 				 info_indices=False):
 		self.file_ids = file_ids
 		self.input_dir = input_dir
@@ -20,9 +20,8 @@ class BalancedGenerator(keras.utils.Sequence):
 		self.num_signal_batch = int(np.ceil(self.batch_ratio * self.batch_size))
 		self.num_background_batch = self.batch_size - self.num_signal_batch
 		self.shuffle = shuffle
-		self.with_info = with_info
-		self.maxHits = maxHits
-		self.maxHits_calos = maxHits_calos
+		self.max_hits = max_hits
+		self.max_hits_calos = max_hits_calos
 		self.info_indices = info_indices
 		self.with_info = not(type(info_indices) == bool)
 
@@ -122,8 +121,8 @@ class BalancedGenerator(keras.utils.Sequence):
 			X_info = X_info[p]
 			X_info = X_info[:,self.info_indices]
 
-		X = X[:,:self.maxHits,:]
-		X_calos =  X_calos[:,:self.maxHits,:]
+		X = X[:,:self.max_hits,:]
+		X_calos =  X_calos[:,:self.max_hits,:]
 
 		if self.with_info:
 			return [X,X_calos,X_info], keras.utils.to_categorical(y, num_classes=2)
@@ -135,14 +134,14 @@ class Generator(keras.utils.Sequence):
 	def __init__(self, 
 				 file_ids, input_dir='', 
 				 batch_size=32, 
-				 maxHits=100,
-				 maxHits_calos=100, 
+				 max_hits=100,
+				 max_hits_calos=100, 
 				 info_indices=False):
 		self.file_ids = file_ids
 		self.input_dir = input_dir
 		self.batch_size = batch_size
-		self.maxHits = maxHits
-		self.maxHits_calos = maxHits_calos
+		self.max_hits = max_hits
+		self.max_hits_calos = max_hits_calos
 		self.info_indices = info_indices
 		self.with_info = not(type(info_indices) == bool)
 		
@@ -202,6 +201,8 @@ class Generator(keras.utils.Sequence):
 					X_calos = np.vstack((X_calos,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)[class_labels[c]+'_calos'][events_this_class]))
 					X_info = np.vstack((X_info,np.load(self.input_dir + 'images_' + str(int(file)) + '.root.npz', allow_pickle=True)[class_labels[c]+'_info'][events_this_class]))
 
+		if X is None: sys.exit("X is None")
+		
 		y = X_info[:,3]
 
 		p = np.random.permutation(len(X))
@@ -212,7 +213,7 @@ class Generator(keras.utils.Sequence):
 			X_info = X_info[p]
 			X_info = X_info[:,self.info_indices]
 
-		X = X[:,:self.maxHits,:]
+		X = X[:,:self.max_hits,:]
 
 		if self.with_info:
 			return [X,X_calos,X_info], keras.utils.to_categorical(y, num_classes=2)

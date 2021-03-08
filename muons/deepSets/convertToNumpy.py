@@ -15,7 +15,7 @@ fileNumber = 2
 
 ################
 
-arch = DeepSetsArchitecture(eta_range=1.0, phi_range=1.0,max_hits=20)
+arch = DeepSetsArchitecture(eta_range=1.5, phi_range=1.5, max_hits=20)
 
 useCondor = False
 useMultiThreads = False
@@ -61,9 +61,9 @@ elif useCondor:
 	inarray = np.loadtxt(fileList,dtype=float)
 	fileNumber = int(inarray[int(fileIndex)])
 
-	arch.convertSignalFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
+	arch.convertMCFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
 	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)
 
 else:
-	arch.convertSignalFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
+	arch.convertMCFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
 	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)

@@ -9,7 +9,7 @@ if __name__=="__main__":
     logdir = "/data/users/llavezzo/Logs/muon_classification/"
     
     params = [
-        ["train_genMuons_bkg/"]
+        ["train_genMuons_bkg_withCalos_dR1p5/"]
     ]
 
     np.save('params.npy',params)
