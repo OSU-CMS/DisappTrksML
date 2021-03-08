@@ -280,19 +280,19 @@ class DeepSetsArchitecture:
 		recoMuons_infos = []
 
 		for event in inputTree:
-			eventPasses, trackPasses = self.eventSelection(event)
+			eventPasses, trackPasses = self.leptonBackgroundSelection(event, 'muons')
 			if not eventPasses: continue
 
 			for i, track in enumerate(event.tracks):
 				if not trackPasses[i]: continue
 				if not track.isTagProbeMuon: continue
 
-				if(abs(track.deltaRToClosestMuon) < 0.15):
-					values = self.convertTrackFromTree(event, track, 0)
-					recoMuons.append(values['sets'])
-					recoMuons_infos.append(values['infos'])
+				# if(abs(track.deltaRToClosestMuon) < 0.15):
+				# 	values = self.convertTrackFromTree(event, track, 0)
+				# 	recoMuons.append(values['sets'])
+				# 	recoMuons_infos.append(values['infos'])
 
-				elif(not(abs(track.deltaRToClosestMuon) < 0.15)):
+				if(not(abs(track.deltaRToClosestMuon) < 0.15)):
 					values = self.convertTrackFromTree(event, track, 1)
 					tracks.append(values['sets'])
 					infos.append(values['infos'])
@@ -304,8 +304,8 @@ class DeepSetsArchitecture:
 
 		if len(tracks) > 0:
 			np.savez_compressed(outputFileName,
-								recoMuons=recoMuons,
-								recoMuons_infos=recoMuons_infos,
+								# recoMuons=recoMuons,
+								# recoMuons_infos=recoMuons_infos,
 								signal=tracks,
 								signal_infos=infos)
 								# calos=_calos)
@@ -512,6 +512,7 @@ class DeepSetsArchitecture:
 			
 		return False, self.model.predict(x,)
 
+	# disappearing tracks analysis selection without the fiducial maps
 	def signalSelection(self, event):
 
 		eventPasses = (event.firesGrandOrTrigger == 1 and
@@ -551,6 +552,60 @@ class DeepSetsArchitecture:
 				continue
 
 			trackPasses[i] = True
+
+		return (True in trackPasses), trackPasses
+
+
+	# disappearing tracks analysis selection without the fiducial maps
+	def leptonBackgroundSelection(self, event, lepton_type):
+
+		eventPasses = (event.passMETFilters == 1)
+		trackPasses = [False] * len(event.tracks)
+
+		if not eventPasses:
+			return eventPasses, trackPasses
+
+		for i, track in enumerate(event.tracks):
+
+			if (not abs(track.eta) < 2.1 or
+				not track.pt > 30 or
+				track.inGap == 0 or
+				not (track.phi < 2.7 or track.eta < 0 or track.eta > 1.42)): # 2017 eta-phi low efficiency
+				continue
+
+			if (lepton_type == 'electrons' and not track.isTagProbeElectron == 1):
+				continue
+			if (lepton_type == 'muons' and not track.isTagProbeMuon == 1):
+				continue
+
+			if (not track.dRMinBadEcalChannel >= 0.05 or
+				not track.nValidPixelHits >= 4 or
+				not track.nValidHits >= 4 or
+				not track.missingInnerHits == 0 or
+				not track.missingMiddleHits == 0 or
+				not track.trackIso / track.pt < 0.05 or
+				not abs(track.d0) < 0.02 or
+				not abs(track.dz) < 0.5 or
+				not abs(track.dRMinJet) > 0.5 or
+				not abs(track.deltaRToClosestTauHad) > 0.15):
+				continue
+
+			if (lepton_type == 'electrons' and not abs(track.deltaRToClosestMuon) > 0.15):
+				continue
+			if (lepton_type == 'muons' and (not abs(track.deltaRToClosestElectron) > 0.15 or not track.ecalo < 10)):
+				continue
+
+			trackPasses[i] = True
+
+			if lepton_type == 'electrons':
+				if (abs(track.deltaRToClosestElectron) > 0.15 and
+					track.ecalo < 10 and
+					track.missingOuterHits >= 3):
+					trackPasses[i] = True
+			if lepton_type == 'muons':
+				if (abs(track.deltaRToClosestMuon) > 0.15 and
+					track.missingOuterHits >= 3):
+					trackPasses[i] = True
 
 		return (True in trackPasses), trackPasses
 

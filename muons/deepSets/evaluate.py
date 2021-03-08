@@ -18,8 +18,8 @@ cm = np.zeros((2,2))
 count = 0
 # evaluate the model
 bkg_preds = None
-bkgDir = "/store/user/llavezzo/disappearingTracks/images_higgsino_700GeV_10000cm_fullSelection/"
-inputFiles = glob.glob(bkgDir+'hist_*.root.npz')
+bkgDir = "/store/user/llavezzo/disappearingTracks/SingleMu_2017F_fullSelection/"
+inputFiles = glob.glob(bkgDir+'images_*.root.npz')
 # inputFiles = ['../nonRecoProbeMuons.npz']
 
 for i,fname in enumerate(inputFiles):
