@@ -376,11 +376,16 @@ class DeepSetsArchitecture:
                                             mode='auto')
         ]
 
-        self.training_history = self.model.fit(train_generator, 
+        if val_generator == None:
+            self.training_history = self.model.fit(train_generator, 
                                              validation_data=val_generator,
                                              callbacks=training_callbacks,
                                              epochs=epochs,
-                                             verbose=1)
+                                             verbose=2)
+        else:
+            self.training_history = self.model.fit(train_generator, 
+                                             epochs=epochs,
+                                             verbose=2)
 
     def save_model(self, outputFileName):
         self.model.save(outputFileName)

@@ -71,11 +71,11 @@ train_generator = DataGeneratorV3(file_ids['train'], **train_generator_params)
 val_generator = DataGeneratorV4(file_ids['validation'], **val_generator_params)
 
 arch.fit_generator(train_generator=train_generator, 
-				   val_generator=val_generator, 	
+				   val_generator=None, 	
 					**train_params)
 
 arch.save_trainingHistory(train_params['outdir']+'trainingHistory.pkl')
-arch.plot_trainingHistory(train_params['outdir']+'trainingHistory.pkl',train_params['outdir']+'trainingHistory.png','loss')
+#arch.plot_trainingHistory(train_params['outdir']+'trainingHistory.pkl',train_params['outdir']+'trainingHistory.png','loss')
 arch.save_weights(train_params['outdir']+'model_weights.h5')
 arch.save_model(train_params['outdir']+'model.h5')
-arch.save_metrics(train_params['outdir']+'trainingHistory.pkl',train_params['outdir']+"metrics.pkl", train_params)
+#arch.save_metrics(train_params['outdir']+'trainingHistory.pkl',train_params['outdir']+"metrics.pkl", train_params)

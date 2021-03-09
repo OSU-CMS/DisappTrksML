@@ -9,8 +9,8 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/bfrancis/images_v6/SingleMu_2017F_wIso/0000/'
-    outDir = '/store/user/llavezzo/disappearingTracks/SingleMu_2017F_wIso_withCalos/'
+    dataDir =  '/store/user/mcarrigan/Images-v7-DYJets-MC2017_aMCNLO/'
+    outDir = '/store/user/llavezzo/disappearingTracks/genMuons_bkg_v7_withCalos_dR1p5/'
     logDir = '/data/users/llavezzo/Logs/convert/'
     reprocessAllFiles = False
 
