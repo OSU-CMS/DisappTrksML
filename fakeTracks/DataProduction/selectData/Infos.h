@@ -4,7 +4,7 @@
 #include <vector>
 
 struct TrackDeDxInfo {
-  int   isPixel;
+  int   subDet;
   float charge;
   int   pixelHitSize, pixelHitSizeX, pixelHitSizeY;
   bool  stripShapeSelection;
@@ -12,7 +12,7 @@ struct TrackDeDxInfo {
   int   hitLayerId;
 
   TrackDeDxInfo() {
-    isPixel = -10;
+    subDet = -10;
     charge  = -10;
     pixelHitSize  = -10;
     pixelHitSizeX = -10;
@@ -24,7 +24,7 @@ struct TrackDeDxInfo {
     hitLayerId = -10;
   }
 
-  TrackDeDxInfo(int isPixel_,
+  TrackDeDxInfo(int subDet_,
                 float charge_,
                 int pixelHitSize_,
                 int pixelHitSizeX_,
@@ -34,7 +34,7 @@ struct TrackDeDxInfo {
                 float hitPosY_,
                 float hitPosZ_,
                 int hitLayerId_) {
-    isPixel = isPixel_;
+    subDet = subDet_;
     charge = charge_;
     pixelHitSize = pixelHitSize_;
     pixelHitSizeX = pixelHitSizeX_;

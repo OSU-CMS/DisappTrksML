@@ -12,12 +12,12 @@ import time
 
 
 fileNum = 1
-dataDir = '/store/user/mcarrigan/fakeTracks/selection_v7_aMCNLO/'
+dataDir = '/store/user/mcarrigan/fakeTracks/selection_v7_madgraph/'
 #dataDir = "/store/user/mcarrigan/fakeTracks/selection_Z2MuMu_v1/"
 #dataDir = "/store/user/mcarrigan/fakeTracks/selection_higgsino_700_10000_v1/"
 #dataDir = ''
 
-layers = -1
+layers = 5
 
 # script arguments
 if(len(sys.argv)>1): fileNum = int(sys.argv[1])
@@ -85,15 +85,16 @@ for class_label,tree in zip([0,1],[realTree,fakeTree]):
             
             if(layers == 6 or layers == -1): nLayers = np.zeros((16, 9))
             else: nLayers = np.zeros((layers, 9))
-            
+            nLayerCount = 0           
             print("--------------------------------------------------------------------------------------------------------------------------------------------------")
             
             for iHit, hit in enumerate(track.dEdxInfo):
                 layerHits = []
                 print("Event: " + str(iEvent) + ", Track: " + str(iTrack) + " isFake: " + str(class_label) + ", subDet: " + str(hit.subDet) + " Layer: " 
                         + str(hit.hitLayerId), "nLayersWithMeasurement: " + str(nLayersWithMeasurement) + " Eta: " + str(track.eta) + " missingInnerHits: " 
-                        + str(track.missingInnerHits) + " missingMiddleHits: " + str(track.missingMiddleHits) + " missingOuterHits: " + str(track.missingOuterHits))
-                if(hit.hitLayerId < 0 or hit.hitLayerId >= layers): 
+                        + str(track.missingInnerHits) + " missingMiddleHits: " + str(track.missingMiddleHits) + " missingOuterHits: " + str(track.missingOuterHits) + 
+                        " Charge: " + str(hit.charge))
+                if(hit.hitLayerId < 0): 
                     continue
                 layerHits.append(hit.hitLayerId)
                 layerHits.append(hit.charge)
@@ -105,10 +106,30 @@ for class_label,tree in zip([0,1],[realTree,fakeTree]):
                 layerHits.append(hit.hitPosX)
                 layerHits.append(hit.hitPosY)
                 
-                if(nLayers[hit.hitLayerId, 1] == 0 or layerHits[1] > nLayers[hit.hitLayerId, 1]):
+                newLayer = True
+                if(layers == 6 or layers == -1):
+                    for iSaved, savedHit in enumerate(nLayers):
+                        if(hit.subDet == savedHit[2] and hit.hitLayerId == savedHit[0]):
+                            newLayer = False
+                            if (hit.charge > savedHit[1]):
+                                for i in range(len(layerHits)):
+                                    nLayers[iSaved, i] = layerHits[i]
+                
+                if(newLayer==True):
+                    if(nLayerCount > len(nLayers)-1): continue
                     for i in range(len(layerHits)):
-                        nLayers[hit.hitLayerId, i] = layerHits[i]
+                        nLayers[nLayerCount, i] = layerHits[i]
+                    nLayerCount += 1
+ 
+            print("*********************************************************************************************************************************************************")
+            for iLayer in range(len(nLayers)):
+                print("subDet: " + str(nLayers[iLayer, 2]) + " Layer: " + str(nLayers[iLayer, 0]) + " Charge: " + str(nLayers[iLayer, 1]))
 
+            # Prevent tracks with no hits recorded from continuing
+            if(nLayers[0,0] == 0 and nLayers[1,0] == 0): 
+                print("not recording track...")
+                continue
+            
             track_info = np.concatenate((track_info, nLayers.flatten()))
 
             if(class_label == 0): real_infos.append(track_info)
@@ -117,6 +138,10 @@ for class_label,tree in zip([0,1],[realTree,fakeTree]):
 
 print("Real Tracks: " + str(len(real_infos)))
 print("Fake Tracks: " + str(len(fake_infos)))
+
+for i in range(len(real_infos)):
+    print(real_infos[i])
+    print("#####################################################################################################################################")
 
 np.savez_compressed("events_" + str(fileNum) + ".npz", fake_infos = fake_infos, real_infos = real_infos, fake_d0 = fake_d0, real_d0 = real_d0)
 
