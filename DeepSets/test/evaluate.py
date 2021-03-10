@@ -9,8 +9,8 @@ from DisappTrksML.DeepSets.architecture import *
 
 # parameters
 dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_converted/"
-modelFile = 'kfold17_noBatchNorm_finalTrainV3/model.h5'
-outDir = "kfold17_noBatchNorm_finalTrainV3/"
+modelFile = 'kfold19_noBatchNorm_finalTrainV3/model.h5'
+outDir = "kfold19_noBatchNorm_finalTrainV3/"
 
 # initialize architecture and load the weights/model
 arch = DeepSetsArchitecture()
@@ -23,7 +23,6 @@ inputFiles = np.loadtxt(outDir + "/validation_files.txt")
 
 for iFile, file in enumerate(inputFiles):
 	print str(iFile)+'/'+str(len(inputFiles))
-	if iFile == 10: break
 
 	fname = dataDir+'images_'+str(int(file))+'.root.npz'
 
@@ -47,9 +46,8 @@ for iFile, file in enumerate(inputFiles):
 metrics = arch.metrics_per_cut(true, preds, 40)
 np.save(outDir+'metrics.npy',metrics)
 
-plt.plot(metrics['splits'])
-plt.plot(metrics['precision'], label="precision")
-plt.plot(metrics['recall'], label="recall")
-plt.plot(metrics['f1'], label="f1")
+plt.scatter(metrics['splits'], metrics['precision'], label="precision")
+plt.scatter(metrics['splits'], metrics['recall'], label="recall")
+plt.scatter(metrics['splits'], metrics['f1'], label="f1")
 plt.legend()
 plt.savefig(outDir+"metrics.png")

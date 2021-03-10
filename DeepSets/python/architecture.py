@@ -502,9 +502,9 @@ class DeepSetsArchitecture:
 
 		return precision, recall, f1
 
-	def calc_cm(self, true,predictions,dim=2):
+	def calc_cm(self, true, predictions, dim=2):
 		confusion_matrix = np.zeros((dim, dim))
-		for t,p in zip(true, predictions):
+		for t,p in zip(true.astype(int), predictions.astype(int)):
 			confusion_matrix[t,p] += 1
 		return confusion_matrix
 
