@@ -11,7 +11,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.inspection import permutation_importance
 import sys
 import ROOT as r
-
+from ROOT.TMath import Gaus
 
 class bcolors:
     HEADER = '\033[95m'
@@ -33,7 +33,7 @@ saveDir = "images/"
 #    inputData = inputData["tracks"]
 
 #list of Track input labels
-labels = ['trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip',
+labels = ['trackIso', 'eta', 'phi', 'nPV', 'dRMinJet', 'Ecalo', 'Pt', 'd0', 'dZ', 'Charge', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip',
           'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 
           'Layer1', 'Charge1', 'isPixel1', 'pixelHitSize1', 'pixelHitSizeX1', 'pixelHitSizeY1', 'stripShapeSelection1', 'hitPosX1', 'hitPoxY1',
           'Layer2', 'Charge2', 'isPixel2', 'pixelHitSize2', 'pixelHitSizeX2', 'pixelHitSizeY2', 'stripShapeSelection2', 'hitPosX2', 'hitPoxY2',
@@ -117,8 +117,8 @@ def plotHistory(history, variables, plotDir, outputfile = 'metricPlots.root'):
 
 def permutationImportance(model, tracks, truth, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
-    h_importance = r.TH1F("h_importance", "Feature Importance", 156, 0, 156)
-    h_track = r.TH1F("h_track", "Track Permutation Importance", 12, 0, 12)
+    h_importance = r.TH1F("h_importance", "Feature Importance", 163, 0, 163)
+    h_track = r.TH1F("h_track", "Track Permutation Importance", 19, 0, 19)
     h_layer1 = r.TH1F("h_layer1", "Layer 1 Permutation Importance", 9, 0, 9)
     h_layer2 = r.TH1F("h_layer2", "Layer 2 Permutation Importance", 9, 0, 9)
     h_layer3 = r.TH1F("h_layer3", "Layer 3 Permutation Importance", 9, 0, 9)
@@ -144,12 +144,12 @@ def permutationImportance(model, tracks, truth, plotDir, outputfile = 'metricPlo
         print(i, labels[i], importance[i])
         h_importance.Fill(i, importance[i])
         h_importance.GetXaxis().SetBinLabel(i+1, labels[i])
-        if i < 12:
+        if i < 19:
             h_track.Fill(i, importance[i])
             h_track.GetXaxis().SetBinLabel(i+1, labels[i])
         else:
-            layer = int((i-12)/9)
-            index = int((i-12)%9)
+            layer = int((i-19)/9)
+            index = int((i-19)%9)
             print(i, layer, index)
             h_layers[layer].Fill(index,importance[i])
             h_layers[layer].GetXaxis().SetBinLabel(index+1,labels[i])  
@@ -160,6 +160,68 @@ def permutationImportance(model, tracks, truth, plotDir, outputfile = 'metricPlo
     h_track.Write("h_track_importance")
     for i in range(16):
         h_layers[i].Write()
+    out.Close()
+
+def predictionCorrelation(predictions, variable, bins, min_bin, max_bin, name, plotDir, outputfile = 'metricPlots.root'):
+    out = r.TFile(plotDir + outputfile, "update")
+    c1 = r.TCanvas("c1", name, 800, 800)
+    fake_indices = np.argwhere(predictions >= 0.5)
+    fakes = variable[fake_indices[:,0]]
+    print(fakes[:10])
+    h1 = r.TH1F("h1", "h1", bins, min_bin, max_bin)
+    for fake in fakes:
+        h1.Fill(fake)
+    h1.Write(name)
+    c1.cd()
+    h1.SetMarkerStyle(8)
+    h1.Draw("P")
+    f1 = r.TF1("f1", "[0]*TMath::Gaus(x, 0, [1])+[2]", -1, 1)
+    f1.SetParLimits(0, 10e-3, 10e3)
+    h1.Fit(f1, "LQMR", "", 0.1, 1)
+    f1.Draw()
+    h1.Draw("same p")
+    c1.Write('c_' + name)
+    out.Close()
+
+def comparePredictions(predictions, variable, bins, min_bin, max_bin, name, plotDir, outputfile = 'metricPlots.root'):
+    out = r.TFile(plotDir + outputfile, "update")
+    c1 = r.TCanvas("c1", name, 800, 800)
+    fake_indices = np.argwhere(predictions >= 0.5)
+    fakes = variable[fake_indices[:,0]]
+    real_indices = np.argwhere(predictions < 0.5)
+    reals = variable[real_indices[:,0]]
+    h_fake = r.TH1F("h_fake", name+"Predicted Fakes", bins, min_bin, max_bin)
+    h_real = r.TH1F("h_real", name+"Predicted Real", bins, min_bin, max_bin) 
+    h_total = r.TH1F("h_total", name, bins, min_bin, max_bin)
+    for fake in fakes:
+        h_fake.Fill(fake)
+    for real in reals:
+        h_real.Fill(real)
+    for i in variable:
+        h_total.Fill(i)
+
+    h_eff = r.TEfficiency(h_real, h_total)
+    c1.cd()
+    h_fake.Draw()
+    h_real.SetLineColor(2)
+    h_real.Draw("same")
+    l1 = r.TLegend(0.7, 0.8, 0.9, 0.9)
+    l1.AddEntry(h_real, "Real: " + str(len(reals)), "l")
+    l1.AddEntry(h_fake, "Fake: " + str(len(fakes)), "l")
+    l1.Draw()
+    r.gStyle.SetOptStat(0000)
+    c1.Write("c_" + name)
+    h_fake.Write("fake_"+name)
+    h_real.Write("real_"+name)
+    h_eff.Write("efficiency_" + name)
+    out.Close()
+
+def plotScores(predictions, name, plotDir, outputfile = 'metricPlots.root'):
+    out = r.TFile(plotDir + outputfile, "update")
+    h_pred = r.TH1F("h_pred", "Prediction Scores" + name, 100, 0, 1)
+    for pred in predictions:
+        h_pred.Fill(pred)
+    h_pred.Write("Scores_"+name)
     out.Close()
 
 if __name__ == "__main__":

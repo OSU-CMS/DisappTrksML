@@ -7,7 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from keras.models import Sequential
-from keras.layers import Dense
+from keras.layers import Dense, BatchNormalization, Dropout
 from sklearn.model_selection import train_test_split
 from keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
 import json
@@ -18,15 +18,17 @@ import datetime
 import getopt
 import plotMetrics
 from datetime import date
+from sklearn.preprocessing import MinMaxScaler
 
-def buildModel(filters = [16, 8], metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
+
+def buildModel(filters = [16, 8], input_dim = 55, batch_norm = False, metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
     #begin NN model
-    #metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
-    #filters = [16, 8]
     model = Sequential()
-    model.add(Dense(filters[0], input_dim=156, activation='relu'))
+    model.add(Dense(filters[0], input_dim=input_dim, activation='relu'))
     for i in range(len(filters)-1):
         model.add(Dense(filters[i+1], activation='relu'))
+        if(batch_norm): model.add(BatchNormalization())
+        model.add(Dropout(0.2))
     model.add(Dense(1, activation='sigmoid'))
 
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=metrics)
@@ -35,45 +37,29 @@ def buildModel(filters = [16, 8], metrics = [keras.metrics.Precision(), keras.me
     return model
 
 def callModel():
-    model = buildModel(filters)
+    model = buildModel(filters, input_dim, batch_norm)
     return model
 
-def buildSimple():
-    model = keras.Sequential()
-    model.add(keras.layers.Dense(12, input_dim=156, activation='relu'))
-    model.add(keras.layers.Dense(8, activation='relu'))
-    model.add(keras.layers.Dense(1, activation='sigmoid'))
-
-    model.compile(loss=keras.losses.BinaryCrossentropy(), optimizer='adam', metrics=[keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()])
-
-    print(model.summary())
-    return model
-
-def create_baseline():
-        # create model
-        model = Sequential()
-        model.add(Dense(60, input_dim=156, activation='relu'))
-        model.add(Dense(1, activation='sigmoid'))
-        # Compile model
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=metrics)
-        return model
-
-def loadData(dataDir):
+def loadData(dataDir, undersample):
     #layerId, charge, isPixel, pixelHitSize, pixelHitSizeX, pixelHitSizeY, stripShapeSelection, hitPosX, hitPosY
     # load the dataset
     file_count = 0
+    realTracks = []
+    fakeTracks = []
     for filename in os.listdir(dataDir):
         print("Loading...", dataDir + filename)
-        if file_count > 10: break
+        #if file_count > 20: break
         myfile = np.load(dataDir+filename)
         fakes = np.array(myfile["fake_infos"])
         reals = np.array(myfile["real_infos"])
         if(file_count == 0):
             fakeTracks = fakes
             realTracks = reals
+        elif(file_count != 0 and len(fakeTracks) == 0): fakeTracks = fakes
+        elif(file_count != 0 and len(realTracks) == 0): realTracks = reals
         else:
-            fakeTracks = np.concatenate((fakeTracks, fakes))
-            realTracks = np.concatenate((realTracks, reals))
+            if(len(fakes)!=0): fakeTracks = np.concatenate((fakeTracks, fakes))
+            if(len(reals)!=0): realTracks = np.concatenate((realTracks, reals))
         file_count += 1
 
 
@@ -86,6 +72,15 @@ def loadData(dataDir):
     testRealTracks, valRealTracks, testRealTruth, valRealTruth = train_test_split(testRealTracks, testRealTruth, test_size = 0.5)
     testFakeTracks, valFakeTracks, testFakeTruth, valFakeTruth = train_test_split(testFakeTracks, testFakeTruth, test_size = 0.5)
 
+    # if undersampling
+    if(undersample != -1):
+        num_real = len(trainRealTracks)
+        num_select = int(undersample * num_real)
+        ind = np.arange(num_real)
+        ind = np.random.choice(ind, num_select)
+        trainRealTracks = trainRealTracks[ind]
+        
+
     #combine all data and shuffle
     trainTracks = np.concatenate((trainFakeTracks, trainRealTracks))
     testTracks = np.concatenate((testFakeTracks, testRealTracks))
@@ -93,6 +88,15 @@ def loadData(dataDir):
     testTruth = np.concatenate((testFakeTruth, testRealTruth))
     valTracks = np.concatenate((valFakeTracks, valRealTracks))
     valTruth = np.concatenate((valFakeTruth, valRealTruth))
+
+    # Apply min max scale over all data (scale set range [-1,1])
+    #scaler = MinMaxScaler(feature_range=(-1,1), copy=False)
+    #scaler.partial_fit(trainTracks)
+    #scaler.partial_fit(testTracks)
+    #scaler.partial_fit(valTracks)
+    #testTracks = scaler.transform(testTracks)
+    #trainTracks = scaler.transform(trainTracks)
+    #valTracks = scaler.transform(valTracks)
 
     test_indices = np.arange(len(testTracks))
     np.random.shuffle(test_indices)
@@ -102,17 +106,17 @@ def loadData(dataDir):
     np.random.shuffle(val_indices)
 
     trainTracks = trainTracks[train_indices]
-    trainTracks = np.reshape(trainTracks, (-1,156))
+    trainTracks = np.reshape(trainTracks, (-1,input_dim))
     if(normalize_data): trainTracks = np.tanh(trainTracks)
     trainTruth = trainTruth[train_indices]
 
     testTracks = testTracks[test_indices]
-    testTracks = np.reshape(testTracks, (-1,156))
+    testTracks = np.reshape(testTracks, (-1,input_dim))
     if(normalize_data): testTracks = np.tanh(testTracks)
     testTruth = testTruth[test_indices]
 
     valTracks = valTracks[val_indices]
-    valTracks = np.reshape(valTracks, (-1,156))
+    valTracks = np.reshape(valTracks, (-1,input_dim))
     if(normalize_data): valTracks = np.tanh(valTracks)
     valTruth = valTruth[val_indices]
 
@@ -137,7 +141,7 @@ if __name__ == "__main__":
         print(plotMetrics.bcolors.RED+"USAGE: fakesNN.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+plotMetrics.bcolors.ENDC)
         sys.exit(2)
 
-    workDir = 'fakesNN_' + date.today().strftime('%m_%d')
+    workDir = 'outfakesNN_' + date.today().strftime('%m_%d')
     print("workDir", workDir)
     paramsFile = ""
     params = []
@@ -173,40 +177,29 @@ if __name__ == "__main__":
     outputDir = workDir + '/outputFiles/'
 
     ################config parameters################
-    """
-    nTotE: number of electron events to use
-    oversample_e: (NOT WORKING) fraction of electron events per train batch, set to -1 if it's not needed
-    undersample_bkg: fraction of backgruond events per train batch, set to -1 if it's not needed
-    v: verbosity
-    patience_count: after how many epochs to stop if monitored variable doesn't improve
-    monitor: which variable to monitor with patience_count
-    """
 
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_v1/"]
-    #logDir = "/home/llavezzo/work/cms/logs/"+ workDir +"_"+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_madgraph_6layer_v7p1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_6layer_v7p1/"]
     normalize_data = False
-    #run_validate = True
-    #nTotE = 27000
-    #val_size = 0.4
-    #undersample_bkg = -1
-    #oversample_e = -1   
+    undersample = -1
+    oversample = -1   
     filters=[128,32]
-    #batch_norm = False
-    #v = 2
-    batch_size = 32
-    epochs = 10
-    #patience_count = 20
-    #monitor = 'val_loss'
+    batch_norm = False
+    batch_size = 64
+    epochs = 1
+    input_dim = 163
+    patience_count = 20
+    monitor = 'val_loss'
     #class_weights = False  
     metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
     #################################################
 
     if(len(params) > 0):
         filters = params[0]
-        class_weights = bool(params[1])
-        undersample_bkg = float(params[2])
+        batch_norm = bool(params[1])
+        undersample = float(params[2])
         epochs = int(params[3])
         dataDir = params[4]
+        input_dim = params[5]
 
     # create output directories
     os.system('mkdir '+str(workDir))
@@ -216,9 +209,9 @@ if __name__ == "__main__":
     
     for i, dataSet in enumerate(dataDir):
         if i == 0:
-            trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = loadData(str(dataSet))
+            trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = loadData(str(dataSet), undersample)
         else:
-            trainTracks2, testTracks2, valTracks2, trainTruth2, testTruth2, valTruth2 = loadData(str(dataSet))
+            trainTracks2, testTracks2, valTracks2, trainTruth2, testTruth2, valTruth2 = loadData(str(dataSet), undersample)
             trainTracks = np.concatenate((trainTracks, trainTracks2))
             trainTruth = np.concatenate((trainTruth, trainTruth2))
             testTracks = np.concatenate((testTracks, testTracks2))
@@ -248,18 +241,32 @@ if __name__ == "__main__":
     valTracks = valTracks[indices]
     valTruth = valTruth[indices]         
     
+    callbacks = [keras.callbacks.EarlyStopping(patience=patience_count),                                                                                                                            keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5',                                                                                                            save_best_only=True,                                                                                                                                                               monitor=monitor,                                                                                                                                                                   mode='auto')]
+
     model = callModel
 
     estimator = KerasClassifier(build_fn=model, epochs=epochs, batch_size=batch_size, verbose=1)
-    history = estimator.fit(trainTracks, trainTruth, validation_data=(valTracks, valTruth))
+    history = estimator.fit(trainTracks, trainTruth, validation_data=(valTracks, valTruth), callbacks = callbacks)
+ 
+    estimator.model.save_weights(weightsDir+'lastEpoch.h5')
 
+    max_epoch = -1
+    final_weights = 'lastEpoch.h5'
+    for filename in os.listdir(weightsDir):
+        if ".h5" and "model" in filename:
+            this_epoch = filename.split(".")[1]
+            if int(this_epoch) > max_epoch: 
+                final_weights = 'model.' + this_epoch + '.h5'
+                max_epoch = int(this_epoch)
+    
+    print('Loading weights...' + final_weights)
+    estimator.model.load_weights(weightsDir + final_weights)
     predictions = estimator.predict(testTracks)
 
     plotMetrics.plotCM(testTruth, predictions, plotDir)
     plotMetrics.getStats(testTruth, predictions)
     plotMetrics.plotHistory(history, ['loss', 'auc', 'recall', 'precision'], plotDir)
     plotMetrics.permutationImportance(estimator, testTracks, testTruth, plotDir)
-    estimator.model.save_weights(weightsDir+'lastEpoch.h5')
     np.savez_compressed(outputDir + "predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions)
 
 

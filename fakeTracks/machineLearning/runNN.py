@@ -10,14 +10,16 @@ import numpy as np
 
 if __name__=="__main__":
 
-    folder = "fakeTracks_2_15"
-    logDir = "/data/users/mcarrigan/Logs/"
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_v1/"]
-    #[filters, class_weights, undersampling, epochs, dataDir]
-    params = [[[12, 8], False, -1, 100, dataDir], 
-              [[64, 32, 12, 6], False, -1, 100, dataDir], 
-              [[128, 64, 24, 6], False, -1, 100, dataDir], 
-              [[512, 256, 128, 64, 32, 16,8], False, -1, 100, dataDir]]
+    folder = "fakeTracks_5layer_under_3_9"
+    logDir = "/data/users/mcarrigan/Logs/fakeTracks/"
+    #dataDir = ["/store/user/mcarrigan/fakeTracks/converted_madgraph_4PlusLayer_v7p1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_4PlusLayer_v7p1/"]
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_madgraph_5layer_v7p1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_5layer_v7p1/"]
+    #[filters, batch_norm, undersampling, epochs, dataDir, input_dim]
+    #InputDim = 55 (4layers), 64 (5layers), 163 (6+ layers)
+    params = [[[16, 4], True, 0.9, 100, dataDir, 64],
+              [[16, 4], True, 0.8, 100, dataDir, 64], 
+              [[16, 4], True, 0.6, 100, dataDir, 64],
+              [[16, 4], True, 0.4, 100, dataDir, 64]]
     np.save('params.npy',params)
     njobs = len(params)
 

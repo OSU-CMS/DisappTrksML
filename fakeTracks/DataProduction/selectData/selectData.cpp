@@ -48,7 +48,7 @@ bool trackSelection(TrackInfo track){
 bool signalSelection(TrackInfo track){
 
     if(!(track.trackIso /track.pt < 0.05)) return false;
-    //if(!(abs(track.d0) < 0.02)) return false;
+    if(!(abs(track.d0) < 0.02)) return false;
     if(!(abs(track.dz) < 0.5)) return false;
     if(!(abs(track.dRMinJet) > 0.5)) return false;
 
@@ -64,7 +64,7 @@ bool signalSelection(TrackInfo track){
 }
 
 
-void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v6-DYJets-MC2017/", TString filelist = ""){
+void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v7-DYJets-MC2017_madgraph/", TString filelist = ""){
     
     if(filelist.Length()>0){
         string line;
