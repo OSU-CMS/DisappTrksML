@@ -79,6 +79,10 @@
 
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
 
+//Pileup Info
+#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
+
+
 using namespace std;
 
 enum DetType { None, EB, EE, ES, HCAL, CSC, DT, RPC };
@@ -175,6 +179,7 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       edm::InputTag isoTrk2dedxHitInfo_;     
       edm::InputTag isoTracks_;
       edm::InputTag genTracks_;
+      edm::InputTag pileupInfo_;
 
       edm::EDGetTokenT<edm::TriggerResults>                   triggersToken_;
       edm::EDGetTokenT<vector<pat::TriggerObjectStandAlone> > trigObjsToken_;
@@ -203,7 +208,8 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       edm::EDGetTokenT<reco::DeDxHitInfoAss> isoTrk2dedxHitInfoToken_;
       edm::EDGetTokenT<vector<pat::IsolatedTrack> >isoTrackToken_;
       edm::EDGetTokenT<vector<reco::Track> > genTracksToken_;
-      
+      edm::EDGetTokenT<edm::View<PileupSummaryInfo> > pileupInfoToken_;
+
       edm::ESHandle<CaloGeometry> caloGeometry_;
       edm::ESHandle<CSCGeometry>  cscGeometry_;
       edm::ESHandle<DTGeometry>   dtGeometry_;
@@ -230,6 +236,7 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       unsigned long long eventNumber_;
       unsigned int lumiBlockNumber_;
       unsigned int runNumber_;
+      vector<float> pileupZPosition_;
 
       // event-wide cut results
       bool firesGrandOrTrigger_;

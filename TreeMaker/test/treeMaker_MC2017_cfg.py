@@ -24,14 +24,16 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(100)
+    input = cms.untracked.int32(-1)
 )
 
 # Input source
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring( (
-	'file:/data/users/bfrancis/condor/signalMC/2017/step3/700_1000/hist_0.root',
-#        '/store/mc/RunIIFall17DRPremix/ZJetsToNuNu_HT-100To200_13TeV-madgraph/AODSIM/94X_mc2017_realistic_v10-v1/00000/F67AD86D-E915-E811-B51F-0CC47A0AD6AA.root',
+	#'file:/data/users/bfrancis/condor/signalMC/2017/step3/700_1000/hist_0.root',
+        'file:/store/user/mcarrigan/06C4ED85-A9F2-E711-87B6-0025905B85D8.root',
+        #'/store/mc/RunIIFall17DRPremix/ZJetsToNuNu_HT-100To200_13TeV-madgraph/AODSIM/94X_mc2017_realistic_v10-v1/00000/F67AD86D-E915-E811-B51F-0CC47A0AD6AA.root',
+        #'/store/mc/RunIIFall17DRPremix/DYJetsToLL_M-50_TuneCP5_13TeV-amcatnloFXFX-pythia8/AODSIM/PU2017_94X_mc2017_realistic_v11-v1/00000/36A2F3FA-3C8F-E811-8A19-A4BF01159320.root',
     ) ),
     secondaryFileNames = cms.untracked.vstring()
 )
@@ -160,6 +162,7 @@ process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducerMINIAOD",
     isolatedTracks = cms.InputTag("isolatedTracks", ""),
     isoTrk2dedxHitInfo = cms.InputTag("isolatedTracks", ""),
     genTracks = cms.InputTag("generalTracks", ""),
+    pileupInfo = cms.InputTag ("addPileupInfo"),
 
     signalTriggerNames = cms.vstring([
 	'HLT_MET105_IsoTrk50_v',

@@ -39,6 +39,8 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   isoTracks_ (cfg.getParameter<edm::InputTag> ("isolatedTracks")),  
   genTracks_(cfg.getParameter<edm::InputTag> ("genTracks")),
 
+  pileupInfo_   (cfg.getParameter<edm::InputTag>("pileupInfo")),
+
   minGenParticlePt_   (cfg.getParameter<double> ("minGenParticlePt")),
   minTrackPt_         (cfg.getParameter<double> ("minTrackPt")),
   maxRelTrackIso_     (cfg.getParameter<double> ("maxRelTrackIso")),
@@ -75,6 +77,7 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   isoTrk2dedxHitInfoToken_ = consumes<reco::DeDxHitInfoAss> (isoTrk2dedxHitInfo_);
   isoTrackToken_ = consumes<vector<pat::IsolatedTrack> > (isoTracks_);
   genTracksToken_ = consumes<vector<reco::Track> > (genTracks_);
+  pileupInfoToken_ = consumes<edm::View<PileupSummaryInfo> > (pileupInfo_);
 
   signalTriggerNames = cfg.getParameter<vector<string> >("signalTriggerNames");
   metFilterNames = cfg.getParameter<vector<string> >("metFilterNames");
@@ -82,6 +85,7 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   trackInfos_.clear();
   recHitInfos_.clear();
   genParticleInfos_.clear();
+  pileupZPosition_.clear();
 
   tree_ = fs_->make<TTree>("tree", "tree");
   tree_->Branch("tracks", &trackInfos_);
@@ -92,6 +96,7 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   tree_->Branch("eventNumber", &eventNumber_);
   tree_->Branch("lumiBlockNumber", &lumiBlockNumber_);
   tree_->Branch("runNumber", &runNumber_);
+  tree_->Branch("pileupZPosition", &pileupZPosition_);
 
   tree_->Branch("firesGrandOrTrigger", &firesGrandOrTrigger_);
   tree_->Branch("passMETFilters", &passMETFilters_);
@@ -161,6 +166,9 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
 
   edm::Handle<vector<reco::Track> > genTracks;
   event.getByToken (genTracksToken_, genTracks);
+
+  edm::Handle<edm::View<PileupSummaryInfo> > pileupInfos;
+  event.getByToken(pileupInfoToken_, pileupInfos);
  
  const edm::TriggerNames &allTriggerNames = event.triggerNames(*triggers);
 
@@ -228,6 +236,13 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   for(auto &info : trackInfos_) {
     info.ecalo -= caloCorr;
     if(info.ecalo < 0) info.ecalo = 0;
+  }
+
+  // Get pileup vertex z positions
+  edm::View<PileupSummaryInfo>::const_iterator iterPU;
+  for(edm::View<PileupSummaryInfo>::const_iterator iterPU = pileupInfos->begin(); iterPU != pileupInfos->end(); iterPU++) {
+    // Out of time pileup is also saved -> need to require 0th bunch crossing (in time bunch crossing)
+    if(iterPU->getBunchCrossing() == 0) pileupZPosition_ = iterPU->getPU_zpositions();
   }
 
   tree_->Fill();
@@ -704,7 +719,8 @@ TrackImageProducerMINIAOD::getRecHits(const edm::Event &event)
 }
 
 void
-TrackImageProducerMINIAOD::getGenParticles(const reco::CandidateView &genParticles) {
+TrackImageProducerMINIAOD::getGenParticles(const reco::CandidateView &genParticles){
+                                          
   
   genParticleInfos_.clear();
 
