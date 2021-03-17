@@ -9,40 +9,45 @@ from DisappTrksML.DeepSets.architecture import *
 
 # parameters
 dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_converted/"
-modelFile = 'kfold14_noBatchNorm_finalTrainV2/model.18.h5'
-outDir = "kfold14_noBatchNorm_finalTrainV2/"
-fileRange = [0,100]				# set to -1 if not interested
+modelFile = 'kfold19_noBatchNorm_finalTrainV3/model.h5'
+outDir = "kfold19_noBatchNorm_finalTrainV3/"
 
 # initialize architecture and load the weights/model
-arch = DeepSetsArchitecture(max_hits=100)
+arch = DeepSetsArchitecture()
 arch.load_model(modelFile)
 
 # iterate over desired files and predict
-cm = np.zeros((2,2))
-inputFiles = np.loadtxt("kfold14_noBatchNorm_finalTrainV2.txt")
+true = None
+preds = None
+inputFiles = np.loadtxt(outDir + "/validation_files.txt")
 
-for iFile in inputFiles:
-	print(i)
+for iFile, file in enumerate(inputFiles):
+	print str(iFile)+'/'+str(len(inputFiles))
+
+	fname = dataDir+'images_'+str(int(file))+'.root.npz'
 
 	# evaluate file
-	for obj in ['signal','background']
-		preds, skip = arch.evaluate_npy(iFile, track_info=False, obj=obj)
+	for obj in ['signal','background']:
+
+		skip, thisFilePreds = arch.evaluate_npy(fname, track_info=True, obj=obj)
 		if skip: continue
 
-		# fill confusion matrix
-		if obj == 'signal':
-			cm[1,1] += np.count_nonzero(preds[:,1] > 0.5)
-			cm[1,0]+= np.count_nonzero(preds[:,1] <= 0.5)
-		elif obj == 'background':
-			cm[0,1] += np.count_nonzero(bkg_preds[:,1] > 0.5)
-			cm[0,0]+= np.count_nonzero(bkg_preds[:,1] <= 0.5)
+		if obj == 'signal': trueThisFile = np.ones(len(thisFilePreds))
+		elif obj == 'background': trueThisFile = np.zeros(len(thisFilePreds))
 
-# calculate metrics
-precision, recall, f1 = arch.calc_binary_metrics(cm)
+		if true is None:
+			true = trueThisFile
+			preds = thisFilePreds[:,1]
+		else:
+			true = np.concatenate((true, trueThisFile))
+			preds = np.concatenate((preds, thisFilePreds[:,1]))
 
-# count number of total predictions
-nPreds = np.sum(cm)
+# calculate and save metrics
+metrics = arch.metrics_per_cut(true, preds, 40)
+np.save(outDir+'metrics.npy',metrics)
 
-# save to file
-metrics = [precision, recall, f1, nPreds]
-np.savetxt(outDir + "/evaluation_metrics.csv", metrics, delimiter=",")
+plt.scatter(metrics['splits'], metrics['precision'], label="precision")
+plt.scatter(metrics['splits'], metrics['recall'], label="recall")
+plt.scatter(metrics['splits'], metrics['f1'], label="f1")
+plt.legend()
+plt.savefig(outDir+"metrics.png")

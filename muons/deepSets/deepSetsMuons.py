@@ -271,7 +271,7 @@ class DeepSetsArchitecture:
 
 		inputFile.Close()
 
-	def convertSignalFileToNumpy(self, fileName):
+	def convertTPFileToNumpy(self, fileName):
 		inputFile = TFile(fileName, 'read')
 		inputTree = inputFile.Get('trackImageProducer/tree')
 
@@ -298,9 +298,8 @@ class DeepSetsArchitecture:
 					values = self.convertTrackFromTree(event, track, 1)
 					tracks.append(values['sets'])
 					infos.append(values['infos'])
-
-				# values = self.convertTrackFromTreeElectrons(event, track, 1)
-				# calos.append(values['sets'])
+					values = self.convertTrackFromTreeElectrons(event, track, 1)
+					calos.append(values['sets'])
 
 		outputFileName = fileName.split('/')[-1] + '.npz'
 
@@ -309,8 +308,8 @@ class DeepSetsArchitecture:
 								# recoMuons=recoMuons,
 								# recoMuons_infos=recoMuons_infos,
 								signal=tracks,
-								signal_infos=infos)
-								# calos=_calos)
+								signal_infos=infos,
+								signal_calos=calos)
 			print 'Wrote', outputFileName
 		else:
 			print 'No events passed the selections'
@@ -337,17 +336,16 @@ class DeepSetsArchitecture:
 				values = self.convertTrackFromTree(event, track, 1)
 				signal.append(values['sets'])
 				signal_infos.append(values['infos'])
-
-				# values = self.convertTrackFromTreeElectrons(event, track, 1)
-				# signal_calos.append(values['sets'])
+				values = self.convertTrackFromTreeElectrons(event, track, 1)
+				signal_calos.append(values['sets'])
 
 		outputFileName = fileName.split('/')[-1] + '.npz'
 
 		if len(signal) > 0:
 			np.savez_compressed(outputFileName,
 								signal=signal,
-								signal_infos=signal_infos)
-								# signal_calos=signal_calos)
+								signal_infos=signal_infos,
+								signal_calos=signal_calos)
 			print 'Wrote', outputFileName
 		else:
 			print 'No events passed the selections'
