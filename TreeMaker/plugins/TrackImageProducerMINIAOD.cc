@@ -410,6 +410,9 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
     info.px = track.px();
     info.py = track.py();
     info.pz = track.pz();
+    info.vx = track.vx();
+    info.vy = track.vy();
+    info.vz = track.vz();
     info.eta = track.eta();
     info.pt = track.pt();
     info.ptError = track.ptError();

@@ -57,6 +57,7 @@ struct TrackInfo {
 
   double trackIso;
   double px, py, pz, pt;
+  double vx, vy, vz;
   double ptError;
   double eta, phi;
   int nValidPixelHits, nValidHits, numberOfValidMuonHits;
