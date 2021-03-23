@@ -26,18 +26,27 @@ class MuonModel(DeepSetsArchitecture):
 			# CSC
 			if hit.detType == 5:
 				station = hit.cscRecHits[0].station
-				time = hit.cscRecHits[0].tpeak
+				time = hit.time
+				detTypeEncoded = [1,0,0]
+
 			# DT
 			elif hit.detType == 6:
 				station = hit.dtRecHits[0].station
-				time = hit.dtRecHits[0].digitime 
-			# FIXME: add other detTypes
+				time = hit.time
+				detTypeEncoded = [0,1,0]
+
+			# RPCs
+			elif hit.detType == 7:
+				station = 0
+				time = hit.time
+				detTypeEncoded = [0,0,1]
+
 			else: 
 				if hit.detType == 4: hcal_energy.append(hit.energy)
 				elif hit.detType == 1 or hit.detType == 2: ecal_energy.append(hit.energy)
 				continue
 			
-			hits.append((dEta, dPhi, station, time))
+			hits.append((dEta, dPhi, station, time) + detTypeEncoded)
 			dists.append(dEta**2 + dPhi**2)
 
 		# sort by closest hits to track in eta, phi

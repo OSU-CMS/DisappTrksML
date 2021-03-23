@@ -95,11 +95,20 @@ class DeepSetsArchitecture:
 			# CSC
 			if hit.detType == 5:
 				station = hit.cscRecHits[0].station
-				time = hit.cscRecHits[0].tpeak
+				time = hit.time
+				detTypeEncoded = [1,0,0]
+
 			# DT
 			elif hit.detType == 6:
 				station = hit.dtRecHits[0].station
-				time = hit.dtRecHits[0].digitime 
+				time = hit.time
+				detTypeEncoded = [0,1,0]
+
+			# RPCs
+			elif hit.detType == 7:
+				station = 0
+				time = hit.time
+				detTypeEncoded = [0,0,1]
 
 			# FIXME: add other detTypes
 			else: 

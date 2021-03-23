@@ -5,7 +5,8 @@ import glob, os
 import tensorflow as tf
 from sklearn.model_selection import KFold
 
-from DisappTrksML.DeepSets.architecture import *
+from DisappTrksML.DeepSets.ElectronModel import *
+from DisappTrksML.DeepSets.MuonModel import *
 from DisappTrksML.DeepSets.generator import *
 from DisappTrksML.DeepSets.utilities import *
 
@@ -49,7 +50,7 @@ train_params = {
 
 if(not os.path.isdir(outdir)): os.mkdir(outdir)
 
-arch = DeepSetsArchitecture(**model_params)
+arch = MuonModel(**model_params)
 arch.buildModel()
 
 # load file names and split train/validation
