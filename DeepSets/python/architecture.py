@@ -118,7 +118,7 @@ class DeepSetsArchitecture:
                 track.inGap or
                 abs(track.dRMinJet) < 0.5 or
                 abs(track.deltaRToClosestElectron) < 0.15 or
-                abs(track.deltaRToClosestMuon) < 0.15 or
+                #abs(track.deltaRToClosestMuon) < 0.15 or
                 abs(track.deltaRToClosestTauHad) < 0.15):
                 trackPasses.append(False)
             else:
@@ -274,15 +274,18 @@ class DeepSetsArchitecture:
                                       mode='auto')
         ]
 
-        if val_generator == None:
+        if val_generator is None:
+            self.training_history = self.model.fit(train_generator,
+                                                    epochs=epochs,
+                                                    verbose=1)
+
+        else:
             self.training_history = self.model.fit(train_generator, 
                                                    validation_data=val_generator,
                                                    callbacks=training_callbacks,
                                                    epochs=epochs,
-                                                   verbose=2)
-        else:
-            self.training_history = self.model.fit(train_generator, epochs=epochs, verbose=2)
-
+                                                   verbose=1)
+        
     def save_model(self, outputFileName):
         self.model.save(outputFileName)
         print 'Saved model in file:', outputFileName

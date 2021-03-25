@@ -11,9 +11,9 @@ from DisappTrksML.DeepSets.MuonModel import *
 
 ## PARAMETERS ##
 
-inputDirectory = '/store/user/bfrancis/images_v5/DYJetsToLL/'
+inputDirectory = '/store/user/bfrancis/images_v7/SingleMuon_2017F_wIso/0000/'
 outputDirectory = ""
-fileNumber = 1001
+fileNumber = 485
 
 ################
 
@@ -63,9 +63,9 @@ elif useCondor:
 	inarray = np.loadtxt(fileList,dtype=float)
 	fileNumber = int(inarray[int(fileIndex)])
 
-	arch.convertMCFileToNumpy(inputDirectory + 'hist_' + str(fileNumber) + '.root')
-	os.system('mv -v hist_' + str(fileNumber) + '.root.npz ' + outputDirectory)
+	arch.convertTPFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
+	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)
 
 else:
-	arch.convertMCFileToNumpy(inputDirectory + 'hist_' + str(fileNumber) + '.root')
-	os.system('mv -v hist_' + str(fileNumber) + '.root.npz ' + outputDirectory)
+	arch.convertTPFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
+	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)
