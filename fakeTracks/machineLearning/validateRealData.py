@@ -49,11 +49,14 @@ def loadData(dataDir):
         myfile = np.load(dataDir+filename)
         reals = np.array(myfile["real_infos"])
         if(len(reals)==0): continue
+        print(reals.shape, reals.shape[1])
+        if(reals.shape[1] < 163): reals = np.hstack((reals, np.zeros((len(reals), 163 - reals.shape[1]))))
         other = np.array(myfile["real_d0"])
         if(file_count == 0):
             realTracks = reals
             d0 = other
         else:
+            print(realTracks.shape, reals.shape)
             realTracks = np.concatenate((realTracks, reals))
             d0 = np.concatenate((d0, other))
         file_count += 1

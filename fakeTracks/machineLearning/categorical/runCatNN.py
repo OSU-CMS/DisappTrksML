@@ -10,10 +10,10 @@ import numpy as np
 
 if __name__=="__main__":
 
-    folder = "fakeTracks_4PlusLayer_PUveto0p1_3_24"
+    folder = "fakeTracks_4PlusLayer_cat0p1_3_25"
     logDir = "/data/users/mcarrigan/Logs/fakeTracks/"
     #dataDir = ["/store/user/mcarrigan/fakeTracks/converted_madgraph_4PlusLayer_v7p1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_4PlusLayer_v7p1/"]
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_aMC_veto0p1_4PlusLayer_v7p1/"]
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_aMC_cat0p1_4PlusLayer_v7p1/"]
     #[filters, batch_norm, undersampling, epochs, dataDir, input_dim]
     #InputDim = 55 (4layers), 64 (5layers), 163 (6+ layers)
     params = [[[32, 8], True, -1, 100, dataDir, 163],
@@ -40,7 +40,7 @@ if __name__=="__main__":
     error                   = {2}{0}/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = run_wrapper.sh, fakesNN.py, plotMetrics.py, params.npy
+    transfer_input_files = run_wrapper.sh, categoricalNN.py, plotMetrics.py, params.npy
     getenv = true
     queue {1}
     """.format(folder, njobs, logDir)

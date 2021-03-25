@@ -19,7 +19,8 @@ import getopt
 import plotMetrics
 from datetime import date
 from sklearn.preprocessing import MinMaxScaler
-
+from sklearn.preprocessing import LabelEncoder
+from keras.utils import np_utils
 
 def buildModel(filters = [16, 8], input_dim = 55, batch_norm = False, metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
     #begin NN model
@@ -29,9 +30,9 @@ def buildModel(filters = [16, 8], input_dim = 55, batch_norm = False, metrics = 
         model.add(Dense(filters[i+1], activation='relu'))
         if(batch_norm): model.add(BatchNormalization())
         model.add(Dropout(0.2))
-    model.add(Dense(1, activation='sigmoid'))
+    model.add(Dense(3, activation='softmax'))
 
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=metrics)
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=metrics)
 
     print(model.summary())
     return model
@@ -46,31 +47,40 @@ def loadData(dataDir, undersample):
     file_count = 0
     realTracks = []
     fakeTracks = []
+    pileupTracks = []
     for filename in os.listdir(dataDir):
         print("Loading...", dataDir + filename)
         #if file_count > 20: break
         myfile = np.load(dataDir+filename)
         fakes = np.array(myfile["fake_infos"])
         reals = np.array(myfile["real_infos"])
+        pileup = np.array(myfile["pileup_infos"])
         if(file_count == 0):
             fakeTracks = fakes
             realTracks = reals
+            pileupTracks = pileup
         elif(file_count != 0 and len(fakeTracks) == 0): fakeTracks = fakes
         elif(file_count != 0 and len(realTracks) == 0): realTracks = reals
+        elif(file_count != 0 and len(pileupTracks) == 0): pileupTracks = pileup
         else:
             if(len(fakes)!=0): fakeTracks = np.concatenate((fakeTracks, fakes))
             if(len(reals)!=0): realTracks = np.concatenate((realTracks, reals))
+            if(len(pileup)!=0): pileupTracks = np.concatenate((pileupTracks, pileup))
         file_count += 1
 
 
     print("Number of fake tracks:", len(fakeTracks))
     print("Number of real tracks:", len(realTracks))
+    print("Number of pileup tracks:", len(pileupTracks))
 
     trainRealTracks, testRealTracks, trainRealTruth, testRealTruth = train_test_split(realTracks, np.zeros(len(realTracks)), test_size = 0.3)
     trainFakeTracks, testFakeTracks, trainFakeTruth, testFakeTruth = train_test_split(fakeTracks, np.ones(len(fakeTracks)), test_size = 0.3)
+    trainPileupTracks, testPileupTracks, trainPileupTruth, testPileupTruth = train_test_split(pileupTracks, 2*np.ones(len(pileupTracks)), test_size = 0.3)
 
     testRealTracks, valRealTracks, testRealTruth, valRealTruth = train_test_split(testRealTracks, testRealTruth, test_size = 0.5)
     testFakeTracks, valFakeTracks, testFakeTruth, valFakeTruth = train_test_split(testFakeTracks, testFakeTruth, test_size = 0.5)
+    testPileupTracks, valPileupTracks, testPileupTruth, valPileupTruth = train_test_split(testPileupTracks, testPileupTruth, test_size = 0.5)
+
 
     # if undersampling
     if(undersample != -1):
@@ -82,12 +92,12 @@ def loadData(dataDir, undersample):
         
 
     #combine all data and shuffle
-    trainTracks = np.concatenate((trainFakeTracks, trainRealTracks))
-    testTracks = np.concatenate((testFakeTracks, testRealTracks))
-    trainTruth = np.concatenate((trainFakeTruth, trainRealTruth))
-    testTruth = np.concatenate((testFakeTruth, testRealTruth))
-    valTracks = np.concatenate((valFakeTracks, valRealTracks))
-    valTruth = np.concatenate((valFakeTruth, valRealTruth))
+    trainTracks = np.concatenate((trainFakeTracks, trainRealTracks, trainPileupTracks))
+    testTracks = np.concatenate((testFakeTracks, testRealTracks, testPileupTracks))
+    trainTruth = np.concatenate((trainFakeTruth, trainRealTruth, trainPileupTruth))
+    testTruth = np.concatenate((testFakeTruth, testRealTruth, testPileupTruth))
+    valTracks = np.concatenate((valFakeTracks, valRealTracks, valPileupTracks))
+    valTruth = np.concatenate((valFakeTruth, valRealTruth, valPileupTruth))
 
     # Apply min max scale over all data (scale set range [-1,1])
     #scaler = MinMaxScaler(feature_range=(-1,1), copy=False)
@@ -138,10 +148,10 @@ if __name__ == "__main__":
     try:
         opts, args = getopt.getopt(sys.argv[1:], "d:p:i:", ["dir=","params=","index="])
     except getopt.GetoptError:
-        print(plotMetrics.bcolors.RED+"USAGE: fakesNN.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+plotMetrics.bcolors.ENDC)
+        print(plotMetrics.bcolors.RED+"USAGE: categoricalNN.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+plotMetrics.bcolors.ENDC)
         sys.exit(2)
 
-    workDir = 'outfakesNN_' + date.today().strftime('%m_%d')
+    workDir = 'outcatNN_' + date.today().strftime('%m_%d')
     print("workDir", workDir)
     paramsFile = ""
     params = []
@@ -159,7 +169,7 @@ if __name__ == "__main__":
             params = np.load(str(paramsFile), allow_pickle=True)[paramsIndex]
         except:
             print(plotMetrics.bcolors.RED+"ERROR: Index outside range or no parameter list passed"+plotMetrics.bcolors.ENDC)
-            print(plotMetrics.bcolors.RED+"USAGE: fakesNN.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+plotMetrics.bcolors.ENDC)
+            print(plotMetrics.bcolors.RED+"USAGE: categoricalNN.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+plotMetrics.bcolors.ENDC)
             sys.exit(2)
         workDir = workDir + "_p" + str(paramsIndex)
     cnt=0
@@ -178,14 +188,14 @@ if __name__ == "__main__":
 
     ################config parameters################
 
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_aMC_vetop01_4PlusLayer_v7p1/"]
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_aMC_cat0p1_4PlusLayer_v7p1/"]
     normalize_data = False
     undersample = -1
     oversample = -1   
     filters=[12,8]
     batch_norm = False
     batch_size = 64
-    epochs = 1
+    epochs = 5
     input_dim = 163
     patience_count = 20
     monitor = 'val_loss'
@@ -241,6 +251,22 @@ if __name__ == "__main__":
     valTracks = valTracks[indices]
     valTruth = valTruth[indices]         
     
+    #one hot encode truth values
+    encoder = LabelEncoder()
+    encoder.fit(trainTruth)
+    trainTruth = encoder.transform(trainTruth)
+    testTruth = encoder.transform(testTruth)
+    valTruth = encoder.transform(valTruth)
+    trainTruth = np_utils.to_categorical(trainTruth)
+    testTruth = np_utils.to_categorical(testTruth)
+    valTruth = np_utils.to_categorical(valTruth)
+     
+    #Key for vector types
+    vectors = np_utils.to_categorical(encoder.transform([0,1,2]))
+    realVector = vectors[0]
+    fakeVector = vectors[1]
+    pileupVector = vectors[2]
+
     callbacks = [keras.callbacks.EarlyStopping(patience=patience_count),                                                                                                                            keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5',                                                                                                            save_best_only=True,                                                                                                                                                               monitor=monitor,                                                                                                                                                                   mode='auto')]
 
     model = callModel
@@ -262,11 +288,45 @@ if __name__ == "__main__":
     print('Loading weights...' + final_weights)
     estimator.model.load_weights(weightsDir + final_weights)
     predictions = estimator.predict(testTracks)
+    
+    pred_real, true_real = 0, 0
+    pred_fake, true_fake = 0, 0
+    pred_pileup, true_pileup = 0, 0
+    real_predictions, fake_predictions, pileup_predictions = np.zeros(3), np.zeros(3), np.zeros(3)
+   
+    for ipred, pred in enumerate(predictions):
+        pred_index = -1
+        this_true = testTruth[ipred]
+        if(pred == 0): 
+            pred_real+=1
+            pred_index = 0
+        elif(pred == 1): 
+            pred_fake+=1
+            pred_index = 2
+        elif(pred == 2): 
+            pred_pileup+=1 
+            pred_index = 1
+        if(this_true == realVector).all(): 
+            true_real+=1
+            real_predictions[pred_index] += 1
+        elif(this_true == fakeVector).all(): 
+            true_fake+=1
+            fake_predictions[pred_index] += 1
+        elif(this_true == pileupVector).all(): 
+            true_pileup+=1
+            pileup_predictions[pred_index] += 1
 
-    plotMetrics.plotCM(testTruth, predictions, plotDir)
-    plotMetrics.getStats(testTruth, predictions)
+    all_predictions = [real_predictions, pileup_predictions, fake_predictions]
+
+    print("Predicted Reals: "  +str(pred_real), " ... Truth Reals: " + str(true_real))
+    print("Predicted Fakes: "  +str(pred_fake), " ... Truth Fakes: " + str(true_fake))
+    print("Predicted Pileup: "  +str(pred_pileup), " ... Truth Pileup: " + str(true_pileup))
+
+    print(all_predictions)
+    plotMetrics.plotCM3(all_predictions, plotDir)
+    #plotMetrics.getStats(testTruth, predictions)
     plotMetrics.plotHistory(history, ['loss', 'auc', 'recall', 'precision'], plotDir)
-    plotMetrics.permutationImportance(estimator, testTracks, testTruth, plotDir)
+    #plotMetrics.permutationImportance(estimator, testTracks, testTruth, plotDir)
     np.savez_compressed(outputDir + "predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions)
 
 
