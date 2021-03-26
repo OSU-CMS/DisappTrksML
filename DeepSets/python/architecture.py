@@ -99,13 +99,12 @@ class DeepSetsArchitecture:
     model = None
     training_history = None
 
-    def __init__(self, eta_range=0.25, phi_range=0.25, max_hits=100, phi_layers=[64, 64, 256], f_layers=[64, 64, 64], track_info_shape=0, track_info_indices=0):
+    def __init__(self, eta_range=0.25, phi_range=0.25, max_hits=100, phi_layers=[64, 64, 256], f_layers=[64, 64, 64], track_info_indices=0):
         self.eta_range = eta_range
         self.phi_range = phi_range
         self.max_hits = max_hits
 
         self.input_shape = (self.max_hits, 4)
-        self.track_info_shape = track_info_shape
         self.track_info_indices = track_info_indices
 
         self.phi_layers = phi_layers
@@ -203,6 +202,7 @@ class DeepSetsArchitecture:
         return (True in trackPasses), trackPasses
 
     def eventSelectionLeptonBackground(self, event, lepton_type):
+
         eventPasses = (event.passMETFilters == 1)
         trackPasses = [False] * len(event.tracks)
         trackPassesVeto = [False] * len(event.tracks)

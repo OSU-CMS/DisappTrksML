@@ -9,24 +9,25 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/bfrancis/images_v6/SingleMu_2017F_wIso/0000/'
-    outDir = '/store/user/llavezzo/disappearingTracks/SingleMuon_2017F_v6/'
-    logDir = '/data/users/llavezzo/Logs/convert/'
-    reprocessAllFiles = False
+    dataDir = '/store/user/bfrancis/images_v5/SingleEle_2017F/'
+    outDir = '/store/user/llavezzo/disappearingTracks/SingleEle2017F_validation/test/'
+    logDir = '/data/users/llavezzo/Logs/evaluate/'
+    reprocessAllFiles = True
+    modelFile = '/share/scratch0/llavezzo/CMSSW_11_1_3/src/DisappTrksML/DeepSets/test/kfold_results/trainV2_param5_lessepochs/model.h5'
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
     if(not os.path.isdir(logDir)): os.mkdir(logDir)
 
     alreadyProcessedFiles = []
     for filename in os.listdir(outDir):
-        if('.root' in filename and 'images' in filename):
+        if('.npz' in filename and 'hist' in filename):
             index1 = filename.find("_")
             index2 = filename.find(".root")
             numFile = int(filename[index1+1:index2])
             alreadyProcessedFiles.append(numFile)
     files = []
     for filename in os.listdir(dataDir):
-        if('.root' in filename and 'images' in filename):
+        if('.root' in filename and 'hist' in filename):
             index1 = filename.find("_")
             index2 = filename.find(".root")
             numFile = int(filename[index1+1:index2])
@@ -44,15 +45,15 @@ if __name__=="__main__":
     request_disk = 500MB
     request_memory = 2GB
     request_cpus = 1
-    executable              = convert_wrapper.sh
-    arguments               = $(PROCESS) {1} {2} {3}
-    log                     = {4}log_$(PROCESS).log
-    output                  = {4}out_$(PROCESS).txt
-    error                   = {4}error_$(PROCESS).txt
+    executable              = eval_wrapper.sh
+    arguments               = $(PROCESS) {1} {2} {3} {4}
+    log                     = {5}log_$(PROCESS).log
+    output                  = {5}out_$(PROCESS).txt
+    error                   = {5}error_$(PROCESS).txt
     when_to_transfer_output = ON_EXIT
     getenv = true
     queue {0}
-    """.format(len(files),filelist,dataDir,outDir, logDir)
+    """.format(len(files),filelist,modelFile,dataDir,outDir,logDir)
 
     f.write(submitLines)
     f.close()

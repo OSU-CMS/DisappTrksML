@@ -5,13 +5,14 @@ class MuonModel(DeepSetsArchitecture):
 	
 	def __init__(self, eta_range=0.25, phi_range=0.25, max_hits=100,
 				 phi_layers=[64, 64, 256], f_layers=[64, 64, 64],
-				 track_info_shape=(1, 22), track_info_indices=[4, 6, 8, 9, 10, 11, 12, 13, 14, 15],
+				 track_info_indices=[4, 6, 8, 9, 10, 11, 12, 13, 14, 15],
 				 max_hits_calos = 100, phi_layers_calos= [64, 64, 256]):
-		DeepSetsArchitecture.__init__(self, eta_range, phi_range, max_hits, phi_layers, f_layers, track_info_shape, track_info_indices)
+		DeepSetsArchitecture.__init__(self, eta_range, phi_range, max_hits, phi_layers, f_layers, track_info_indices)
 		self.input_shape = (self.max_hits, 7)
 		self.max_hits_calos = max_hits_calos
 		self.input_shape_calos = (self.max_hits_calos, 4)
 		self.phi_layers_calos = phi_layers_calos
+		self.track_info_shape = len(track_info_indices)
 
 	def convertTrackFromTree(self, event, track, class_label):
 		hits = []
@@ -152,7 +153,8 @@ class MuonModel(DeepSetsArchitecture):
 			if not eventPasses: continue
 
 			for i, track in enumerate(event.tracks):
-				if not trackPasses[i] or not trackPassesVeto[i]: continue
+				if not trackPasses[i]: continue
+				if not trackPassesVeto[i]: continue
 
 				values = self.convertTrackFromTree(event, track, 1)
 				tracks.append(values['sets'])
@@ -339,24 +341,24 @@ class MuonModel(DeepSetsArchitecture):
 
 	def evaluate_model(self, event, track):
 		event = self.convertTrackFromTree(event, track, 1) # class_label doesn't matter
-		prediction = self.model.predict([np.reshape(event['sets'], (1, self.max_hits, 4))[:, :self.max_hits, :], np.reshape(event['infos'], self.track_info_shape)[:,self.track_info_indices]])
+		prediction = self.model.predict([np.reshape(event['sets'], (1, self.max_hits, 4))[:, :self.max_hits, :], np.reshape(event['infos'], (1, len(event['infos'])))[:,self.track_info_indices]])
 		return prediction[0, 1] # p(is electron)
 
-	def evaluate_npy(self, fname, calos=False, info_indices=False, obj='sets'):
+	def evaluate_npy(self, fname, calos=False, obj='sets'):
 		data = np.load(fname, allow_pickle=True)
 
 		if(data[obj].shape[0] == 0): return True, 0
-		sets = data[obj][:,:40]
+		sets = data[obj][:,:self.max_hits]
 
 		x = [sets]
 		if(calos):
-			if obj == 'sets': calos = data['calos'][:,:40]
-			else: calos = data[obj+'_calos'][:,:40]
+			if obj == 'sets': calos = data['calos'][:,:self.max_hits]
+			else: calos = data[obj+'_calos'][:,:self.max_hits]
 			x.append(calos)
 
-		if(type(info_indices) != bool):
-			if obj == 'sets': info = data['infos'][:,info_indices]
-			else: info = data[obj+'_infos'][:,info_indices]
+		if(self.track_info_shape != 0):
+			if obj == 'sets': info = data['infos'][:,self.track_info_indices]
+			else: info = data[obj+'_infos'][:,self.track_info_indices]
 			x.append(info)
 			
 		return False, self.model.predict(x,)
