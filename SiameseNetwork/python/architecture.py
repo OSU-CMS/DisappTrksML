@@ -98,7 +98,7 @@ def printEventInfo(event, track):
 	print '\tisTagProbeElectron:', track.isTagProbeElectron
 	print '\tisTagProbeMuon:', track.isTagProbeMuon
 
-class SiameseNetworkArchitecture:
+class GeneralArchitecture:
 
 	model = None
 	training_history = None

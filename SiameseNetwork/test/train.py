@@ -1,81 +1,108 @@
-import warnings
-warnings.filterwarnings('ignore')
-import glob, os
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+import os
 
-import tensorflow as tf
-from sklearn.model_selection import KFold
+from DisappTrksML.SiameseNetwork.SiameseNetwork import *
 
-from DisappTrksML.DeepSets.ElectronModel import *
-from DisappTrksML.DeepSets.MuonModel import *
-from DisappTrksML.DeepSets.generator import *
-from DisappTrksML.DeepSets.utilities import *
-
-if False:
-	# limit CPU usage
-	config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
-									intra_op_parallelism_threads = 4,
-									allow_soft_placement = True,
-									device_count={'CPU': 4})
-	tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
-
-#######
-
-backup_suffix = datetime.now().strftime('%Y-%m-%d_%H.%M.%S')
-outdir = "train_"+backup_suffix+"/"
-if(len(sys.argv)>1):
-	input_params = np.load("params.npy",allow_pickle=True)[int(sys.argv[1])]
-	outdir = input_params[0]
-
-info_indices = [4, 6, 8, 9, 11, 14, 15]
-model_params = {
-	'eta_range':1.0,
-	'phi_range':1.0,
-	'phi_layers':[128,64,32],
-	'f_layers':[64,32],
-	'max_hits' : 20,
-	# 'track_info_indices' : info_indices
-}
-val_generator_params = {
-	'input_dir' : '/store/user/llavezzo/disappearingTracks/genMuons_bkg_v7/',
-	'batch_size' : 256,
-	'max_hits' : 20,
-	# 'info_indices' : info_indices
-}
-train_generator_params = val_generator_params.copy()
-train_generator_params.update({
-	'shuffle': True,
-	'batch_ratio': 0.5
-})
-train_params = {
-	'epochs': 5,
-	'outdir':outdir,
-	'patience_count':5
-}
-
-if(not os.path.isdir(outdir)): os.mkdir(outdir)
-
-arch = MuonModel(**model_params)
+# build model from architecture
+arch = MuonModel(phi_layers = [64,32], f_layers=[32],
+				eta_range=1.0,phi_range=1.0,max_hits=20)
 arch.buildModel()
 
-inputFiles = glob.glob(train_generator_params['input_dir']+'images_*.root.npz')
-inputIndices = np.array([f.split('images_')[-1][:-9] for f in inputFiles])
-nFiles = len(inputIndices)
-print('Found', nFiles, 'input files')
+# load in the data, combine the classes in a multidimensional numpy array with nEvents each
+X_train = arch.load_data("train_data.npy", nEvents = 100, nClasses=4)
+X_val = arch.load_data("val_data.npy", nEvents = 25, nClasses=2)
+X_ref = arch.load_data("ref_data.npy", nEvents = 25, nClasses=2)
+arch.add_data(X_train, X_val, X_ref)
 
-file_ids = {
-	'train'      : inputIndices[:100],
-	'validation' : inputIndices[100:120]
-}
+# parameters
+evaluate_every = 1000 # interval for evaluating on one-shot tasks
+batch_size = 2
+n_iter = 10000 # No. of training iterations
+N_way = 4 # how many classes for testing one-shot tasks
+N_way_val = 2
+n_val = 15 # how many one-shot tasks to validate on
+best = -1
 
-train_generator = BalancedGenerator(file_ids['train'], **train_generator_params)
-val_generator = Generator(file_ids['validation'], **val_generator_params)
+train_accs, val_accs = [], []
+n_perClass, n_correct_perClass = np.zeros(2), np.zeros(2)
 
-arch.fit_generator(train_generator=train_generator, 
-				   val_generator=val_generator, 	
-					**train_params)
+# training
+for i in range(1, n_iter+1):
+	# print("i=",i)
+	
+	# Get a new batch and train on batch
+	(inputs,targets) = arch.get_batch(batch_size)
+	loss = arch.model.train_on_batch(inputs, targets)
+	
+	# Check the training and validation performance
+	if i % evaluate_every == 0:
 
-arch.save_trainingHistory(train_params['outdir']+'trainingHistory.pkl')
-arch.plot_trainingHistory(train_params['outdir']+'trainingHistory.pkl',train_params['outdir']+'trainingHistory.png','loss')
-arch.save_weights(train_params['outdir']+'model_weights.h5')
-arch.save_model(train_params['outdir']+'model.h5')
-arch.save_metrics(train_params['outdir']+'trainingHistory.pkl',train_params['outdir']+"metrics.pkl", train_params)
+		print "\n ------------- \n"
+		print "i: {0}".format(i)
+		print "Train Loss: {:.4f}".format(loss)
+
+		# Now get N-way test results for train and validation sets
+		n_correct_train = 0
+		n_correct_val = 0
+		for testTrials in range(n_val):
+
+			# train performance
+			inputs, targets, test_class = arch.make_oneshot(N_way, use_test_data=False)
+			probs = arch.model.predict(inputs)
+			if np.argmax(probs) == np.argmax(targets):
+				n_correct_train += 1
+
+			# validation performace
+			inputs, targets, test_class = arch.make_oneshot_val(N_way_val, use_test_data=True)
+			probs = arch.model.predict(inputs)
+			n_perClass[test_class] += 1
+			if np.argmax(probs) == np.argmax(targets):
+				n_correct_val += 1
+				n_correct_perClass[test_class] += 1
+
+			n_correct = [0,0]
+			N = X_val.shape[1]
+
+		for iClass, events in enumerate(X_val):
+
+			for event in events:
+
+				# test one event at a time against the reference set
+				test_images = np.asarray([event]*N)
+
+				# similarity score with other class
+				other_class_preds = arch.model.predict([test_images, X_ref[(iClass + 1)%2, :, :, :]])
+
+				# similiarity score with same class
+				same_class_preds = arch.model.predict([test_images,  X_ref[iClass, :, :, :]])
+
+				# higher similiarity score wins
+				if np.mean(same_class_preds) > np.mean(other_class_preds):
+					n_correct[iClass] +=1 
+	
+		print(n_correct)
+
+		train_acc = (100.0 * n_correct_train / n_val)
+		train_accs.append(train_acc)
+		print "Train Accuracy: {:.2f}".format(train_acc)
+
+		val_acc = (100.0 * n_correct_val / n_val)
+		val_accs.append(val_acc)
+		print "Validation Accuracy: {:.2f}".format(val_acc)
+
+		if val_acc >= best:
+			print "Current best: {:.2f}, previous best: {:.2f}".format(val_acc, best)
+			best = val_acc
+			arch.model.save('models/siam_model.{}.h5'.format(i))
+
+plt.plot(train_accs, label="train acc")
+plt.plot(val_accs, label="validation acc")
+plt.legend()
+plt.savefig("history.png")
+
+print "\n"
+for i in range(2):
+	print "Class {0} Accuracy: {1}".format(i, round(n_correct_perClass[i]/n_perClass[i],4))

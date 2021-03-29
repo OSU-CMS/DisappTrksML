@@ -5,7 +5,7 @@ import pickle as pkl
 dataDir = '/store/user/llavezzo/disappearingTracks/siameseData/MC_muons/'
 
 savedEvents = [None, None, None, None]
-nDesiredPerClass = [1000, 100, 100, 1000]
+nDesiredPerClass = [10000, 100, 10000, 10000]
 
 for file in os.listdir(dataDir):
 
@@ -29,6 +29,8 @@ for file in os.listdir(dataDir):
 	for i in range(4):
 		if savedEvents[i] is None: continue
 		if len(savedEvents[i]) >= nDesiredPerClass[i]: filled+=1
+		
 	if filled == 4: break
+
 
 np.save("test.npy",savedEvents)

@@ -15,8 +15,6 @@ for i, dataDir in enumerate([dataDir_signal, dataDir_muons]):
 
 		if(".root.npz" not in file): continue 
 
-		# print(file)
-
 		fin = np.load(dataDir+file, allow_pickle=True)
 		if i==0: label = 'signal'
 		else: label = 'sets'
@@ -29,4 +27,7 @@ for i, dataDir in enumerate([dataDir_signal, dataDir_muons]):
 
 		if len(savedEvents[i]) >= nDesiredPerClass[i]: break
 
-np.save("val_data.npy",savedEvents)
+print len(savedEvents[0])
+print len(savedEvents[1])
+
+np.save("ref_data.npy",savedEvents)
