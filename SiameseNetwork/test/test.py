@@ -7,7 +7,7 @@ import os, sys
 from DisappTrksML.SiameseNetwork.SiameseNetwork import *
 
 # build model from architecture
-arch = MuonModel(phi_layers = [64,32], f_layers=[32],
+arch = SiameseNetwork(phi_layers = [64,32], f_layers=[32],
 				eta_range=1.0,phi_range=1.0,max_hits=20)
 arch.load_model("models/siam_model.1000.h5")
 

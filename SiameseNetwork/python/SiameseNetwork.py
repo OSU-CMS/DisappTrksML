@@ -5,10 +5,12 @@ class SiameseNetwork(GeneralArchitecture):
 	
 	def __init__(self, eta_range=0.25, phi_range=0.25, max_hits=100,
 				 phi_layers=[64, 64, 256], f_layers=[64, 64, 64],
+				 learning_rate = 0.01,
 				 track_info_indices=None,
 				 ):
 		GeneralArchitecture.__init__(self, eta_range, phi_range, max_hits, phi_layers, f_layers, track_info_indices)
 		self.input_shape = (self.max_hits, 7)
+		self.learning_rate = learning_rate
 		if self.track_info_indices is None: self.track_info_shape = 0
 		else: self.track_info_shape = len(track_info_indices)
 
@@ -211,7 +213,7 @@ class SiameseNetwork(GeneralArchitecture):
 		for layerSize in self.phi_layers[:-1]:
 			phi_network = Dense(layerSize)(phi_network)
 			phi_network = Activation('relu')(phi_network)
-			#phi_network = BatchNormalization()(phi_network)
+			phi_network = BatchNormalization()(phi_network)
 		phi_network = Dense(self.phi_layers[-1])(phi_network)
 		phi_network = Activation('linear')(phi_network)
 
@@ -268,7 +270,7 @@ class SiameseNetwork(GeneralArchitecture):
 		print(model.summary())
 
 		self.model = model
-		self.model.compile(optimizer=optimizers.Adam(lr = 0.00006), loss='binary_crossentropy')
+		self.model.compile(optimizer=optimizers.Adam(lr = self.learning_rate), loss='binary_crossentropy')
 
 	def load_data(self, fname, nEvents, nClasses):
 
@@ -310,10 +312,9 @@ class SiameseNetwork(GeneralArchitecture):
 		targets = np.zeros((batch_size,))
 		test_images = np.zeros((batch_size,n_hits, n_features))
 		support_images = np.zeros((batch_size,n_hits, n_features))
-	
-		# Make sure the batch size is < half the classes
-		# if batch_size < n_classes//2:
-		if True:
+
+		# make sure the batch size is <= half the classes
+		if batch_size <= n_classes//2:
 			half_batch = batch_size//2
 		
 			# Get the indices for the 1st half - which are pairs from same class
@@ -322,7 +323,6 @@ class SiameseNetwork(GeneralArchitecture):
 			support_class_indices = classes[0:half_batch]
 			support_example_index = examples[1]
 			
-	
 			# Are we generating these batches using validation or training data?
 			if use_test_data:
 				test_images[0:half_batch,:,:] = self.X_val[test_class_indices,test_example_index,:,:]
@@ -357,60 +357,12 @@ class SiameseNetwork(GeneralArchitecture):
 
 		return pairs, targets
 
-	def make_oneshot(self, N, use_test_data=True):
+	def make_oneshot(self, N, use_test_data=False, use_ref_set=False):
 	
 		# For each batch shuffle
 		if use_test_data:
 			n_classes, n_examples, n_hits, n_features = self.X_val.shape
-		else:
-			n_classes, n_examples, n_hits, n_features = self.X_train.shape
-		classes = list(range(n_classes))
-		examples = list(range(n_examples))
-	
-		# Each trial shuffle our classes and classes 
-		random.shuffle(classes)
-		random.shuffle(examples)
-	
-		# Get support indices
-		support_class_indices = classes[0:N]
-		support_example_indices = examples[0:N]
-	
-		# Get the images to test
-		test_class_index = classes[0]
-		test_example_index = examples[0]
-	
-		# Now get another example (but different) of the test
-		test_class_index_other = classes[0]
-		test_example_index_other = examples[1]
-	
-		# The first in our support sample is the correct class
-		support_class_indices[0] = test_class_index_other
-		support_example_indices[0] = test_example_index_other
-		targets = np.zeros((N,))
-		targets[0] = 1
-	
-		# Now form our images
-		if use_test_data:
-			test_images = np.asarray([self.X_val[test_class_index,test_example_index,:,:]]*N)
-			test_images = test_images.reshape(N, n_hits, n_features)
-			support_images = self.X_val[support_class_indices,support_example_indices,:,:]
-			support_images = support_images.reshape(N, n_hits, n_features)
-		else:
-			test_images = np.asarray([self.X_train[test_class_index,test_example_index,:,:]]*N)
-			test_images = test_images.reshape(N, n_hits, n_features)
-			support_images = self.X_train[support_class_indices,support_example_indices,:,:]
-			support_images = support_images.reshape(N, n_hits, n_features)
-			
-		# Form return
-		pairs = [test_images, support_images]
-
-		return pairs, targets, test_class_index
-
-	def make_oneshot_val(self, N, use_test_data=True):
-	
-		# For each batch shuffle
-		if use_test_data:
-			n_classes, n_examples, n_hits, n_features = self.X_val.shape
+		if(use_ref_set):
 			assert self.X_val.shape == self.X_val_ref.shape, "X_val and X_val_ref must have same shape"
 		else:
 			n_classes, n_examples, n_hits, n_features = self.X_train.shape
@@ -443,12 +395,18 @@ class SiameseNetwork(GeneralArchitecture):
 		if use_test_data:
 			test_images = np.asarray([self.X_val[test_class_index,test_example_index,:,:]]*N)
 			test_images = test_images.reshape(N, n_hits, n_features)
-			support_images = self.X_val_ref[support_class_indices,support_example_indices,:,:]
+			if(use_ref_set):
+				support_images = self.X_val_ref[support_class_indices,support_example_indices,:,:]
+			else:
+				support_images = self.X_val[support_class_indices,support_example_indices,:,:]
 			support_images = support_images.reshape(N, n_hits, n_features)
 		else:
 			test_images = np.asarray([self.X_train[test_class_index,test_example_index,:,:]]*N)
 			test_images = test_images.reshape(N, n_hits, n_features)
-			support_images = self.X_train[support_class_indices,support_example_indices,:,:]
+			if(use_ref_set):
+				support_images = self.X_val_ref[support_class_indices,support_example_indices,:,:]
+			else:
+				support_images = self.X_train[support_class_indices,support_example_indices,:,:]
 			support_images = support_images.reshape(N, n_hits, n_features)
 			
 		# Form return

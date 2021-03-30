@@ -3,9 +3,9 @@ import numpy as np
 import pickle as pkl
 
 dataDir_signal = '/store/user/llavezzo/disappearingTracks/siameseData/higgsino_700GeV_100cm/'
-dataDir_muons = '/store/user/llavezzo/disappearingTracks/SingleMuon_2017F_v7/'
+dataDir_muons = '/store/user/llavezzo/disappearingTracks/siameseData/SingleMuon_val/'
 savedEvents = [None, None]
-nDesiredPerClass = [30, 30]
+nDesiredPerClass = [55, 25]
 
 for i, dataDir in enumerate([dataDir_signal, dataDir_muons]):
 
@@ -27,7 +27,8 @@ for i, dataDir in enumerate([dataDir_signal, dataDir_muons]):
 
 		if len(savedEvents[i]) >= nDesiredPerClass[i]: break
 
+savedEvents[0] = savedEvents[0][30:55]
 print len(savedEvents[0])
 print len(savedEvents[1])
 
-np.save("ref_data.npy",savedEvents)
+np.save("val_data.npy",savedEvents)
