@@ -6,48 +6,40 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from DisappTrksML.DeepSets.architecture import *
+from DisappTrksML.DeepSets.MuonModel import *
 
-# parameters
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_converted/"
-modelFile = 'kfold19_noBatchNorm_finalTrainV3/model.h5'
-outDir = "kfold19_noBatchNorm_finalTrainV3/"
+# initialize the model with the weights
+fileDir = 'train_2021-03-25_16.46.49/'
+model_file = 'model.9.h5'
+model_params = {
+	'eta_range':1.0,
+	'phi_range':1.0,
+	'phi_layers':[128,64,32],
+	'f_layers':[64,32],
+	'max_hits' : 20,
+	'track_info_indices' : [4, 6, 8, 9, 11, 14, 15]
+}
+arch = MuonModel(**model_params)
+arch.load_model(fileDir+model_file)
 
-# initialize architecture and load the weights/model
-arch = DeepSetsArchitecture()
-arch.load_model(modelFile)
+cm = np.zeros((2,2))
 
-# iterate over desired files and predict
-true = None
-preds = None
-inputFiles = np.loadtxt(outDir + "/validation_files.txt")
+# evaluate the model
+count = 0
+bkg_preds = None
+bkgDir = "/store/user/llavezzo/disappearingTracks/SingleMuon_2017F_v7/"
+inputFiles = glob.glob(bkgDir+'images_*.root.npz')
 
-for iFile, file in enumerate(inputFiles):
-	print str(iFile)+'/'+str(len(inputFiles))
+for i,fname in enumerate(inputFiles):
+	print(i)
 
-	fname = dataDir+'images_'+str(int(file))+'.root.npz'
+	data = np.load(fname, allow_pickle=True)
+	count += data['sets'].shape[0]
 
-	# evaluate file
-	for obj in ['signal','background']:
+	skip, preds = arch.evaluate_npy(fname, calos=False, obj='sets')
+	if not skip:
+		cm[0,1] += np.count_nonzero(preds[:,1] > 0.5)
+		cm[0,0] += np.count_nonzero(preds[:,1] <= 0.5)
 
-		skip, thisFilePreds = arch.evaluate_npy(fname, track_info=True, obj=obj)
-		if skip: continue
-
-		if obj == 'signal': trueThisFile = np.ones(len(thisFilePreds))
-		elif obj == 'background': trueThisFile = np.zeros(len(thisFilePreds))
-
-		if true is None:
-			true = trueThisFile
-			preds = thisFilePreds[:,1]
-		else:
-			true = np.concatenate((true, trueThisFile))
-			preds = np.concatenate((preds, thisFilePreds[:,1]))
-
-# calculate and save metrics
-metrics = arch.metrics_per_cut(true, preds, 40)
-np.save(outDir+'metrics.npy',metrics)
-
-plt.scatter(metrics['splits'], metrics['precision'], label="precision")
-plt.scatter(metrics['splits'], metrics['recall'], label="recall")
-plt.scatter(metrics['splits'], metrics['f1'], label="f1")
-plt.legend()
-plt.savefig(outDir+"metrics.png")
+	assert np.sum(cm) == count 			# had some issues with this with the two headed network
+	print cm

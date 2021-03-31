@@ -7,13 +7,13 @@ import time
 from threading import Thread, Lock, Semaphore, active_count
 from multiprocessing import cpu_count
 
-from DisappTrksML.DeepSets.MuonModel import *
+from DisappTrksML.SiameseNetwork.MuonModel import *
 
 ## PARAMETERS ##
 
-inputDirectory = '/store/user/bfrancis/images_v6/SingleMu_2017F_wIso/0000/'
+inputDirectory = '/store/user/mcarrigan/AMSB/images_v7/images_higgsino_700GeV_100cm_step3/'
 outputDirectory = ""
-fileNumber = 214
+fileNumber = 260
 
 ################
 

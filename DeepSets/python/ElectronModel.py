@@ -7,8 +7,9 @@ class ElectronModel(DeepSetsArchitecture):
 				 eta_range=0.25, phi_range=0.25,
 				 max_hits=100,
 				 phi_layers=[64, 64, 256], f_layers =[64, 64, 64],
-				 track_info_shape=(1, 13), track_info_indices=[4, 8, 9, 12]):
-		DeepSetsArchitecture.__init__(self, eta_range, phi_range, max_hits, phi_layers, f_layers, track_info_shape, track_info_indices)
+				 track_info_indices=[4, 8, 9, 12]):
+		DeepSetsArchitecture.__init__(self, eta_range, phi_range, max_hits, phi_layers, f_layers, track_info_indices)
+		self.track_info_shape = len(track_info_indices)
 
 	def convertTrackFromTree(self, event, track, class_label):
 		hits = []
@@ -171,7 +172,7 @@ class ElectronModel(DeepSetsArchitecture):
 
 	def evaluate_model(self, event, track):
 		event_converted = self.convertTrackFromTree(event, track, 1) # class_label doesn't matter
-		prediction = self.model.predict([np.reshape(event_converted['sets'], (1, self.max_hits, 4)), np.reshape(event_converted['infos'], self.track_info_shape)[:, self.track_info_indices]])
+		prediction = self.model.predict([np.reshape(event_converted['sets'], (1, self.max_hits, 4)), np.reshape(event_converted['infos'], (1,len(event_converted['infos'])))[:, self.track_info_indices]])
 		return prediction[0, 1] # p(is electron)
 
 	def evaluate_npy(self, fname, track_info=False, obj='sets'):
