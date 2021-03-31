@@ -86,11 +86,13 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   recHitInfos_.clear();
   genParticleInfos_.clear();
   pileupZPosition_.clear();
+  vertexInfos_.clear();
 
   tree_ = fs_->make<TTree>("tree", "tree");
   tree_->Branch("tracks", &trackInfos_);
   tree_->Branch("recHits", &recHitInfos_);
   tree_->Branch("genParticles", &genParticleInfos_);
+  tree_->Branch("vertexInfos", &vertexInfos_);
   
   tree_->Branch("nPV", &nPV_);
   tree_->Branch("eventNumber", &eventNumber_);
@@ -212,6 +214,20 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   const reco::Vertex &pv = vertices->at(0);
   nPV_ = vertices->size();
   numGoodPVs_ = countGoodPrimaryVertices(*vertices);
+
+  for(auto vertex : *vertices){
+      VertexInfo info;
+      
+      TLorentzVector vertex_pos(vertex.x(), vertex.y(), vertex.z(), vertex.t());
+      TLorentzVector vertex_err(vertex.xError(), vertex.yError(), vertex.zError(), vertex.tError());
+      info.vertex = vertex_pos;
+      info.vertex_error = vertex_err;
+      info.chi2 = vertex.chi2();
+      info.ndof = vertex.ndof();
+      info.isValid = vertex.isValid();     
+
+      vertexInfos_.push_back(info);
+  }
 
   eventNumber_ = event.id().event();
   lumiBlockNumber_ = event.id().luminosityBlock();

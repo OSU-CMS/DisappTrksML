@@ -22,5 +22,8 @@ namespace {
 
     GenParticleInfo genParticleInfo0;
     std::vector<GenParticleInfo> genParticleInfo1;
+
+    VertexInfo vertexInfo0;
+    std::vector<VertexInfo> vertexInfo1;
   };
 }
