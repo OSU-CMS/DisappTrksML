@@ -93,6 +93,7 @@ class SiameseNetwork(GeneralArchitecture):
 		inputTree = inputFile.Get('trackImageProducer/tree')
 
 		class0, class1, class2, class3 = [], [], [], []
+		class0_infos, class1_infos, class2_infos, class3_infos = [], [], [], []
 
 		for event in inputTree:
 			eventPasses, trackPasses = self.eventSelectionTraining(event)
@@ -106,20 +107,24 @@ class SiameseNetwork(GeneralArchitecture):
 					if abs(track.deltaRToClosestMuon) < 0.15:
 						values = self.convertTrackFromTree(event, track, 0)
 						class0.append(values['sets'])
+						class0_infos.append(values['infos'])
 
 					else:
 						values = self.convertTrackFromTree(event, track, 1)
-						class1.append(values['sets'])					
+						class1.append(values['sets'])	
+						class1_infos.append(values['infos'])				
 
 				else:
 
 					if abs(track.deltaRToClosestMuon) < 0.15:
 						values = self.convertTrackFromTree(event, track, 2)
 						class2.append(values['sets'])
+						class2_infos.append(values['infos'])
 
 					else:
 						values = self.convertTrackFromTree(event, track, 3)
 						class3.append(values['sets'])
+						class3_infos.append(values['infos'])
 
 		outputFileName = fileName.split('/')[-1] + '.npz'
 
@@ -129,11 +134,15 @@ class SiameseNetwork(GeneralArchitecture):
 								class0=class0,
 								class1=class1,
 								class2=class2,
-								class3=class3)
+								class3=class3, 
+								class0_infos=class0_infos,
+								class1_infos=class1_infos,
+								class2_infos=class2_infos,
+								class3_infos=class3_infos)
 
-			print 'Wrote', outputFileName
+			print('Wrote', outputFileName)
 		else:
-			print 'No events found in file'
+			print('No events found in file')
 
 		inputFile.Close()
 
@@ -166,9 +175,9 @@ class SiameseNetwork(GeneralArchitecture):
 								sets=tracks,
 								infos=infos)
 
-			print 'Wrote', outputFileName
+			print('Wrote', outputFileName)
 		else:
-			print 'No events passed the selections'
+			print('No events passed the selections')
 
 		inputFile.Close()
 
@@ -199,9 +208,9 @@ class SiameseNetwork(GeneralArchitecture):
 			np.savez_compressed(outputFileName,
 								signal=signal)
 
-			print 'Wrote', outputFileName
+			print('Wrote', outputFileName)
 		else:
-			print 'No events passed the selections'
+			print('No events passed the selections')
 
 		inputFile.Close()
 
@@ -213,7 +222,7 @@ class SiameseNetwork(GeneralArchitecture):
 		for layerSize in self.phi_layers[:-1]:
 			phi_network = Dense(layerSize)(phi_network)
 			phi_network = Activation('relu')(phi_network)
-			phi_network = BatchNormalization()(phi_network)
+			#phi_network = BatchNormalization()(phi_network)
 		phi_network = Dense(self.phi_layers[-1])(phi_network)
 		phi_network = Activation('linear')(phi_network)
 
@@ -232,7 +241,7 @@ class SiameseNetwork(GeneralArchitecture):
 		for layerSize in self.f_layers[1:]:
 			f_network = Dense(layerSize)(f_network)
 			f_network = Activation('relu')(f_network)
-		f_network = Dense(2)(f_network)
+		f_network = Dense(5)(f_network)
 		f_outputs = Activation('softmax')(f_network)
 		f_model = Model(inputs=f_inputs, outputs=f_outputs)
 
@@ -257,12 +266,18 @@ class SiameseNetwork(GeneralArchitecture):
 			deepset_outputs_l = f_model(deepset_inputs_withInfo_l)
 
 		# Add a customized layer to compute the absolute difference between the encodings
-		L1_layer = Lambda(lambda tensors:K.abs(tensors[0] - tensors[1]))
+		L1_layer = Lambda(lambda tensors: K.abs(tensors[0] - tensors[1]))
 		L1_distance = L1_layer([deepset_outputs_l, deepset_outputs_r])
 
+		L1_distance = BatchNormalization()(L1_distance)
+		L1_distance = Dropout(0.15)(L1_distance)
+		L1_distance = Dense(8)(L1_distance)
+		L1_distance = Activation('relu')(L1_distance)
+
 		# Add a dense layer with a sigmoid unit to generate the similarity score
-		prediction = Dense(1,activation='sigmoid',bias_initializer=initializers.RandomNormal(mean=0.5, stddev=0.01))(L1_distance)
-	
+		#prediction = Dense(1,activation='sigmoid',bias_initializer=initializers.RandomNormal(mean=0.5, stddev=0.01))(L1_distance)
+		prediction = Dense(1,activation='sigmoid')(L1_distance)
+
 		# Connect the inputs with the outputs
 		if(self.track_info_shape == 0): model = Model(inputs=[deepset_inputs_l, deepset_inputs_r],outputs=prediction)
 		else: model = Model(inputs=[[deepset_inputs_l, info_inputs_l],[deepset_inputs_r, info_inputs_r]],outputs=prediction)
@@ -272,88 +287,177 @@ class SiameseNetwork(GeneralArchitecture):
 		self.model = model
 		self.model.compile(optimizer=optimizers.Adam(lr = self.learning_rate), loss='binary_crossentropy')
 
-	def load_data(self, fname, nEvents, nClasses):
+	"""
+	Loads the output of merge_data.npy
+	nClasses: how many classes to load in
+	nEvents: how many events to load from all classes,
+			 nEvents = -1 to load all events from all classes
+	fit_scalers: fits a scaler for each feature in the largest class
+	scalers: pass scalers to apply to each feature in data
+	"""
+	def load_data(self, fname, nEvents, nClasses, with_info=False, fit_scalers=False, scalers=None):
 
-		data = np.load(fname, allow_pickle=True)
-		X = None
+		data = np.load(fname, allow_pickle=True, encoding="bytes")
+		X = []
+		if with_info: X_infos = []
 		for i in range(nClasses):
-			iClass = data[i][:nEvents]
-			iClass = np.reshape(iClass, (1, nEvents, 20, 7))
-			if X is None: X = iClass
-			else: X = np.vstack((X, iClass)) 
 
-		print "Loaded {0} with shape {1}".format(fname, X.shape)
-		return X
+			label = 'class'+str(i)
+			if nEvents != -1: iClass = data[label][:nEvents]
+			else: iClass = data[label]
+			iClass = np.reshape(iClass, (len(iClass), 20, 7))
+			X.append(iClass)
 
-	def add_data(self, X_train=None, X_val=None, X_val_ref=None):
+			if not with_info: continue
+			label_infos = 'class'+str(i)+'_infos'
+			info_indices = [4, 6, 8, 9, 11, 14, 15]
+			self.info_indices = info_indices
+			if nEvents != -1: iClass = data[label_infos][:nEvents,info_indices]
+			else: iClass = data[label_infos][:,info_indices]
+			iClass = np.reshape(iClass, (len(iClass), len([4, 6, 8, 9, 11, 14, 15])))
+			X_infos.append(iClass)
+
+		if fit_scalers or not(scalers is None):
+
+			largestClass = np.argmax([len(iClass) for iClass in X])
+
+			for i in range(len(X)):
+
+				iClass = X[i]
+
+				# scale based only on nonempty hits
+				indices = np.sum(abs(iClass),axis=2) > 0
+
+				# save the scalers to use on validation data
+				if scalers is None: scalers = []
+
+				for feature_index in range(iClass.shape[2]):
+					feature = iClass[indices, feature_index]
+					feature = np.reshape(feature, (feature.shape[0],1))
+					
+					# fit the scalers
+					if len(scalers) < feature_index+1: 
+						scaler = preprocessing.MinMaxScaler().fit(feature)
+						
+						# save them only for largest class
+						if largestClass == i: scalers.append(scaler)
+					
+					# OR apply the already fit scalers on the data
+					else: 
+						scaler = scalers[feature_index]
+
+					feature_scaled = scaler.transform(feature)
+					iClass[indices, feature_index] = feature_scaled[:,0]
+
+				X[i] = iClass
+			
+		print("Loaded {0} with {1} classes".format(fname, len(X)))
+		for i in range(len(X)):
+			if with_info: print("Class {0}, shape {1}, info shape {2}".format(i,X[i].shape,X_infos[i].shape))
+			else: print("Class {0}, shape {1}".format(i,X[i].shape))
+
+		if with_info:
+			if fit_scalers: return X, X_infos, scalers
+			else: return X, X_infos
+		else:
+			if fit_scalers: return X, scalers
+			else: return X
+
+	def add_data(self, X_train=None, X_train_infos=None,
+						X_val=None, X_val_infos=None,
+						X_val_ref=None, X_val_ref_infos=None):
 
 		# events to train on
 		self.X_train = X_train
+		self.X_train_infos = X_train_infos
 
 		# events to evaluate
-		self.X_val = X_val 		
+		self.X_val = X_val 	
+		self.X_val_infos = X_val_infos	
 
-		# reference set, events to compare X_val with
+		# reference set, events to compare with during the validation
 		self.X_val_ref = X_val_ref		
+		self.X_val_ref_infos = X_val_ref_infos
 
 	def get_batch(self, batch_size, use_test_data=False):
 	
 		# For each batch shuffle
 		if use_test_data:
-			n_classes, n_examples, n_hits, n_features = self.X_val.shape
+			n_classes = len(self.X_val)
+
+			n_examples = np.zeros(n_classes, dtype='int')
+			for iClass in range(n_classes): n_examples[iClass] = len(self.X_val[iClass])
+
+			n_hits, n_features = self.X_val[iClass][0].shape
+
 		else:
-			n_classes, n_examples, n_hits, n_features = self.X_train.shape
-		classes = list(range(n_classes))
-		examples = list(range(n_examples))
-	
+			n_classes = len(self.X_train)
+
+			n_examples = np.zeros(n_classes, dtype='int')
+			for iClass in range(n_classes): n_examples[iClass] = len(self.X_train[iClass])
+
+			n_hits, n_features = self.X_train[iClass][0].shape
+
 		# Each trial shuffle our classes and classes 
+		classes = list(range(n_classes))
 		random.shuffle(classes)
-		random.shuffle(examples)
+		examples = np.array([None]*n_classes)
+		for iClass in range(n_classes):
+			examples[iClass] = list(range(n_examples[iClass]))
+			random.shuffle(examples[iClass])
+	
+		# initialize targets and images
 		targets = np.zeros((batch_size,))
-		test_images = np.zeros((batch_size,n_hits, n_features))
-		support_images = np.zeros((batch_size,n_hits, n_features))
-
-		# make sure the batch size is <= half the classes
-		if batch_size <= n_classes//2:
-			half_batch = batch_size//2
+		test_events = np.zeros((batch_size,n_hits, n_features))
+		support_events = np.zeros((batch_size,n_hits, n_features))
 		
-			# Get the indices for the 1st half - which are pairs from same class
-			test_class_indices = classes[0:half_batch]
-			test_example_index = examples[0]
-			support_class_indices = classes[0:half_batch]
-			support_example_index = examples[1]
-			
-			# Are we generating these batches using validation or training data?
-			if use_test_data:
-				test_images[0:half_batch,:,:] = self.X_val[test_class_indices,test_example_index,:,:]
-				support_images[0:half_batch,:,:] = self.X_val[support_class_indices,support_example_index,:,:]
-			else:
-				test_images[0:half_batch,:,:] = self.X_train[test_class_indices,test_example_index,:,:]
-				support_images[0:half_batch,:,:] = self.X_train[support_class_indices,support_example_index,:,:]
-			targets[0:half_batch] = 1
-			
-			# Get the indices for the 2nd half - which are pairs from different classes
-			test_class_indices = classes[half_batch:batch_size]
-			test_example_index = examples[0]
-			support_class_indices = classes[batch_size:batch_size+half_batch]
-			support_example_index = examples[1]
-			
-			if use_test_data:
-				test_images[half_batch:batch_size,:,:] = self.X_val[test_class_indices,test_example_index,:,:]
-				support_images[half_batch:batch_size,:,:] = self.X_val[support_class_indices,support_example_index,:,:]
-			else:
-				test_images[half_batch:batch_size,:,:] = self.X_train[test_class_indices,test_example_index,:,:]
-				support_images[half_batch:batch_size,:,:] = self.X_train[support_class_indices,support_example_index,:,:]
-			targets[half_batch:batch_size] = 0
-			
-			# Reshape
-			test_images = test_images.reshape(batch_size, n_hits, n_features)
-			support_images = support_images.reshape(batch_size, n_hits, n_features)
+		half_batch = batch_size//2
 
+		# Get the indices for the 1st half - which are pairs from same class
+		test_class_indices = classes[0:half_batch]
+		test_example_indices = [examples[thisClass][0] for thisClass in test_class_indices]
+		support_class_indices = classes[0:half_batch]
+		support_example_indices = [examples[thisClass][1] for thisClass in support_class_indices]
+
+		# load in events using train or validation data
+		if use_test_data:
+			test_events[0:half_batch,:,:] = [self.X_val[a][b,:,:] for a,b in zip(test_class_indices, test_example_indices)]
+			support_events[0:half_batch,:,:] = [self.X_val[a][b,:,:] for a, b in zip(support_class_indices, support_example_indices)]
+		else:
+			test_events[0:half_batch,:,:] = [self.X_train[a][b,:,:] for a,b in zip(test_class_indices, test_example_indices)]
+			support_events[0:half_batch,:,:] = [self.X_train[a][b,:,:] for a, b in zip(support_class_indices, support_example_indices)]
+
+		targets[0:half_batch] = 1
 		
+		# Get the indices for the 2nd half - which are pairs from different classes
+		test_class_indices = classes[half_batch:batch_size]
+		test_example_indices = [examples[thisClass][0] for thisClass in test_class_indices]
+		support_class_indices = []
+		random.shuffle(classes)
+		nAdded = 0
+		for iClass in range(n_classes):
+			if classes[iClass] == test_class_indices[nAdded]: continue
+			support_class_indices.append(classes[iClass])
+			nAdded += 1
+			if nAdded == len(test_class_indices): break
+		support_example_indices = [examples[thisClass][2] for thisClass in support_class_indices]
+		
+		if use_test_data:
+			test_events[half_batch:batch_size,:,:] = [self.X_val[a][b,:,:] for a,b in zip(test_class_indices, test_example_indices)]
+			support_events[half_batch:batch_size,:,:] = [self.X_val[a][b,:,:] for a, b in zip(support_class_indices, support_example_indices)]
+		else:
+			test_events[half_batch:batch_size,:,:] = [self.X_train[a][b,:,:] for a,b in zip(test_class_indices, test_example_indices)]
+			support_events[half_batch:batch_size,:,:] = [self.X_train[a][b,:,:] for a, b in zip(support_class_indices, support_example_indices)]
+
+		targets[half_batch:batch_size] = 0
+			
+		# Reshape
+		test_events = test_events.reshape(batch_size, n_hits, n_features)
+		support_events = support_events.reshape(batch_size, n_hits, n_features)
+
 		# Now shuffle coherently
-		targets, test_images, support_images = shuffle(targets, test_images, support_images)
-		pairs = [test_images, support_images]
+		targets, test_events, support_events = shuffle(targets, test_events, support_events)
+		pairs = [test_events, support_events]
 
 		return pairs, targets
 
@@ -361,29 +465,40 @@ class SiameseNetwork(GeneralArchitecture):
 	
 		# For each batch shuffle
 		if use_test_data:
-			n_classes, n_examples, n_hits, n_features = self.X_val.shape
-		if(use_ref_set):
-			assert self.X_val.shape == self.X_val_ref.shape, "X_val and X_val_ref must have same shape"
+			n_classes = len(self.X_val)
+
+			n_examples = np.zeros(n_classes, dtype='int')
+			for iClass in range(n_classes): n_examples[iClass] = len(self.X_val[iClass])
+
+			n_hits, n_features = self.X_val[iClass][0].shape
 		else:
-			n_classes, n_examples, n_hits, n_features = self.X_train.shape
-		classes = list(range(n_classes))
-		examples = list(range(n_examples))
-	
+			n_classes = len(self.X_train)
+
+			n_examples = np.zeros(n_classes, dtype='int')
+			for iClass in range(n_classes): n_examples[iClass] = len(self.X_train[iClass])
+
+			n_hits, n_features = self.X_train[iClass][0].shape
+
 		# Each trial shuffle our classes and classes 
+		classes = list(range(n_classes))
 		random.shuffle(classes)
-		random.shuffle(examples)
+		examples = np.array([None]*n_classes)
+		for iClass in range(n_classes):
+			examples[iClass] = list(range(n_examples[iClass]))
+			random.shuffle(examples[iClass])
 	
 		# Get support indices
 		support_class_indices = classes[0:N]
-		support_example_indices = examples[0:N]
+		# support_example_indices = examples[0:N]
+		support_example_indices = [examples[iClass][0] for iClass in support_class_indices]
 	
 		# Get the images to test
 		test_class_index = classes[0]
-		test_example_index = examples[0]
+		test_example_index = examples[test_class_index][0]
 	
 		# Now get another example (but different) of the test
 		test_class_index_other = classes[0]
-		test_example_index_other = examples[1]
+		test_example_index_other = examples[test_class_index_other][1]
 	
 		# The first in our support sample is the correct class
 		support_class_indices[0] = test_class_index_other
@@ -393,23 +508,105 @@ class SiameseNetwork(GeneralArchitecture):
 	
 		# Now form our images
 		if use_test_data:
-			test_images = np.asarray([self.X_val[test_class_index,test_example_index,:,:]]*N)
+			test_images = np.asarray([self.X_val[test_class_index][test_example_index,:,:]]*N)
 			test_images = test_images.reshape(N, n_hits, n_features)
 			if(use_ref_set):
-				support_images = self.X_val_ref[support_class_indices,support_example_indices,:,:]
+				support_images = np.asarray([self.X_val_ref[a][b,:,:] for a,b in zip(support_class_indices, support_example_indices)])
 			else:
-				support_images = self.X_val[support_class_indices,support_example_indices,:,:]
+				support_images = np.asarray([self.X_val[a][b,:,:] for a,b in zip(support_class_indices, support_example_indices)])
 			support_images = support_images.reshape(N, n_hits, n_features)
 		else:
-			test_images = np.asarray([self.X_train[test_class_index,test_example_index,:,:]]*N)
+			test_images = np.asarray([[self.X_train[test_class_index][test_example_index,:,:]]]*N)
 			test_images = test_images.reshape(N, n_hits, n_features)
 			if(use_ref_set):
-				support_images = self.X_val_ref[support_class_indices,support_example_indices,:,:]
+				support_images = np.asarray([self.X_val_ref[a][b,:,:] for a,b in zip(support_class_indices, support_example_indices)])
 			else:
-				support_images = self.X_train[support_class_indices,support_example_indices,:,:]
+				support_images = np.asarray([self.X_train[a][b,:,:] for a,b in zip(support_class_indices, support_example_indices)])
 			support_images = support_images.reshape(N, n_hits, n_features)
 			
 		# Form return
 		pairs = [test_images, support_images]
+
+		return pairs, targets, test_class_index
+
+
+	def make_oneshot2(self, N, use_test_data=False, use_ref_set=False):
+	
+		# For each batch shuffle
+		if use_test_data:
+			n_classes = len(self.X_val)
+
+			n_examples = np.zeros(n_classes, dtype='int')
+			for iClass in range(n_classes): n_examples[iClass] = len(self.X_val[iClass])
+
+			n_hits, n_features = self.X_val[iClass][0].shape
+		else:
+			n_classes = len(self.X_train)
+
+			n_examples = np.zeros(n_classes, dtype='int')
+			for iClass in range(n_classes): n_examples[iClass] = len(self.X_train[iClass])
+
+			n_hits, n_features = self.X_train[iClass][0].shape
+
+		# Each trial shuffle our classes and classes 
+		classes = list(range(n_classes))
+		random.shuffle(classes)
+		examples = np.array([None]*n_classes)
+		for iClass in range(n_classes):
+			examples[iClass] = list(range(n_examples[iClass]))
+			random.shuffle(examples[iClass])
+	
+		# Get support indices
+		support_class_indices = classes[0:N]
+		# support_example_indices = examples[0:N]
+		support_example_indices = [examples[iClass][0] for iClass in support_class_indices]
+	
+		# Get the images to test
+		test_class_index = classes[0]
+		test_example_index = examples[test_class_index][0]
+	
+		# Now get another example (but different) of the test
+		test_class_index_other = classes[0]
+		test_example_index_other = examples[test_class_index_other][1]
+	
+		# The first in our support sample is the correct class
+		support_class_indices[0] = test_class_index_other
+		support_example_indices[0] = test_example_index_other
+		targets = np.zeros((N,))
+		targets[0] = 1
+	
+		# Now form our images
+		if use_test_data:
+			test_images = np.asarray([self.X_val[test_class_index][test_example_index,:,:]]*N)
+			test_images = test_images.reshape(N, n_hits, n_features)
+			test_infos = np.asarray([self.X_val_infos[test_class_index][test_example_index,:]]*N)
+			test_infos = test_infos.reshape(N, n_hits, len(self.info_indices))
+
+			if(use_ref_set):
+				support_images = np.asarray([self.X_val_ref[a][b,:,:] for a,b in zip(support_class_indices, support_example_indices)])
+				support_infos = np.asarray([self.X_val_ref_infos[a][b,:] for a,b in zip(support_class_indices, support_example_indices)])
+			else:
+				support_images = np.asarray([self.X_val[a][b,:,:] for a,b in zip(support_class_indices, support_example_indices)])
+				support_infos = np.asarray([self.X_val_infos[a][b,:] for a,b in zip(support_class_indices, support_example_indices)])
+			support_images = support_images.reshape(N, n_hits, n_features)
+			support_infos = support_infos.reshape(N, n_hit, len(self.info_indices))
+
+		else:
+			test_images = np.asarray([[self.X_train[test_class_index][test_example_index,:,:]]]*N)
+			test_images = test_images.reshape(N, n_hits, n_features)
+			test_infos = np.asarray([[self.X_train_infos[test_class_index][test_example_index,:]]]*N)
+			test_infos = test_infos.reshape(N, n_hits, len(self.info_indices))
+
+			if(use_ref_set):
+				support_images = np.asarray([self.X_val_ref[a][b,:,:] for a,b in zip(support_class_indices, support_example_indices)])
+				support_infos = np.asarray([self.X_val_ref_infos[a][b,:] for a,b in zip(support_class_indices, support_example_indices)])
+			else:
+				support_images = np.asarray([self.X_train[a][b,:,:] for a,b in zip(support_class_indices, support_example_indices)])
+				support_infos = np.asarray([self.X_train_infos[a][b,:] for a,b in zip(support_class_indices, support_example_indices)])
+			support_images = support_images.reshape(N, n_hits, n_features)
+			support_infos = support_infos.reshape(N, n_hit, len(self.info_indices))
+			
+		# Form return
+		pairs = [[test_images, test_infos], [support_images, support_infos]]
 
 		return pairs, targets, test_class_index
