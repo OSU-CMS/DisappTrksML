@@ -224,7 +224,8 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       vector<TrackInfo> trackInfos_;
       vector<RecHitInfo> recHitInfos_;
       vector<GenParticleInfo> genParticleInfos_;
-      
+      vector<VertexInfo> vertexInfos_;
+
       const double minGenParticlePt_;
       const double minTrackPt_;
       const double maxRelTrackIso_;

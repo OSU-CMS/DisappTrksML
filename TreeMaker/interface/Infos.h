@@ -2,6 +2,7 @@
 #define INFO_STRUCTS
 
 #include <vector>
+#include "TLorentzVector.h"
 
 struct TrackDeDxInfo {
   int   subDet;
@@ -186,6 +187,24 @@ struct GenParticleInfo {
        isFirstCopy,
        isLastCopy,
        isLastCopyBeforeFSR;
+};
+
+struct VertexInfo {
+  TLorentzVector vertex, vertex_error;
+  double chi2;
+  int ndof;
+  bool isValid;
+
+  VertexInfo() {}
+
+  VertexInfo(TLorentzVector vertex_, TLorentzVector vertex_error_, double chi2_, int ndof_, bool isValid_){
+    vertex = vertex_;
+    vertex_error = vertex_error_; 
+    chi2 = chi2_;
+    ndof = ndof_;
+    isValid = isValid_;
+  }                   
+
 };
 
 #endif
