@@ -171,6 +171,7 @@ struct RecHitInfo {
 struct GenParticleInfo {
   double px, py, pz, e;
   double eta, phi, pt;
+  double vx, vy, vz;
 
   int pdgId, status;
 

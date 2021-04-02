@@ -758,6 +758,10 @@ TrackImageProducerMINIAOD::getGenParticles(const reco::CandidateView &genParticl
     info.phi = p->phi();
     info.pt  = p->pt();
 
+    info.vx = p->vx();
+    info.vy = p->vy();
+    info.vz = p->vz();
+
     info.pdgId = p->pdgId();
     info.status = p->status();
 
