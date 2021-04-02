@@ -7,17 +7,17 @@ import time
 from threading import Thread, Lock, Semaphore, active_count
 from multiprocessing import cpu_count
 
-from DisappTrksML.SiameseNetwork.MuonModel import *
+from DisappTrksML.SiameseNetwork.SiameseNetwork import *
 
 ## PARAMETERS ##
 
-inputDirectory = '/store/user/mcarrigan/AMSB/images_v7/images_higgsino_700GeV_100cm_step3/'
+inputDirectory = '/store/user/mcarrigan/Images-v7p1-DYJets-MC2017_aMCNLO/'
 outputDirectory = ""
 fileNumber = 260
 
 ################
 
-arch = MuonModel(eta_range=1.0,phi_range=1.0,max_hits=20)
+arch = SiameseNetwork(eta_range=1.0,phi_range=1.0,max_hits=20)
 
 useCondor = False
 useMultiThreads = False
@@ -63,9 +63,9 @@ elif useCondor:
 	inarray = np.loadtxt(fileList,dtype=float)
 	fileNumber = int(inarray[int(fileIndex)])
 
-	arch.convertTPFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
+	arch.convertMCFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
 	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)
 
 else:
-	arch.convertTPFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
+	arch.convertMCFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
 	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)
