@@ -215,6 +215,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   nPV_ = vertices->size();
   numGoodPVs_ = countGoodPrimaryVertices(*vertices);
 
+  vertexInfos_.clear();
   for(auto vertex : *vertices){
       VertexInfo info;
       
