@@ -221,10 +221,11 @@ class SiameseNetwork(GeneralArchitecture):
 		phi_network = Masking()(inputs)
 		for layerSize in self.phi_layers[:-1]:
 			phi_network = Dense(layerSize)(phi_network)
-			phi_network = Activation('relu')(phi_network)
+			phi_network = Activation('sigmoid')(phi_network)
 			#phi_network = BatchNormalization()(phi_network)
 		phi_network = Dense(self.phi_layers[-1])(phi_network)
 		phi_network = Activation('linear')(phi_network)
+		# phi_network = Activation('linear')(phi_network)
 
 		# build summed model for latent space
 		unsummed_model = Model(inputs=inputs, outputs=phi_network)
@@ -237,12 +238,13 @@ class SiameseNetwork(GeneralArchitecture):
 		if(self.track_info_shape == 0): f_inputs = Input(shape=(self.phi_layers[-1],)) # plus any other track/event-wide variable
 		else: f_inputs = Input(shape=(self.phi_layers[-1]+self.track_info_shape,))
 		f_network = Dense(self.f_layers[0])(f_inputs)
-		f_network = Activation('relu')(f_network)
+		f_network = Activation('sigmoid')(f_network)
 		for layerSize in self.f_layers[1:]:
 			f_network = Dense(layerSize)(f_network)
-			f_network = Activation('relu')(f_network)
-		f_network = Dense(5)(f_network)
-		f_outputs = Activation('softmax')(f_network)
+			f_network = Activation('sigmoid')(f_network)
+		f_network = Dense(16)(f_network)
+		# f_outputs = Activation('softmax')(f_network)
+		f_outputs = Activation('sigmoid')(f_network)
 		f_model = Model(inputs=f_inputs, outputs=f_outputs)
 
 		# build the DeepSets architecture
@@ -269,10 +271,8 @@ class SiameseNetwork(GeneralArchitecture):
 		L1_layer = Lambda(lambda tensors: K.abs(tensors[0] - tensors[1]))
 		L1_distance = L1_layer([deepset_outputs_l, deepset_outputs_r])
 
-		L1_distance = BatchNormalization()(L1_distance)
-		L1_distance = Dropout(0.15)(L1_distance)
-		L1_distance = Dense(8)(L1_distance)
-		L1_distance = Activation('relu')(L1_distance)
+		L1_distance = Dense(16)(L1_distance)
+		L1_distance = Activation('sigmoid')(L1_distance)
 
 		# Add a dense layer with a sigmoid unit to generate the similarity score
 		#prediction = Dense(1,activation='sigmoid',bias_initializer=initializers.RandomNormal(mean=0.5, stddev=0.01))(L1_distance)

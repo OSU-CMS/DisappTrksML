@@ -6,17 +6,16 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from DisappTrksML.DeepSets.architecture import *
-from DisappTrksML.DeepSets.ElectronModel import *
+from DisappTrksML.DeepSets.MuonModel import *
 
 # initialize the model with the weights
-fileDir = '/data/users/llavezzo/forBrian/kfold19_noBatchNorm_finalTrainV3/'
+fileDir = 'training_output/'
 model_file = 'model.h5'
 model_params = {
-	'phi_layers':[400,256,128], 
-	'f_layers': [128,128,64,32],
-	'track_info_indices' : [4,8,9,12]
+	'max_hits' : 20,
+	'track_info_indices' : [4, 6, 8, 9, 11, 14, 15]
 }
-arch = ElectronModel(**model_params)
+arch = MuonModel(**model_params)
 arch.load_model(fileDir+model_file)
 
 cm = np.zeros((2,2))
@@ -24,8 +23,11 @@ cm = np.zeros((2,2))
 # evaluate the model
 count = 0
 bkg_preds = None
-bkgDir = "/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt1_FIXED/"
+bkgDir = "/store/user/llavezzo/disappearingTracks/muonsTesting/SingleMuon_pt1/"
 inputFiles = glob.glob(bkgDir+'images_*.root.npz')
+
+bkgDir = "/store/user/llavezzo/disappearingTracks/muonsTesting/SingleMuon_pt2/"
+inputFiles = inputFiles + glob.glob(bkgDir+'images_*.root.npz')
 
 totPreds = []
 for i,fname in enumerate(inputFiles):
@@ -39,9 +41,9 @@ for i,fname in enumerate(inputFiles):
 		cm[0,1] += np.count_nonzero(preds[:,1] > 0.5)
 		cm[0,0] += np.count_nonzero(preds[:,1] <= 0.5)
 
-	assert np.sum(cm) == count 		
-	# print cm
-	totPreds = np.append(totPreds,preds[:,1])
+	totPreds = np.concatenate((totPreds, preds[:,1]))
+
+	assert np.sum(cm) == count 	
 
 print cm
-np.save("SingleEle_fullSel_pt2_preds.npy", totPreds)
+np.savez_compressed("muonModel_TPMuons_trainSel.npz", signal_preds = totPreds)

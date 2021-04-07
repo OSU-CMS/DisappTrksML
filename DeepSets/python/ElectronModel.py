@@ -11,6 +11,20 @@ class ElectronModel(DeepSetsArchitecture):
 		DeepSetsArchitecture.__init__(self, eta_range, phi_range, max_hits, phi_layers, f_layers, track_info_indices)
 		self.track_info_shape = len(track_info_indices)
 
+	def eventSelectionTraining(self, event):
+		trackPasses = []
+		for track in event.tracks:
+			if (abs(track.eta) >= 2.4 or
+				track.inGap or
+				abs(track.dRMinJet) < 0.5 or
+				abs(track.deltaRToClosestElectron) < 0.15 or
+				abs(track.deltaRToClosestMuon) < 0.15 or
+				abs(track.deltaRToClosestTauHad) < 0.15):
+				trackPasses.append(False)
+			else:
+				trackPasses.append(True)
+		return (True in trackPasses), trackPasses
+		
 	def convertTrackFromTree(self, event, track, class_label):
 		hits = []
 
@@ -92,7 +106,39 @@ class ElectronModel(DeepSetsArchitecture):
 
 		inputFile.Close()
 
-	def convertFileToNumpy(self, fileName):
+	def convertAMSBFileToNumpy(self, fileName):
+		inputFile = TFile(fileName, 'read')
+		inputTree = inputFile.Get('trackImageProducer/tree')
+
+		signal = []
+		signal_infos = []
+
+		for event in inputTree:
+			eventPasses, trackPasses = self.eventSelectionTraining(event)
+			if not eventPasses: continue
+
+			for i, track in enumerate(event.tracks):
+				if not trackPasses[i]: continue
+
+				if not (isGenMatched(event, track, 1000022) or isGenMatched(event, track, 1000024)): continue
+
+				values = self.convertTrackFromTree(event, track, 1)
+				signal.append(values['sets'])
+				signal_infos.append(values['infos'])
+
+		outputFileName = fileName.split('/')[-1] + '.npz'
+
+		if len(signal) > 0:
+			np.savez_compressed(outputFileName,
+								signal=signal,
+								signal_infos=signal_infos)
+			print 'Wrote', outputFileName
+		else:
+			print 'No events passed the selections'
+
+		inputFile.Close()
+
+	def convertTPFileToNumpy(self, fileName):
 		inputFile = TFile(fileName, 'read')
 		inputTree = inputFile.Get('trackImageProducer/tree')
 
@@ -100,25 +146,29 @@ class ElectronModel(DeepSetsArchitecture):
 		infos = []
 
 		for event in inputTree:
-			eventPasses, trackPasses = self.eventSelection(event)
+			eventPasses, trackPasses, trackPassesVeto = self.eventSelectionLeptonBackground(event, 'electrons')
 			if not eventPasses: continue
 
 			for i, track in enumerate(event.tracks):
 				if not trackPasses[i]: continue
+				if not trackPassesVeto[i]: continue
 
-				values = self.convertTrackFromTreeMuons(event, track, 1)
+				values = self.convertTrackFromTree(event, track, 1)
 				tracks.append(values['sets'])
 				infos.append(values['infos'])       
 
-		outputFileName = fileName.split('/')[-1] + '.npz'
+		if len(tracks) != 0:
+			outputFileName = fileName.split('/')[-1] + '.npz'
 
-		np.savez_compressed(outputFileName,
-							tracks=tracks,
-							infos=infos)
+			np.savez_compressed(outputFileName,
+								tracks=tracks,
+								infos=infos)
 
-		print 'Wrote', outputFileName
+			print 'Wrote', outputFileName
 
-		inputFile.Close()
+			inputFile.Close()
+		else:
+			print 'No events found in file'
 
 	def buildModel(self):
 		inputs = Input(shape=(self.input_shape[-1],))
@@ -175,17 +225,16 @@ class ElectronModel(DeepSetsArchitecture):
 		prediction = self.model.predict([np.reshape(event_converted['sets'], (1, self.max_hits, 4)), np.reshape(event_converted['infos'], (1,len(event_converted['infos'])))[:, self.track_info_indices]])
 		return prediction[0, 1] # p(is electron)
 
-	def evaluate_npy(self, fname, track_info=False, obj='sets'):
+	def evaluate_npy(self, fname, obj=['sets']):
 		data = np.load(fname, allow_pickle=True)
 
-		if(data[obj].shape[0] == 0): return True, 0
-		sets = data[obj][:, :self.max_hits]
+		if(data[obj[0]].shape[0] == 0): return True, 0
+		sets = data[obj[0]][:, :self.max_hits]
 
 		x = [sets]
 
-		if(track_info):
-			if obj == 'sets': info = data['info'][:, self.track_info_indices]
-			else: info = data[obj+'_info'][:, self.track_info_indices]
+		if(len(obj) > 1):
+			info = data[obj[1]][:, self.track_info_indices]
 			x.append(info)
 			
 		return False, self.model.predict(x,)

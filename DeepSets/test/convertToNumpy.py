@@ -7,17 +7,18 @@ import time
 from threading import Thread, Lock, Semaphore, active_count
 from multiprocessing import cpu_count
 
+from DisappTrksML.DeepSets.ElectronModel import *
 from DisappTrksML.DeepSets.MuonModel import *
 
 ## PARAMETERS ##
 
-inputDirectory = '/store/user/bfrancis/images_v6/SingleMu_2017F_wIso/0000/'
+inputDirectory =  '/store/user/bfrancis/images_v7/SingleMuon_2017F_wIso/0001/'
 outputDirectory = ""
-fileNumber = 214
+fileNumber = 1000
 
 ################
 
-arch = MuonModel(eta_range=1.0,phi_range=1.0,max_hits=20)
+arch = ElectronModel()
 
 useCondor = False
 useMultiThreads = False

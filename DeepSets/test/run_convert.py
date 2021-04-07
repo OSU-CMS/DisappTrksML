@@ -9,8 +9,8 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/bfrancis/images_v6/SingleMu_2017F_wIso/0000/'
-    outDir = '/store/user/llavezzo/disappearingTracks/SingleMuon_2017F_v6/'
+    dataDir = '/store/user/bfrancis/images_v7/SingleEle_2017F_wIso/0001/'
+    outDir = '/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt2_FIXED/'
     logDir = '/data/users/llavezzo/Logs/convert/'
     reprocessAllFiles = False
 
@@ -41,9 +41,9 @@ if __name__=="__main__":
     Universe = vanilla
     +IsLocalJob = true
     Rank = TARGET.IsLocalSlot
-    request_disk = 500MB
-    request_memory = 2GB
-    request_cpus = 1
+    request_disk = 100MB
+    request_memory = 1GB
+    request_cpus = 2
     executable              = convert_wrapper.sh
     arguments               = $(PROCESS) {1} {2} {3}
     log                     = {4}log_$(PROCESS).log

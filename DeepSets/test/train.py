@@ -33,13 +33,13 @@ model_params = {
 	'phi_layers':[128,64,32],
 	'f_layers':[64,32],
 	'max_hits' : 20,
-	# 'track_info_indices' : info_indices
+	'track_info_indices' : info_indices
 }
 val_generator_params = {
 	'input_dir' : '/store/user/llavezzo/disappearingTracks/genMuons_bkg_v7/',
 	'batch_size' : 256,
 	'max_hits' : 20,
-	# 'info_indices' : info_indices
+	'info_indices' : info_indices
 }
 train_generator_params = val_generator_params.copy()
 train_generator_params.update({
@@ -63,8 +63,8 @@ nFiles = len(inputIndices)
 print('Found', nFiles, 'input files')
 
 file_ids = {
-	'train'      : inputIndices[:100],
-	'validation' : inputIndices[100:120]
+	'train'      : inputIndices[:500],
+	'validation' : inputIndices[500:600]
 }
 
 train_generator = BalancedGenerator(file_ids['train'], **train_generator_params)

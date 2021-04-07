@@ -110,20 +110,6 @@ class DeepSetsArchitecture:
         self.phi_layers = phi_layers
         self.f_layers = f_layers
 
-    def eventSelectionTraining(self, event):
-        trackPasses = []
-        for track in event.tracks:
-            if (abs(track.eta) >= 2.4 or
-                track.inGap or
-                abs(track.dRMinJet) < 0.5 or
-                abs(track.deltaRToClosestElectron) < 0.15 or
-                #abs(track.deltaRToClosestMuon) < 0.15 or
-                abs(track.deltaRToClosestTauHad) < 0.15):
-                trackPasses.append(False)
-            else:
-                trackPasses.append(True)
-        return (True in trackPasses), trackPasses
-
     def eventSelectionSignal(self, event):
         eventPasses = (event.firesGrandOrTrigger == 1 and
             event.passMETFilters == 1 and
@@ -141,7 +127,7 @@ class DeepSetsArchitecture:
         for i, track in enumerate(event.tracks):
             if (not abs(track.eta) < 2.1 or
                 not track.pt > 55 or
-                track.inGap == 0 or
+                track.inGap or
                 not (track.phi < 2.7 or track.eta < 0 or track.eta > 1.42)): # 2017 eta-phi low efficiency
                 continue
 
@@ -175,7 +161,7 @@ class DeepSetsArchitecture:
         for i, track in enumerate(event.tracks):
             if (not abs(track.eta) < 2.1 or
                 not track.pt > 30 or
-                track.inGap == 0 or
+                track.inGap or
                 not (track.phi < 2.7 or track.eta < 0 or track.eta > 1.42)): # 2017 eta-phi low efficiency
                 continue
 
@@ -213,7 +199,7 @@ class DeepSetsArchitecture:
         for i, track in enumerate(event.tracks):
             if (not abs(track.eta) < 2.1 or
                 not track.pt > 30 or
-                track.inGap == 0 or
+                track.inGap or
                 not (track.phi < 2.7 or track.eta < 0 or track.eta > 1.42)): # 2017 eta-phi low efficiency
                 continue
 
@@ -254,7 +240,11 @@ class DeepSetsArchitecture:
         return (True in trackPasses), trackPasses, trackPassesVeto
 
     def load_model(self, model_path):
-        self.model = keras.models.load_model(model_path)
+        try:
+            self.model = keras.models.load_model(model_path)
+        except:
+            self.model = keras.models.load_model(model_path, custom_objects={'tf': tf})
+
 
     def load_model_weights(self, weights_path):
         self.model.load_weights(weights_path)
@@ -266,25 +256,25 @@ class DeepSetsArchitecture:
 
         self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=metrics)
         
-        training_callbacks = [
-            callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
-            callbacks.ModelCheckpoint(filepath=outdir + 'model.{epoch}.h5',
-                                      save_best_only=True,
-                                      monitor=monitor,
-                                      mode='auto')
-        ]
+        # training_callbacks = [
+        #     callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
+        #     callbacks.ModelCheckpoint(filepath=outdir + 'model.{epoch}.h5',
+        #                               save_best_only=True,
+        #                               monitor=monitor,
+        #                               mode='auto')
+        # ]
 
         if val_generator is None:
             self.training_history = self.model.fit(train_generator,
                                                     epochs=epochs,
-                                                    verbose=1)
+                                                    verbose=2)
 
         else:
             self.training_history = self.model.fit(train_generator, 
                                                    validation_data=val_generator,
-                                                   callbacks=training_callbacks,
+                                                   #callbacks=training_callbacks,
                                                    epochs=epochs,
-                                                   verbose=1)
+                                                   verbose=2)
         
     def save_model(self, outputFileName):
         self.model.save(outputFileName)
