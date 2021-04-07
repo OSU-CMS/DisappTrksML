@@ -22,26 +22,20 @@ arch.load_model(fileDir+model_file)
 cm = np.zeros((2,2))
 
 # evaluate the model
-count = 0
-bkg_preds = None
-bkgDir = "/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt1_FIXED/"
-inputFiles = glob.glob(bkgDir+'images_*.root.npz')
+dirs = ["/store/user/llavezzo/disappearingTracks/electronsTesting/higgsino_700GeV_10000cm_fullSel_FIXED/"]
+inputFiles = []
+for d in dirs: inputFiles += glob.glob(d+'*.root.npz') 
 
 totPreds = []
 for i,fname in enumerate(inputFiles):
 	print(i)
 
-	data = np.load(fname, allow_pickle=True)
-	count += data['tracks'].shape[0]
-
-	skip, preds = arch.evaluate_npy(fname, obj=['tracks', 'infos'])
+	skip, preds = arch.evaluate_npy(fname, obj=['signal', 'signal_infos'])
 	if not skip:
 		cm[0,1] += np.count_nonzero(preds[:,1] > 0.5)
 		cm[0,0] += np.count_nonzero(preds[:,1] <= 0.5)
 
-	assert np.sum(cm) == count 		
-	# print cm
 	totPreds = np.append(totPreds,preds[:,1])
 
 print cm
-np.save("SingleEle_fullSel_pt2_preds.npy", totPreds)
+np.save("h10090_fullSel_preds.npy", totPreds)

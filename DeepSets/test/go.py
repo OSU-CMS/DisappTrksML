@@ -23,29 +23,30 @@ disc_higgsino_10000 = higgsino_700_10000['results'][:, model_idx]
 #for x in [disc_ele[disc_ele > -1], disc_muons[disc_muons > -1]]:
 #	print(x.shape)
 
-# for file in [muons, higgsino_700_10, higgsino_700_100, higgsino_700_1000, higgsino_700_10000]:
+for file in [muons, higgsino_700_10, higgsino_700_100, higgsino_700_1000, higgsino_700_10000]:
 	
-# 	events_fidMap = file['results'][:,-1]
-# 	disc = file['results'][:,0]
-# 	events_fidMap = events_fidMap[disc > -1]
-# 	n_before = events_fidMap.shape[0]
-# 	events_fidMap = events_fidMap[events_fidMap < 2.0]
-# 	n_after = events_fidMap.shape[0]
-# 	eff_fidMap = n_after*1.0 / n_before if n_before > 0 else 0
+	events_fidMap = file['results'][:,-1]
+	disc = file['results'][:,0]
+	events_fidMap = events_fidMap[disc > -1]
+	n_before = events_fidMap.shape[0]
+	events_fidMap = events_fidMap[events_fidMap < 2.0]
+	n_after = events_fidMap.shape[0]
+	eff_fidMap = n_after*1.0 / n_before if n_before > 0 else 0
 
-# 	print n_before, n_after
+	print eff_fidMap
+	# print n_before, n_after
 
-# 	events_clf = file['results'][:,3]
-# 	events_clf = events_clf[disc > -1]
-# 	n_before = events_clf.shape[0]
-# 	events_clf = events_clf[events_clf < 0.5]
-# 	n_after = events_clf.shape[0]
-# 	eff_clf = n_after*1.0 / n_before if n_before > 0 else 0
+	# events_clf = file['results'][:,3]
+	# events_clf = events_clf[disc > -1]
+	# n_before = events_clf.shape[0]
+	# events_clf = events_clf[events_clf < 0.5]
+	# n_after = events_clf.shape[0]
+	# eff_clf = n_after*1.0 / n_before if n_before > 0 else 0
 
-# 	print n_before, n_after
+	# print n_before, n_after
 
-# 	print round((eff_clf/eff_fidMap)*100, 2)
-# 	print
+	# print round((eff_clf/eff_fidMap)*100, 2)
+	# print
 
 # events_fidMap = muons['results'][:,-1]
 # disc = muons['results'][:,3]

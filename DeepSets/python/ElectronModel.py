@@ -106,7 +106,7 @@ class ElectronModel(DeepSetsArchitecture):
 
 		inputFile.Close()
 
-	def convertAMSBFileToNumpy(self, fileName):
+	def convertAMSBFileToNumpy(self, fileName, selection=None):
 		inputFile = TFile(fileName, 'read')
 		inputTree = inputFile.Get('trackImageProducer/tree')
 
@@ -114,7 +114,11 @@ class ElectronModel(DeepSetsArchitecture):
 		signal_infos = []
 
 		for event in inputTree:
-			eventPasses, trackPasses = self.eventSelectionTraining(event)
+			if selection is None: sys.exit("Pick a selection to apply from ['full', 'training']")
+			elif selection == 'full': eventPasses, trackPasses = self.eventSelectionSignal(event)
+			elif selection == 'training': eventPasses, trackPasses = self.eventSelectionSignal(event)
+			else: sys.exit("Selection not recognized.")
+			
 			if not eventPasses: continue
 
 			for i, track in enumerate(event.tracks):

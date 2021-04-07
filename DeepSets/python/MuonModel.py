@@ -119,7 +119,8 @@ class MuonModel(DeepSetsArchitecture):
 			for i, track in enumerate(event.tracks):
 				if not trackPasses[i]: continue
 
-				if isGenMatched(event, track, 13):
+				# gen matched, non reconsutrcted
+				if isGenMatched(event, track, 13) and (abs(track.deltaRToClosestMuon) >= 0.15):
 					values = self.convertTrackFromTree(event, track, 1)
 					signal.append(values['sets'])
 					signal_info.append(values['infos'])
