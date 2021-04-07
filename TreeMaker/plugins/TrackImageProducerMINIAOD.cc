@@ -172,7 +172,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   edm::Handle<edm::View<PileupSummaryInfo> > pileupInfos;
   event.getByToken(pileupInfoToken_, pileupInfos);
  
- const edm::TriggerNames &allTriggerNames = event.triggerNames(*triggers);
+  const edm::TriggerNames &allTriggerNames = event.triggerNames(*triggers);
 
   getGeometries(setup);
   getChannelStatusMaps();
@@ -215,6 +215,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   nPV_ = vertices->size();
   numGoodPVs_ = countGoodPrimaryVertices(*vertices);
 
+  vertexInfos_.clear();
   for(auto vertex : *vertices){
       VertexInfo info;
       
@@ -255,10 +256,12 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   }
 
   // Get pileup vertex z positions
-  edm::View<PileupSummaryInfo>::const_iterator iterPU;
-  for(edm::View<PileupSummaryInfo>::const_iterator iterPU = pileupInfos->begin(); iterPU != pileupInfos->end(); iterPU++) {
-    // Out of time pileup is also saved -> need to require 0th bunch crossing (in time bunch crossing)
-    if(iterPU->getBunchCrossing() == 0) pileupZPosition_ = iterPU->getPU_zpositions();
+  if(pileupInfos.isValid()) {
+    edm::View<PileupSummaryInfo>::const_iterator iterPU;
+    for(edm::View<PileupSummaryInfo>::const_iterator iterPU = pileupInfos->begin(); iterPU != pileupInfos->end(); iterPU++) {
+      // Out of time pileup is also saved -> need to require 0th bunch crossing (in time bunch crossing)
+      if(iterPU->getBunchCrossing() == 0) pileupZPosition_ = iterPU->getPU_zpositions();
+    }
   }
 
   tree_->Fill();
