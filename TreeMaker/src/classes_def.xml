@@ -17,4 +17,7 @@
 
   <class name="GenParticleInfo"/>
   <class name="std::vector<GenParticleInfo>"/>
+
+  <class name="VertexInfo"/>
+  <class name="std::vector<VertexInfo>"/>
 </lcgdict>

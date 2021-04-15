@@ -28,6 +28,8 @@ if(len(sys.argv)>1):
 
 info_indices = [4, 6, 8, 9, 11, 12, 13, 14, 15]
 model_params = {
+	'eta_range':1.0,
+	'phi_range':1.0
 	'phi_layers':[128,64,32],
 	'f_layers':[64,32],
 	'max_hits' : 20,

@@ -86,11 +86,13 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   recHitInfos_.clear();
   genParticleInfos_.clear();
   pileupZPosition_.clear();
+  vertexInfos_.clear();
 
   tree_ = fs_->make<TTree>("tree", "tree");
   tree_->Branch("tracks", &trackInfos_);
   tree_->Branch("recHits", &recHitInfos_);
   tree_->Branch("genParticles", &genParticleInfos_);
+  tree_->Branch("vertexInfos", &vertexInfos_);
   
   tree_->Branch("nPV", &nPV_);
   tree_->Branch("eventNumber", &eventNumber_);
@@ -170,7 +172,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   edm::Handle<edm::View<PileupSummaryInfo> > pileupInfos;
   event.getByToken(pileupInfoToken_, pileupInfos);
  
- const edm::TriggerNames &allTriggerNames = event.triggerNames(*triggers);
+  const edm::TriggerNames &allTriggerNames = event.triggerNames(*triggers);
 
   getGeometries(setup);
   getChannelStatusMaps();
@@ -213,6 +215,21 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   nPV_ = vertices->size();
   numGoodPVs_ = countGoodPrimaryVertices(*vertices);
 
+  vertexInfos_.clear();
+  for(auto vertex : *vertices){
+      VertexInfo info;
+      
+      TLorentzVector vertex_pos(vertex.x(), vertex.y(), vertex.z(), vertex.t());
+      TLorentzVector vertex_err(vertex.xError(), vertex.yError(), vertex.zError(), vertex.tError());
+      info.vertex = vertex_pos;
+      info.vertex_error = vertex_err;
+      info.chi2 = vertex.chi2();
+      info.ndof = vertex.ndof();
+      info.isValid = vertex.isValid();     
+
+      vertexInfos_.push_back(info);
+  }
+
   eventNumber_ = event.id().event();
   lumiBlockNumber_ = event.id().luminosityBlock();
   runNumber_ = event.id().run();
@@ -239,10 +256,12 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   }
 
   // Get pileup vertex z positions
-  edm::View<PileupSummaryInfo>::const_iterator iterPU;
-  for(edm::View<PileupSummaryInfo>::const_iterator iterPU = pileupInfos->begin(); iterPU != pileupInfos->end(); iterPU++) {
-    // Out of time pileup is also saved -> need to require 0th bunch crossing (in time bunch crossing)
-    if(iterPU->getBunchCrossing() == 0) pileupZPosition_ = iterPU->getPU_zpositions();
+  if(pileupInfos.isValid()) {
+    edm::View<PileupSummaryInfo>::const_iterator iterPU;
+    for(edm::View<PileupSummaryInfo>::const_iterator iterPU = pileupInfos->begin(); iterPU != pileupInfos->end(); iterPU++) {
+      // Out of time pileup is also saved -> need to require 0th bunch crossing (in time bunch crossing)
+      if(iterPU->getBunchCrossing() == 0) pileupZPosition_ = iterPU->getPU_zpositions();
+    }
   }
 
   tree_->Fill();
@@ -410,6 +429,9 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
     info.px = track.px();
     info.py = track.py();
     info.pz = track.pz();
+    info.vx = track.vx();
+    info.vy = track.vy();
+    info.vz = track.vz();
     info.eta = track.eta();
     info.pt = track.pt();
     info.ptError = track.ptError();
@@ -738,6 +760,10 @@ TrackImageProducerMINIAOD::getGenParticles(const reco::CandidateView &genParticl
     info.eta = p->eta();
     info.phi = p->phi();
     info.pt  = p->pt();
+
+    info.vx = p->vx();
+    info.vy = p->vy();
+    info.vz = p->vz();
 
     info.pdgId = p->pdgId();
     info.status = p->status();

@@ -6,48 +6,36 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from DisappTrksML.DeepSets.architecture import *
+from DisappTrksML.DeepSets.ElectronModel import *
 
-# parameters
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_converted/"
-modelFile = 'kfold19_noBatchNorm_finalTrainV3/model.h5'
-outDir = "kfold19_noBatchNorm_finalTrainV3/"
+# initialize the model with the weights
+fileDir = '/data/users/llavezzo/forBrian/kfold19_noBatchNorm_finalTrainV3/'
+model_file = 'model.h5'
+model_params = {
+	'phi_layers':[400,256,128], 
+	'f_layers': [128,128,64,32],
+	'track_info_indices' : [4,8,9,12]
+}
+arch = ElectronModel(**model_params)
+arch.load_model(fileDir+model_file)
 
-# initialize architecture and load the weights/model
-arch = DeepSetsArchitecture()
-arch.load_model(modelFile)
+cm = np.zeros((2,2))
 
-# iterate over desired files and predict
-true = None
-preds = None
-inputFiles = np.loadtxt(outDir + "/validation_files.txt")
+# evaluate the model
+dirs = ["/store/user/llavezzo/disappearingTracks/electronsTesting/higgsino_700GeV_10000cm_fullSel_FIXED/"]
+inputFiles = []
+for d in dirs: inputFiles += glob.glob(d+'*.root.npz') 
 
-for iFile, file in enumerate(inputFiles):
-	print str(iFile)+'/'+str(len(inputFiles))
+totPreds = []
+for i,fname in enumerate(inputFiles):
+	print(i)
 
-	fname = dataDir+'images_'+str(int(file))+'.root.npz'
+	skip, preds = arch.evaluate_npy(fname, obj=['signal', 'signal_infos'])
+	if not skip:
+		cm[0,1] += np.count_nonzero(preds[:,1] > 0.5)
+		cm[0,0] += np.count_nonzero(preds[:,1] <= 0.5)
 
-	# evaluate file
-	for obj in ['signal','background']:
+	totPreds = np.append(totPreds,preds[:,1])
 
-		skip, thisFilePreds = arch.evaluate_npy(fname, track_info=True, obj=obj)
-		if skip: continue
-
-		if obj == 'signal': trueThisFile = np.ones(len(thisFilePreds))
-		elif obj == 'background': trueThisFile = np.zeros(len(thisFilePreds))
-
-		if true is None:
-			true = trueThisFile
-			preds = thisFilePreds[:,1]
-		else:
-			true = np.concatenate((true, trueThisFile))
-			preds = np.concatenate((preds, thisFilePreds[:,1]))
-
-# calculate and save metrics
-metrics = arch.metrics_per_cut(true, preds, 40)
-np.save(outDir+'metrics.npy',metrics)
-
-plt.scatter(metrics['splits'], metrics['precision'], label="precision")
-plt.scatter(metrics['splits'], metrics['recall'], label="recall")
-plt.scatter(metrics['splits'], metrics['f1'], label="f1")
-plt.legend()
-plt.savefig(outDir+"metrics.png")
+print cm
+np.save("h10090_fullSel_preds.npy", totPreds)

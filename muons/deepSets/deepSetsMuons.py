@@ -95,11 +95,20 @@ class DeepSetsArchitecture:
 			# CSC
 			if hit.detType == 5:
 				station = hit.cscRecHits[0].station
-				time = hit.cscRecHits[0].tpeak
+				time = hit.time
+				detTypeEncoded = [1,0,0]
+
 			# DT
 			elif hit.detType == 6:
 				station = hit.dtRecHits[0].station
-				time = hit.dtRecHits[0].digitime 
+				time = hit.time
+				detTypeEncoded = [0,1,0]
+
+			# RPCs
+			elif hit.detType == 7:
+				station = 0
+				time = hit.time
+				detTypeEncoded = [0,0,1]
 
 			# FIXME: add other detTypes
 			else: 
@@ -497,12 +506,12 @@ class DeepSetsArchitecture:
 		data = np.load(fname, allow_pickle=True)
 
 		if(data[obj].shape[0] == 0): return True, 0
-		sets = data[obj][:,:40]
+		sets = data[obj][:,:40,:4]
 
 		x = [sets]
 		if(calos):
-			if obj == 'sets': calos = data['calos'][:,:40]
-			else: calos = data[obj+'_calos'][:,:40]
+			if obj == 'sets': calos = data['calos'][:,:40,:4]
+			else: calos = data[obj+'_calos'][:,:40,:4]
 			x.append(calos)
 
 		if(type(info_indices) != bool):
@@ -606,7 +615,7 @@ class DeepSetsArchitecture:
 				if (abs(track.deltaRToClosestMuon) > 0.15 and
 					track.missingOuterHits >= 3):
 					trackPasses[i] = True
-
+					
 		return (True in trackPasses), trackPasses
 
 	def fit_generator(self, train_generator, val_generator=None, epochs=10, monitor='val_loss',patience_count=10,outdir=""):

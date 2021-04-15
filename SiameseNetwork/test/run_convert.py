@@ -9,8 +9,8 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/mcarrigan/Images-v7-DYJets-MC2017_aMCNLO/'
-    outDir = '/store/user/llavezzo/disappearingTracks/muonsTesting/images_v7_recoFailMuons/'
+    dataDir = '/store/user/mcarrigan/AMSB/images_v7/images_higgsino_700GeV_10000cm_step3/'
+    outDir = '/store/user/llavezzo/disappearingTracks/higgsino_700GeV_10000cm_test/'
     logDir = '/data/users/llavezzo/Logs/convert/'
     reprocessAllFiles = False
 
@@ -19,14 +19,14 @@ if __name__=="__main__":
 
     alreadyProcessedFiles = []
     for filename in os.listdir(outDir):
-        if('.root' in filename and 'images' in filename):
+        if('.root' in filename and 'hist' in filename):
             index1 = filename.find("_")
             index2 = filename.find(".root")
             numFile = int(filename[index1+1:index2])
             alreadyProcessedFiles.append(numFile)
     files = []
     for filename in os.listdir(dataDir):
-        if('.root' in filename and 'images' in filename):
+        if('.root' in filename and 'hist' in filename):
             index1 = filename.find("_")
             index2 = filename.find(".root")
             numFile = int(filename[index1+1:index2])
@@ -41,9 +41,9 @@ if __name__=="__main__":
     Universe = vanilla
     +IsLocalJob = true
     Rank = TARGET.IsLocalSlot
-    request_disk = 100MB
-    request_memory = 1GB
-    request_cpus = 2
+    request_disk = 500MB
+    request_memory = 2GB
+    request_cpus = 1
     executable              = convert_wrapper.sh
     arguments               = $(PROCESS) {1} {2} {3}
     log                     = {4}log_$(PROCESS).log
