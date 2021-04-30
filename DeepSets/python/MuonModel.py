@@ -145,60 +145,6 @@ class MuonModel(DeepSetsArchitecture):
 
 		inputFile.Close()
 
-	def isProbeTrack(self, track):
-		if(track.pt <= 30 or
-		abs(track.eta) >= 2.1 or
-		track.nValidPixelHits < 4 or
-		track.nValidHits < 4 or
-		track.missingInnerHits != 0 or
-		track.missingMiddleHits != 0 or
-		track.trackIso / track.pt >= 0.05 or
-		abs(track.d0) >= 0.02 or
-		abs(track.dz) >= 0.5 or
-		abs(track.dRMinJet) <= 0.5):
-			return False
-		return True
-
-	def convertTPFileToNumpy_NB(self, fileName):
-		inputFile = TFile(fileName, 'read')
-		inputTree = inputFile.Get('trackImageProducer/tree')
-
-		signal_tracks, signal_infos = [], []
-		bkg_tracks, bkg_infos = [], []
-
-		for event in inputTree:
-
-			eventPasses, trackPasses = self.eventSelectionTraining(event)
-			if not eventPasses: continue
-
-			for i, track in enumerate(event.tracks):
-				if abs(track.deltaRToClosestMuon) < 0.15: continue
-				if not trackPasses[i]: continue
-
-				if track.isTagProbeMuon:
-					values = self.convertTrackFromTree(event, track, 1)
-					signal_tracks.append(values['sets'])
-					signal_infos.append(values['infos'])
-
-				if (not track.isTagProbeMuon) and self.isProbeTrack(track):
-					values = self.convertTrackFromTree(event, track, 0)
-					bkg_tracks.append(values['sets'])
-					bkg_infos.append(values['infos'])
-
-		outputFileName = fileName.split('/')[-1] + '.npz'
-
-		if len(signal_tracks) > 0 or len(bkg_tracks) > 0:
-			np.savez_compressed(outputFileName,
-								signal_tracks = signal_tracks,
-								signal_infos = signal_infos,
-								bkg_trakcs = bkg_tracks,
-								bkg_infos = bkg_infos)
-			print 'Wrote', outputFileName
-		else:
-			print 'No events passed the selections'
-
-		inputFile.Close()
-
 	def convertTPFileToNumpy(self, fileName):
 		inputFile = TFile(fileName, 'read')
 		inputTree = inputFile.Get('trackImageProducer/tree')
