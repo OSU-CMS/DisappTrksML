@@ -12,4 +12,4 @@ Because there were too few muons that failed the reconstruction to train on. The
 will also teach the model to identify non-reconstructed muons).
 Each track used the 20 nearest MUO hits, with each hit being of form (dPhi, dEta, Station Number, Time, detType on-hot encoded), and track-level information was added as track's absolute eta and phi coordinates, the amount of pileup, the sum of the energy deposited in the ECAL and HCAL (separately) within delta R < 0.1 of the track, the pT error, and the reduced chi squared.
 
-See ELOG and Luca's thesis for more details.
+See ELOG and Luca's senior thesis for more details.
