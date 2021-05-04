@@ -26,17 +26,24 @@ if(len(sys.argv)>1):
 	input_params = np.load("params.npy",allow_pickle=True)[int(sys.argv[1])]
 	outdir = input_params[0]
 
-info_indices = [4, 6, 8, 9, 11, 14, 15]
+info_indices = [4, 	# nPV
+				6, 	# deltaRToClosestMuon
+				8, 	# eta
+				9, 	# phi
+				11, # nLayersWithMeasurement
+				14, # ECAL energy
+				15	# HCAL energy
+				]
 model_params = {
 	'eta_range':1.0,
 	'phi_range':1.0,
 	'phi_layers':[128,64,32],
-	'f_layers':[64,32],
+	'f_layers':[64,32,32],
 	'max_hits' : 20,
 	'track_info_indices' : info_indices
 }
 val_generator_params = {
-	'input_dir' : '/store/user/llavezzo/disappearingTracks/genMuons_bkg_v7/',
+	'input_dir' : '/store/user/llavezzo/disappearingTracks/MC_training_v7/',
 	'batch_size' : 256,
 	'max_hits' : 20,
 	'info_indices' : info_indices
@@ -47,7 +54,7 @@ train_generator_params.update({
 	'batch_ratio': 0.5
 })
 train_params = {
-	'epochs': 5,
+	'epochs': 10,
 	'outdir':outdir,
 	'patience_count':5
 }

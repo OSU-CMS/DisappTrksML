@@ -258,10 +258,10 @@ class DeepSetsArchitecture:
         
         training_callbacks = [
             callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
-            callbacks.ModelCheckpoint(filepath=outdir + 'model.{epoch}.h5',
-                                      save_best_only=True,
-                                      monitor=monitor,
-                                      mode='auto')
+            # callbacks.ModelCheckpoint(filepath=outdir + 'model.{epoch}.h5',
+            #                           save_best_only=True,
+            #                           monitor=monitor,
+            #                           mode='auto')
         ]
 
         if val_generator is None:

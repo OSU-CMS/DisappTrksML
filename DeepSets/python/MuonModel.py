@@ -119,13 +119,19 @@ class MuonModel(DeepSetsArchitecture):
 			for i, track in enumerate(event.tracks):
 				if not trackPasses[i]: continue
 
-				# gen matched, non reconsutrcted
-				if isGenMatched(event, track, 13) and (abs(track.deltaRToClosestMuon) >= 0.15):
+				# gen matched
+				if isGenMatched(event, track, 13):
 					values = self.convertTrackFromTree(event, track, 1)
 					signal.append(values['sets'])
 					signal_info.append(values['infos'])
 					# values = self.convertTrackFromTreeElectrons(event, track, 1)
 					# signal_calos.append(values['sets'])
+
+				# non gen matched
+				else:
+					values = self.convertTrackFromTree(event, track, 0)
+					background.append(values['sets'])
+					background_info.append(values['infos'])
 
 		outputFileName = fileName.split('/')[-1] + '.npz'
 

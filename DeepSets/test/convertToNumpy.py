@@ -64,9 +64,9 @@ elif useCondor:
 	inarray = np.loadtxt(fileList,dtype=float)
 	fileNumber = int(inarray[int(fileIndex)])
 
-	arch.convertTPFileToNumpy_NB(inputDirectory + 'images_' + str(fileNumber) + '.root')
+	arch.convertMCFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
 	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)
 
 else:
-	arch.convertTPFileToNumpy_NB(inputDirectory + 'images_' + str(fileNumber) + '.root')
+	arch.convertTPFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
 	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)

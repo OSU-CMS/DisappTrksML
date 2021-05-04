@@ -9,11 +9,17 @@ from DisappTrksML.DeepSets.architecture import *
 from DisappTrksML.DeepSets.MuonModel import *
 
 # initialize the model with the weights
-fileDir = 'training_output/'
+fileDir = 'train_muons/'
 model_file = 'model.h5'
 model_params = {
 	'max_hits' : 20,
-	'track_info_indices' : [4, 6, 8, 9, 11, 14, 15]
+	'track_info_indices' : [
+							4, 			# nPV
+							6, 			# dRMinBadEcalChannel
+							8, 9, 		# track eta, phi
+							11, 		# nLayersWithMeasurement
+							14, 15 		# sum of ECAL, HCAL energy
+							]
 }
 arch = MuonModel(**model_params)
 arch.load_model(fileDir+model_file)
@@ -25,11 +31,12 @@ count = 0
 bkg_preds = None
 bkgDir = "/store/user/llavezzo/disappearingTracks/muonsTesting/SingleMuon_pt1/"
 inputFiles = glob.glob(bkgDir+'images_*.root.npz')
-
 bkgDir = "/store/user/llavezzo/disappearingTracks/muonsTesting/SingleMuon_pt2/"
 inputFiles = inputFiles + glob.glob(bkgDir+'images_*.root.npz')
 
 totPreds = []
+predMu_tracks, predMu_infos = None, None
+predBkg_tracks, predBkg_infos = None, None
 for i,fname in enumerate(inputFiles):
 	print(i)
 
@@ -45,5 +52,23 @@ for i,fname in enumerate(inputFiles):
 
 	assert np.sum(cm) == count 	
 
+	if predMu_tracks is None:
+		predMu_tracks = data['tracks'][preds[:,1] > 0.5]
+		predMu_infos = data['infos'][preds[:,1] > 0.5]
+	else:
+		predMu_tracks = np.vstack((predMu_tracks, data['tracks'][preds[:,1] > 0.5]))
+		predMu_infos = np.vstack((predMu_infos, data['infos'][preds[:,1] > 0.5]))
+	if predBkg_tracks is None:
+		predBkg_tracks = data['tracks'][preds[:,1] <= 0.5]
+		predBkg_infos = data['infos'][preds[:,1] <= 0.5]
+	else:
+		predBkg_tracks = np.vstack((predBkg_tracks, data['tracks'][preds[:,1] <= 0.5]))
+		predBkg_infos = np.vstack((predBkg_infos, data['infos'][preds[:,1] <= 0.5]))
+
+
 print cm
-np.savez_compressed("muonModel_TPMuons_trainSel.npz", signal_preds = totPreds)
+np.savez_compressed("muonPreds.npz",
+					predMu_tracks = predMu_tracks,
+					predMu_infos = predMu_infos,
+					predBkg_tracks = predBkg_tracks,
+					predBkg_infos = predBkg_infos)
