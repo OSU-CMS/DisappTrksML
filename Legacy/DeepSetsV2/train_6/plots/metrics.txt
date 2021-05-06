@@ -1,3 +1,0 @@
-Precision = TP/(TP+FP) = fraction of predicted true actually true 0.00728
-Recall = TP/(TP+FN) = fraction of true class predicted to be true 0.00072
-AUC Score:0.04417
