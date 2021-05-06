@@ -24,7 +24,7 @@ backup_suffix = datetime.now().strftime('%Y-%m-%d_%H.%M.%S')
 outdir = "train_"+backup_suffix+"/"
 if(len(sys.argv)>1):
 	input_params = np.load("params.npy",allow_pickle=True)[int(sys.argv[1])]
-	outdir = input_params[0]
+	outdir = str(input_params[0])
 
 info_indices = [4, 	# nPV
 				6, 	# deltaRToClosestMuon
@@ -41,9 +41,9 @@ model_params = {
 	'f_layers':[64,32,32],
 	'max_hits' : 20,
 	'track_info_indices' : info_indices
-}
+}	
 val_generator_params = {
-	'input_dir' : '/store/user/llavezzo/disappearingTracks/MC_training_v7/',
+	'input_dir' : '/store/user/llavezzo/disappearingTracks/MC_training_v7_V3/',
 	'batch_size' : 256,
 	'max_hits' : 20,
 	'info_indices' : info_indices
@@ -54,7 +54,7 @@ train_generator_params.update({
 	'batch_ratio': 0.5
 })
 train_params = {
-	'epochs': 10,
+	'epochs': 5,
 	'outdir':outdir,
 	'patience_count':5
 }

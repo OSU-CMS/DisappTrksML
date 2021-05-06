@@ -38,7 +38,7 @@ if __name__=="__main__":
         # [[400,256,128], [128,128,64,32],0.5,15,"kfold19_noBatchNorm_finalTrainV3/", True],
         # [[64,64,256],[64,64,64],0.1,20,"kfold17_noBatchNorm_finalTrainV3/", True],
 
-        [['train_10.32_5.4.2021/']]
+        ["train_output_4/"]
     ]
 
     np.save('params.npy',params)

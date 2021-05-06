@@ -12,8 +12,8 @@ import os, sys
 import numpy as np
 import pickle as pkl
 
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_genmuons_bkg/"
-objects = ["signal_tracks", "background_tracks"]
+dataDir = "/store/user/llavezzo/disappearingTracks/muonsTesting/SingleMuon_pt1/"
+objects = ["tracks"]
 class_count = np.zeros(len(objects))
 
 for file in os.listdir(dataDir):

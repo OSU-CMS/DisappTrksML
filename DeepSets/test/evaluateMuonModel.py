@@ -9,14 +9,14 @@ from DisappTrksML.DeepSets.architecture import *
 from DisappTrksML.DeepSets.MuonModel import *
 
 # initialize the model with the weights
-fileDir = 'train_muons/'
+fileDir = 'train_output_4/'
 model_file = 'model.h5'
 model_params = {
 	'max_hits' : 20,
 	'track_info_indices' : [
 							4, 			# nPV
 							6, 			# dRMinBadEcalChannel
-							8, 9, 		# track eta, phi
+							# 8, 9, 		# track eta, phi
 							11, 		# nLayersWithMeasurement
 							14, 15 		# sum of ECAL, HCAL energy
 							]
@@ -44,10 +44,10 @@ for i,fname in enumerate(inputFiles):
 	count += data['tracks'].shape[0]
 
 	skip, preds = arch.evaluate_npy(fname, obj=['tracks', 'infos'])
-	if not skip:
-		cm[0,1] += np.count_nonzero(preds[:,1] > 0.5)
-		cm[0,0] += np.count_nonzero(preds[:,1] <= 0.5)
+	if skip: continue
 
+	cm[0,1] += np.count_nonzero(preds[:,1] > 0.5)
+	cm[0,0] += np.count_nonzero(preds[:,1] <= 0.5)
 	totPreds = np.concatenate((totPreds, preds[:,1]))
 
 	assert np.sum(cm) == count 	
@@ -67,8 +67,14 @@ for i,fname in enumerate(inputFiles):
 
 
 print cm
-np.savez_compressed("muonPreds.npz",
+np.savez_compressed("muonPreds2.npz",
 					predMu_tracks = predMu_tracks,
 					predMu_infos = predMu_infos,
 					predBkg_tracks = predBkg_tracks,
 					predBkg_infos = predBkg_infos)
+
+plt.hist(totPreds, histtype='step', edgecolor='black')
+plt.xlabel("Classifier Output")
+plt.ylabel("Count")
+plt.title("deepSets Predictions")
+plt.savefig("preds.png")
