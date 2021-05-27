@@ -24,22 +24,29 @@ backup_suffix = datetime.now().strftime('%Y-%m-%d_%H.%M.%S')
 outdir = "train_"+backup_suffix+"/"
 if(len(sys.argv)>1):
 	input_params = np.load("params.npy",allow_pickle=True)[int(sys.argv[1])]
-	outdir = input_params[0]
+	outdir = str(input_params[0])
 
-info_indices = [4, 6, 8, 9, 11, 14, 15]
+info_indices = [4, 	# nPV
+				6, 	# deltaRToClosestMuon
+				8, 	# eta
+				9, 	# phi
+				11, # nLayersWithMeasurement
+				14, # ECAL energy
+				15	# HCAL energy
+				]
 model_params = {
 	'eta_range':1.0,
 	'phi_range':1.0,
 	'phi_layers':[128,64,32],
-	'f_layers':[64,32],
+	'f_layers':[64,32,32],
 	'max_hits' : 20,
-	# 'track_info_indices' : info_indices
-}
+	'track_info_indices' : info_indices
+}	
 val_generator_params = {
-	'input_dir' : '/store/user/llavezzo/disappearingTracks/genMuons_bkg_v7/',
+	'input_dir' : '/store/user/llavezzo/disappearingTracks/MC_training_v7_V3/',
 	'batch_size' : 256,
 	'max_hits' : 20,
-	# 'info_indices' : info_indices
+	'info_indices' : info_indices
 }
 train_generator_params = val_generator_params.copy()
 train_generator_params.update({
@@ -63,8 +70,8 @@ nFiles = len(inputIndices)
 print('Found', nFiles, 'input files')
 
 file_ids = {
-	'train'      : inputIndices[:100],
-	'validation' : inputIndices[100:120]
+	'train'      : inputIndices[:500],
+	'validation' : inputIndices[500:600]
 }
 
 train_generator = BalancedGenerator(file_ids['train'], **train_generator_params)

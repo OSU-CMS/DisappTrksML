@@ -7,17 +7,18 @@ import time
 from threading import Thread, Lock, Semaphore, active_count
 from multiprocessing import cpu_count
 
+from DisappTrksML.DeepSets.ElectronModel import *
 from DisappTrksML.DeepSets.MuonModel import *
 
 ## PARAMETERS ##
 
-inputDirectory = '/store/user/bfrancis/images_v6/SingleMu_2017F_wIso/0000/'
+inputDirectory =  '/store/user/bfrancis/images_v7/SingleMuon_2017F_wIso/0000/'
 outputDirectory = ""
-fileNumber = 214
+fileNumber = 78
 
 ################
 
-arch = MuonModel(eta_range=1.0,phi_range=1.0,max_hits=20)
+arch = MuonModel(eta_range=1.0, phi_range=1.0, max_hits=20)
 
 useCondor = False
 useMultiThreads = False
@@ -63,7 +64,7 @@ elif useCondor:
 	inarray = np.loadtxt(fileList,dtype=float)
 	fileNumber = int(inarray[int(fileIndex)])
 
-	arch.convertTPFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
+	arch.convertMCFileToNumpy(inputDirectory + 'images_' + str(fileNumber) + '.root')
 	os.system('mv -v images_' + str(fileNumber) + '.root.npz ' + outputDirectory)
 
 else:

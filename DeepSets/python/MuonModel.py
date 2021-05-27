@@ -14,6 +14,19 @@ class MuonModel(DeepSetsArchitecture):
 		self.phi_layers_calos = phi_layers_calos
 		self.track_info_shape = len(track_info_indices)
 
+	def eventSelectionTraining(self, event):
+		trackPasses = []
+		for track in event.tracks:
+			if (abs(track.eta) >= 2.4 or
+				track.inGap or
+				abs(track.dRMinJet) < 0.5 or
+				abs(track.deltaRToClosestElectron) < 0.15 or
+				abs(track.deltaRToClosestTauHad) < 0.15):
+				trackPasses.append(False)
+			else:
+				trackPasses.append(True)
+		return (True in trackPasses), trackPasses
+
 	def convertTrackFromTree(self, event, track, class_label):
 		hits = []
 		dists = []
@@ -106,6 +119,7 @@ class MuonModel(DeepSetsArchitecture):
 			for i, track in enumerate(event.tracks):
 				if not trackPasses[i]: continue
 
+				# gen matched
 				if isGenMatched(event, track, 13):
 					values = self.convertTrackFromTree(event, track, 1)
 					signal.append(values['sets'])
@@ -113,12 +127,11 @@ class MuonModel(DeepSetsArchitecture):
 					# values = self.convertTrackFromTreeElectrons(event, track, 1)
 					# signal_calos.append(values['sets'])
 
+				# non gen matched
 				else:
 					values = self.convertTrackFromTree(event, track, 0)
 					background.append(values['sets'])
 					background_info.append(values['infos'])
-					# values = self.convertTrackFromTreeElectrons(event, track, 0)
-					# background_calos.append(values['sets'])
 
 		outputFileName = fileName.split('/')[-1] + '.npz'
 
@@ -155,6 +168,7 @@ class MuonModel(DeepSetsArchitecture):
 			for i, track in enumerate(event.tracks):
 				if not trackPasses[i]: continue
 				if not trackPassesVeto[i]: continue
+				#if not track.isTagProbeMuon: continue
 
 				values = self.convertTrackFromTree(event, track, 1)
 				tracks.append(values['sets'])
@@ -168,7 +182,7 @@ class MuonModel(DeepSetsArchitecture):
 			np.savez_compressed(outputFileName,
 								# recoMuons=recoMuons,
 								# recoMuons_infos=recoMuons_infos,
-								sets=tracks,
+								tracks=tracks,
 								infos=infos)
 								# signal_calos=calos)
 			print 'Wrote', outputFileName
@@ -183,10 +197,9 @@ class MuonModel(DeepSetsArchitecture):
 
 		signal = []
 		signal_infos = []
-		signal_calos = []
 
 		for event in inputTree:
-			eventPasses, trackPasses = self.signalSelection(event)
+			eventPasses, trackPasses = self.eventSelectionSignal(event)
 			if not eventPasses: continue
 
 			for i, track in enumerate(event.tracks):
@@ -197,16 +210,13 @@ class MuonModel(DeepSetsArchitecture):
 				values = self.convertTrackFromTree(event, track, 1)
 				signal.append(values['sets'])
 				signal_infos.append(values['infos'])
-				values = self.convertTrackFromTreeElectrons(event, track, 1)
-				signal_calos.append(values['sets'])
 
 		outputFileName = fileName.split('/')[-1] + '.npz'
 
 		if len(signal) > 0:
 			np.savez_compressed(outputFileName,
 								signal=signal,
-								signal_infos=signal_infos,
-								signal_calos=signal_calos)
+								signal_infos=signal_infos)
 			print 'Wrote', outputFileName
 		else:
 			print 'No events passed the selections'
@@ -344,21 +354,16 @@ class MuonModel(DeepSetsArchitecture):
 		prediction = self.model.predict([np.reshape(event['sets'], (1, self.max_hits, 4))[:, :self.max_hits, :], np.reshape(event['infos'], (1, len(event['infos'])))[:,self.track_info_indices]])
 		return prediction[0, 1] # p(is electron)
 
-	def evaluate_npy(self, fname, calos=False, obj='sets'):
+	def evaluate_npy(self, fname, obj=['sets']):
 		data = np.load(fname, allow_pickle=True)
 
-		if(data[obj].shape[0] == 0): return True, 0
-		sets = data[obj][:,:self.max_hits]
+		if(data[obj[0]].shape[0] == 0): return True, 0
+		sets = data[obj[0]][:, :self.max_hits]
 
 		x = [sets]
-		if(calos):
-			if obj == 'sets': calos = data['calos'][:,:self.max_hits]
-			else: calos = data[obj+'_calos'][:,:self.max_hits]
-			x.append(calos)
 
-		if(self.track_info_shape != 0):
-			if obj == 'sets': info = data['infos'][:,self.track_info_indices]
-			else: info = data[obj+'_infos'][:,self.track_info_indices]
+		if(len(obj) > 1):
+			info = data[obj[1]][:, self.track_info_indices]
 			x.append(info)
 			
 		return False, self.model.predict(x,)

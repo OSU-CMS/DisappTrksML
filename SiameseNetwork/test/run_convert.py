@@ -9,8 +9,8 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/mcarrigan/Images-v7p1-DYJets-MC2017_aMCNLO/'
-    outDir = '/store/user/llavezzo/disappearingTracks/siameseData/MC_muons_V2/'
+    dataDir = '/store/user/mcarrigan/AMSB/images_v7/images_higgsino_700GeV_10000cm_step3/'
+    outDir = '/store/user/llavezzo/disappearingTracks/higgsino_700GeV_10000cm_test/'
     logDir = '/data/users/llavezzo/Logs/convert/'
     reprocessAllFiles = False
 
@@ -19,14 +19,14 @@ if __name__=="__main__":
 
     alreadyProcessedFiles = []
     for filename in os.listdir(outDir):
-        if('.root' in filename and 'images' in filename):
+        if('.root' in filename and 'hist' in filename):
             index1 = filename.find("_")
             index2 = filename.find(".root")
             numFile = int(filename[index1+1:index2])
             alreadyProcessedFiles.append(numFile)
     files = []
     for filename in os.listdir(dataDir):
-        if('.root' in filename and 'images' in filename):
+        if('.root' in filename and 'hist' in filename):
             index1 = filename.find("_")
             index2 = filename.find(".root")
             numFile = int(filename[index1+1:index2])

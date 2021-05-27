@@ -1,12 +1,20 @@
+"""
+Counts the number of events from a given folder.
+Use it to get an idea how many events pass a selection in each class 
+after using the condorized run_convert.py.
+
+Arguments:
+Pass the name of each class in the .npz file in the 'objects' array
+and the directory as the dataDir.
+"""
+
 import os, sys
 import numpy as np
 import pickle as pkl
 
-dataDir = "/store/user/llavezzo/disappearingTracks/images_DYJetsToLL_v5_genmuons_bkg/"
-
-eCounts = {}
-bkgCounts = {}
-signal, bkg = 0, 0
+dataDir = "/store/user/llavezzo/disappearingTracks/muonsTesting/SingleMuon_pt1/"
+objects = ["tracks"]
+class_count = np.zeros(len(objects))
 
 for file in os.listdir(dataDir):
 
@@ -15,26 +23,10 @@ for file in os.listdir(dataDir):
 
 	print(file)
 
-	index1 = file.find("_")
-	index2 = file.find(".root.npz")
-	fileNum = int(file[index1+1:index2])
-
 	fin = np.load(dataDir+file, allow_pickle=True)
 
-	signal_thisTree = int(fin['signal'].shape[0])
-	bkg_thisTree = int(fin['background'].shape[0])
-
-	eCounts.update({fileNum:signal_thisTree})
-	signal += signal_thisTree
-
-	bkgCounts.update({fileNum:bkg_thisTree})
-	bkg += bkg_thisTree
+	for iClass, obj in enumerate(objects):
+		class_count[iClass] += int(fin[obj].shape[0])
 	
-
-print("signal",signal)
-print("bkg",bkg)
-
-# with open(dataDir+'sCounts.pkl', 'wb') as f:
-# 	pkl.dump(eCounts,f)
-# with open(dataDir+'bkgCounts.pkl', 'wb') as f:
-# 	pkl.dump(bkgCounts,f)
+for obj, count in zip(objects, class_count):
+	print(obj, "\t", count)
