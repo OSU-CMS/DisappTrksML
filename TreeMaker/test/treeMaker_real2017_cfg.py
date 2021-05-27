@@ -2,11 +2,10 @@
 # using: 
 # Revision: 1.19 
 # Source: /local/reps/CMSSW/CMSSW/Configuration/Applications/python/ConfigBuilder.py,v 
-# with command line options: step1 --filein dbs:/ZJetsToNuNu_HT-100To200_13TeV-madgraph/RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v1/MINIAODSIM --mc --eventcontent MINIAODSIM --runUnscheduled --datatier MINIAODSIM --conditions 94X_mc2017_realistic_v15 --step PAT --nThreads 4 --scenario pp --era Run2_2017,run2_miniAOD_94XFall17 --python_filename candidateTrackProducer_RunMiniAOD_MC2017_cfg.py --no_exec --customise Configuration/DataProcessing/Utils.addMonitoring -n 100
+# with command line options: REMINIAOD -s PAT --runUnscheduled --nThreads 4 --data --era Run2_2017,run2_miniAOD_94XFall17 --scenario pp --conditions 94X_dataRun2_ReReco_EOY17_v6 --eventcontent MINIAOD --datatier MINIAOD --filein file:pippo.root -n 100 --python_filename=reminiaod_Run2017.py --no_exec
 import FWCore.ParameterSet.Config as cms
 
 from Configuration.StandardSequences.Eras import eras
-from PhysicsTools.PatAlgos.slimming.isolatedTracks_cfi import *
 
 process = cms.Process('PAT',eras.Run2_2017,eras.run2_miniAOD_94XFall17)
 
@@ -15,11 +14,10 @@ process.load('Configuration.StandardSequences.Services_cff')
 process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.EventContent.EventContent_cff')
-process.load('SimGeneral.MixingModule.mixNoPU_cfi')
 process.load('Configuration.StandardSequences.GeometryRecoDB_cff')
-process.load('Configuration.StandardSequences.MagneticField_cff')
+process.load('Configuration.StandardSequences.MagneticField_AutoFromDBCurrent_cff')
 process.load('PhysicsTools.PatAlgos.slimming.metFilterPaths_cff')
-process.load('Configuration.StandardSequences.PATMC_cff')
+process.load('Configuration.StandardSequences.PAT_cff')
 process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
@@ -29,12 +27,7 @@ process.maxEvents = cms.untracked.PSet(
 
 # Input source
 process.source = cms.Source("PoolSource",
-    fileNames = cms.untracked.vstring( (
-	#'/store/data/Run2017F/ZeroBias/AOD/25Mar2019-v1/70000/007F3529-E74F-E911-9ECD-0242AC130002.root',
-        #'file:/store/user/mcarrigan/06C4ED85-A9F2-E711-87B6-0025905B85D8.root',
-        #'/store/mc/RunIIFall17DRPremix/ZJetsToNuNu_HT-100To200_13TeV-madgraph/AODSIM/94X_mc2017_realistic_v10-v1/00000/F67AD86D-E915-E811-B51F-0CC47A0AD6AA.root',
-        '/store/mc/RunIIFall17DRPremix/DYJetsToLL_M-50_TuneCP5_13TeV-amcatnloFXFX-pythia8/AODSIM/PU2017_94X_mc2017_realistic_v11-v1/00000/36A2F3FA-3C8F-E811-8A19-A4BF01159320.root',
-    ) ),
+    fileNames = cms.untracked.vstring('/store/data/Run2017F/ZeroBias/AOD/25Mar2019-v1/70000/007F3529-E74F-E911-9ECD-0242AC130002.root',),
     secondaryFileNames = cms.untracked.vstring()
 )
 
@@ -48,25 +41,25 @@ process.options = cms.untracked.PSet(
 
 # Production Info
 process.configurationMetadata = cms.untracked.PSet(
-    annotation = cms.untracked.string('step1 nevts:4800'),
+    annotation = cms.untracked.string('REMINIAOD nevts:100'),
     name = cms.untracked.string('Applications'),
     version = cms.untracked.string('$Revision: 1.19 $')
 )
 
 # Output definition
 
-process.MINIAODSIMoutput = cms.OutputModule("PoolOutputModule",
+process.MINIAODoutput = cms.OutputModule("PoolOutputModule",
     compressionAlgorithm = cms.untracked.string('LZMA'),
     compressionLevel = cms.untracked.int32(4),
     dataset = cms.untracked.PSet(
-        dataTier = cms.untracked.string('MINIAODSIM'),
+        dataTier = cms.untracked.string('MINIAOD'),
         filterName = cms.untracked.string('')
     ),
     dropMetaData = cms.untracked.string('ALL'),
+    fileName = cms.untracked.string("imagesMiniAOD.root"),
     eventAutoFlushCompressedSize = cms.untracked.int32(-900),
     fastCloning = cms.untracked.bool(False),
-    fileName = cms.untracked.string('step1_PAT.root'),
-    outputCommands = process.MINIAODSIMEventContent.outputCommands,
+    outputCommands = process.MINIAODEventContent.outputCommands,
     overrideBranchesSplitLevel = cms.untracked.VPSet(cms.untracked.PSet(
         branch = cms.untracked.string('patPackedCandidates_packedPFCandidates__*'),
         splitLevel = cms.untracked.int32(99)
@@ -123,24 +116,24 @@ process.MINIAODSIMoutput = cms.OutputModule("PoolOutputModule",
 
 # Other statements
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, '94X_mc2017_realistic_v15', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, '94X_dataRun2_ReReco_EOY17_v6', '')
 
 process.load('DisappTrks.CandidateTrackProducer.CandidateTrackProducer_cfi')
 process.candidateTracks = cms.Path(process.candidateTrackProducer)
 from DisappTrks.CandidateTrackProducer.customize import disappTrksOutputCommands
-process.MINIAODSIMoutput.outputCommands.extend(disappTrksOutputCommands)
+process.MINIAODoutput.outputCommands.extend(disappTrksOutputCommands)
 
 process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducerMINIAOD",
-    triggers	   = cms.InputTag("TriggerResults", "", "HLT"),
+    triggers       = cms.InputTag("TriggerResults", "", "HLT"),
     triggerObjects = cms.InputTag("slimmedPatTrigger"),
     tracks         = cms.InputTag("candidateTrackProducer"),
     genParticles   = cms.InputTag("prunedGenParticles", ""),
     met            = cms.InputTag("slimmedMETs"),
-    electrons	   = cms.InputTag("slimmedElectrons", ""),
+    electrons      = cms.InputTag("slimmedElectrons", ""),
     muons          = cms.InputTag("slimmedMuons", ""),
     taus           = cms.InputTag("slimmedTaus", ""),
     pfCandidates   = cms.InputTag("packedPFCandidates", ""),
-    vertices	   = cms.InputTag("offlineSlimmedPrimaryVertices", ""),
+    vertices       = cms.InputTag("offlineSlimmedPrimaryVertices", ""),
     jets           = cms.InputTag("slimmedJets", ""),
 
     rhoCentralCalo = cms.InputTag("fixedGridRhoFastjetCentralCalo"),
@@ -165,8 +158,8 @@ process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducerMINIAOD",
     pileupInfo = cms.InputTag ("addPileupInfo"),
 
     signalTriggerNames = cms.vstring([
-	'HLT_MET105_IsoTrk50_v',
-	'HLT_PFMET120_PFMHT120_IDTight_v',
+    'HLT_MET105_IsoTrk50_v',
+    'HLT_PFMET120_PFMHT120_IDTight_v',
         'HLT_PFMET130_PFMHT130_IDTight_v',
         'HLT_PFMET140_PFMHT140_IDTight_v',
         'HLT_PFMETNoMu120_PFMHTNoMu120_IDTight_v',
@@ -181,21 +174,22 @@ process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducerMINIAOD",
         "Flag_HBHENoiseFilter",
         "Flag_HBHENoiseIsoFilter",
         "Flag_EcalDeadCellTriggerPrimitiveFilter",
-	"Flag_BadPFMuonFilter",
-	"Flag_globalTightHalo2016Filter",
-	"Flag_globalSuperTightHalo2016Filter"]),
+    "Flag_BadPFMuonFilter",
+    "Flag_globalTightHalo2016Filter",
+    "Flag_globalSuperTightHalo2016Filter"]),
 
-    minGenParticlePt = cms.double(-1),
-    minTrackPt       = cms.double(20.0),
+    minGenParticlePt = cms.double(10.0),
+    minTrackPt       = cms.double(25.0),
     maxRelTrackIso   = cms.double(-1.0),
 
     dataTakingPeriod = cms.string("2017")
 )
 process.trackImageProducerPath = cms.Path(process.trackImageProducer)
 
-process.MINIAODSIMoutput.outputCommands = cms.untracked.vstring('drop *')
+process.MINIAODoutput.outputCommands = cms.untracked.vstring('drop *')
 
 process.isolatedTracks.saveDeDxHitInfoCut = cms.string("pt > 1.")
+
 
 # Path and EndPath definitions
 process.Flag_trackingFailureFilter = cms.Path(process.goodVertices+process.trackingFailureFilter)
@@ -226,7 +220,7 @@ process.Flag_BadPFMuonSummer16Filter = cms.Path(process.BadPFMuonSummer16Filter)
 process.Flag_muonBadTrackFilter = cms.Path(process.muonBadTrackFilter)
 process.Flag_CSCTightHalo2015Filter = cms.Path(process.CSCTightHalo2015Filter)
 process.endjob_step = cms.EndPath(process.endOfProcess)
-process.MINIAODSIMoutput_step = cms.EndPath(process.MINIAODSIMoutput)
+process.MINIAODoutput_step = cms.EndPath(process.MINIAODoutput)
 
 # Schedule definition
 process.schedule = cms.Schedule(
@@ -259,7 +253,7 @@ process.schedule = cms.Schedule(
     process.candidateTracks,
     process.trackImageProducerPath,
     process.endjob_step,
-    process.MINIAODSIMoutput_step)
+    process.MINIAODoutput_step)
 process.schedule.associate(process.patTask)
 from PhysicsTools.PatAlgos.tools.helpers import associatePatAlgosToolsTask
 associatePatAlgosToolsTask(process)
@@ -268,15 +262,6 @@ associatePatAlgosToolsTask(process)
 process.options.numberOfThreads=cms.untracked.uint32(4)
 process.options.numberOfStreams=cms.untracked.uint32(0)
 
-# customisation of the process.
-
-# Automatic addition of the customisation function from Configuration.DataProcessing.Utils
-from Configuration.DataProcessing.Utils import addMonitoring 
-
-#call to customisation function addMonitoring imported from Configuration.DataProcessing.Utils
-process = addMonitoring(process)
-
-# End of customisation functions
 #do not add changes to your config after this point (unless you know what you are doing)
 from FWCore.ParameterSet.Utilities import convertToUnscheduled
 process=convertToUnscheduled(process)
@@ -284,10 +269,10 @@ process=convertToUnscheduled(process)
 # customisation of the process.
 
 # Automatic addition of the customisation function from PhysicsTools.PatAlgos.slimming.miniAOD_tools
-from PhysicsTools.PatAlgos.slimming.miniAOD_tools import miniAOD_customizeAllMC 
+from PhysicsTools.PatAlgos.slimming.miniAOD_tools import miniAOD_customizeAllData 
 
-#call to customisation function miniAOD_customizeAllMC imported from PhysicsTools.PatAlgos.slimming.miniAOD_tools
-process = miniAOD_customizeAllMC(process)
+#call to customisation function miniAOD_customizeAllData imported from PhysicsTools.PatAlgos.slimming.miniAOD_tools
+process = miniAOD_customizeAllData(process)
 
 # End of customisation functions
 
