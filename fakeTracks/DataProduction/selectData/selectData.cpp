@@ -33,13 +33,34 @@ T1 deltaR (T1 eta1, T2 phi1, T3 eta2, T4 phi2) {
 
 bool trackSelection(TrackInfo track){
 
-    if(!(abs(track.eta) < 2.4)) return false;
-    if(!(track.pt > 55)) return false;
-    if(track.inGap) return false;
-    if(!(track.nValidPixelHits >= 4)) return false;
-    if(!(track.nValidHits >= 4)) return false;
-    if(!(track.missingInnerHits == 0)) return false;
-    if(!(track.missingMiddleHits == 0)) return false;
+    if(!(abs(track.eta) < 2.4)) {
+        cout << "eta: " << track.eta << endl;
+        return false;
+    }
+    if(!(track.pt > 55)) {
+        cout << "pt: " << track.pt << endl;
+        return false;
+    }
+    if(track.inGap)  {
+        cout << "ingap: " << track.inGap << endl;
+        return false;
+    }
+    if(!(track.nValidPixelHits >= 4)) {
+        cout << "pixel hits: " << track.nValidPixelHits << endl;
+        return false;
+    }
+    if(!(track.nValidHits >= 4)) {
+        cout << "hits: " << track.nValidHits << endl;
+        return false;
+    }
+    if(!(track.missingInnerHits == 0)) {
+        cout << "missing inner: " << track.missingInnerHits << endl;
+        return false;
+    }
+    if(!(track.missingMiddleHits == 0))  {
+        cout << "missing middle: " << track.missingMiddleHits << endl;
+        return false;
+    }
     
     return true;
 
@@ -63,8 +84,18 @@ bool signalSelection(TrackInfo track){
     return true;
 }
 
+double pileupMatching(TrackInfo track, vector<double> pileupZPosition){
+    double min_dz = 10e6;
+    for(int i = 0; i < pileupZPosition.size(); i++){
+        double dZ = fabs(track.vz - pileupZPosition[i]);
+        if(dZ < min_dz) min_dz = dZ;
+    }
+    cout << "DZ Matched " << min_dz << endl;
+    return min_dz;
+}
 
-void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v7-DYJets-MC2017_madgraph/", TString filelist = ""){
+
+void selectData(int fileNum = 0, TString dataDir = "/store/user/mcarrigan/Images-v8-NeutrinoGun-MC2017-ext/", TString filelist = ""){
     
     if(filelist.Length()>0){
         string line;
@@ -82,51 +113,81 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
         }
     }
 
+    // Booleans for creating signal MC, taking full selection on Training data, or creating a 3rd class for pileup
     bool signalMC = false;
-
-    TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
-    //TString filename = dataDir + "hist_" + int_tstring(fileNum) + ".root";
+    bool fullSelection = false;
+    double PU_cut = 0.1;
+   
+    //TString filename = "images.root";
+    //TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
+    TString filename = dataDir + "hist_" + int_tstring(fileNum) + ".root";
     TFile* myFile = TFile::Open(filename, "read");
     if(myFile == nullptr) return;
     TTree * myTree = (TTree*)myFile->Get("trackImageProducer/tree");
 
-
     vector<TrackInfo> * v_tracks = new vector<TrackInfo>();
     vector<RecHitInfo> * v_recHits = new vector<RecHitInfo>(); 
     vector<GenParticleInfo> * v_genParticles = new vector<GenParticleInfo>(); 
+    vector<VertexInfo> * v_vertexInfos = new vector<VertexInfo>();
     int nPV;
+    int numTruePV;
     unsigned long long eventNumber;
     unsigned int lumiBlockNumber;
     unsigned int runNumber;
+    vector<double> * v_pileupZPosition = new vector<double>();
 
     myTree->SetBranchAddress("tracks", &v_tracks);
     myTree->SetBranchAddress("recHits", &v_recHits);
     myTree->SetBranchAddress("genParticles", &v_genParticles);
     myTree->SetBranchAddress("nPV", &nPV);
+    myTree->SetBranchAddress("numTruePV", &numTruePV);
     myTree->SetBranchAddress("eventNumber", &eventNumber);
     myTree->SetBranchAddress("lumiBlockNumber", &lumiBlockNumber);
     myTree->SetBranchAddress("runNumber", &runNumber);
+    myTree->SetBranchAddress("pileupZPosition", &v_pileupZPosition);
+    myTree->SetBranchAddress("vertexInfos", &v_vertexInfos);
 
     TString newFileName = "hist_" + int_tstring(fileNum) + ".root";
     TFile * newFile = new TFile(newFileName, "recreate");
     TTree * fakeTree = new TTree("fakeTree","fakeTree");
     TTree * realTree = new TTree("realTree","realTree");
+    TTree * pileupTree = new TTree("pileupTree", "pileupTree");
     vector<TrackInfo> * v_tracks_fake = new vector<TrackInfo>();
     vector<TrackInfo> * v_tracks_real = new vector<TrackInfo>();
+    vector<TrackInfo> * v_tracks_pileup = new vector<TrackInfo>();
+
     fakeTree->Branch("nPV",&nPV);
+    fakeTree->Branch("numTruePV", &numTruePV);
     fakeTree->Branch("recHits",&v_recHits);
     fakeTree->Branch("genParticles", &v_genParticles);
     fakeTree->Branch("tracks",&v_tracks_fake);
     fakeTree->Branch("eventNumber", &eventNumber);
     fakeTree->Branch("lumiBlockNumber", &lumiBlockNumber);
     fakeTree->Branch("runNumber", &runNumber);
+    fakeTree->Branch("pileupZPosition", &v_pileupZPosition);
+    fakeTree->Branch("vertexInfos", &v_vertexInfos);
+
     realTree->Branch("nPV",&nPV);
+    realTree->Branch("numTruePV", &numTruePV);
     realTree->Branch("recHits",&v_recHits);
     realTree->Branch("tracks",&v_tracks_real);
     realTree->Branch("genParticles", &v_genParticles);
     realTree->Branch("eventNumber", &eventNumber);
     realTree->Branch("lumiBlockNumber", &lumiBlockNumber);
     realTree->Branch("runNumber", &runNumber);
+    realTree->Branch("pileupZPosition", &v_pileupZPosition);
+    realTree->Branch("vertexInfos", &v_vertexInfos);
+
+    pileupTree->Branch("nPV",&nPV);
+    pileupTree->Branch("numTruePV", &numTruePV);
+    pileupTree->Branch("recHits",&v_recHits);
+    pileupTree->Branch("genParticles", &v_genParticles);
+    pileupTree->Branch("tracks",&v_tracks_pileup);
+    pileupTree->Branch("eventNumber", &eventNumber);
+    pileupTree->Branch("lumiBlockNumber", &lumiBlockNumber);
+    pileupTree->Branch("runNumber", &runNumber);
+    pileupTree->Branch("pileupZPosition", &v_pileupZPosition);
+    pileupTree->Branch("vertexInfos", &v_vertexInfos);
 
     cout << "Running over " << filename << " with " << myTree->GetEntries() << " events." << endl;
 
@@ -137,13 +198,14 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
         v_tracks_real->clear();
 
         myTree->GetEvent(ievent);
-
+        
         for(const auto &track : *v_tracks){
             
             //look to see if track passes general selections
             if(!trackSelection(track)) continue;
             if(signalMC) if(!signalSelection(track)) continue;
-
+            if(fullSelection) if(!signalSelection(track)) continue;
+             
             float genMatchedDR(-1);
             int genMatchedId(0);
             //check to see if track is gen matched
@@ -158,22 +220,26 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
 
             }//end of gen particle loop
             
+            double pu_dz = pileupMatching(track, *v_pileupZPosition);
+
             if(signalMC) if(genMatchedId != 1000024 && genMatchedId != 1000022) continue;
-            if(genMatchedDR > 0.1) v_tracks_fake->push_back(track);
+            if(genMatchedDR > 0.1 && pu_dz > PU_cut) v_tracks_fake->push_back(track);
+            else if(genMatchedDR > 0.1 && pu_dz <= PU_cut) v_tracks_pileup->push_back(track);
             else v_tracks_real->push_back(track);            
 
         }//end of tracks loop
     
     if(v_tracks_fake->size() > 0) fakeTree->Fill();
     if(v_tracks_real->size() > 0) realTree->Fill();
+    if(v_tracks_pileup->size() > 0) pileupTree->Fill();
 
     }//end of event loop
 
 
     cout << "Saving file " << newFileName << " with" << endl;
     cout << fakeTree->GetEntries() << " fake tracks and" << endl;
-    cout << realTree->GetEntries() << " real tracks." << endl;
-
+    cout << realTree->GetEntries() << " real tracks and" << endl;
+    cout << pileupTree->GetEntries() << " pileup tracks." << endl;
     newFile->Write();
 
 }//end of selectData function

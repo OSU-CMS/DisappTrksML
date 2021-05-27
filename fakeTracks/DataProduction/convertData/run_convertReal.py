@@ -9,11 +9,9 @@ import numpy as np
 
 if __name__=="__main__":
 
-    #dataDir = '/store/user/mcarrigan/Images-v8-DYJets-MC2017_aMCNLO/'
-    dataDir = '/store/user/mcarrigan/Images-v8-NeutrinoGun-MC2017-ext/'
-    #dataDir ='/store/user/mcarrigan/AMSB/images_v7/images_higgsino_700GeV_10cm_step3/'
-    outDir = '/store/user/mcarrigan/fakeTracks/selection_v8_NeutrinoGun_ext/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/selection_v8_NeutrinoGun_ext/'
+    dataDir = '/store/user/mcarrigan/fakeTracks/selection_ZeroBias_2017D_v8/'
+    outDir = '/store/user/mcarrigan/fakeTracks/converted_ZeroBias_2017D_v8/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_ZeroBias_2017D_v8/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
@@ -21,7 +19,7 @@ if __name__=="__main__":
 
     alreadyProcessedFiles = []
     for filename in os.listdir(outDir):
-        if('.root' in filename and 'hist' in filename):
+        if('.npz' in filename and 'events' in filename):
             index1 = filename.find("_")
             index2 = filename.find(".")
             numFile = int(filename[index1+1:index2])
@@ -46,14 +44,14 @@ if __name__=="__main__":
     request_disk = 500MB
     request_memory = 2048MB
     request_cpus = 1
-    executable              = wrapper.sh
+    executable              = real_wrapper.sh
     arguments               = $(PROCESS) {1} {2} {3}
     log                     = {4}log_$(PROCESS).log
     output                  = {4}out_$(PROCESS).txt
     error                   = {4}error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = {2}, wrapper.sh, selectData.cpp, Infos.h
+    transfer_input_files = {2}, real_wrapper.sh, convertDataReal.py, Infos.h
     getenv = true
     queue {0}
     """.format(len(files),dataDir,filelist,outDir, logDir)
