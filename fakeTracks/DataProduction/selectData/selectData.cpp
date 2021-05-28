@@ -33,34 +33,13 @@ T1 deltaR (T1 eta1, T2 phi1, T3 eta2, T4 phi2) {
 
 bool trackSelection(TrackInfo track){
 
-    if(!(abs(track.eta) < 2.4)) {
-        cout << "eta: " << track.eta << endl;
-        return false;
-    }
-    if(!(track.pt > 55)) {
-        cout << "pt: " << track.pt << endl;
-        return false;
-    }
-    if(track.inGap)  {
-        cout << "ingap: " << track.inGap << endl;
-        return false;
-    }
-    if(!(track.nValidPixelHits >= 4)) {
-        cout << "pixel hits: " << track.nValidPixelHits << endl;
-        return false;
-    }
-    if(!(track.nValidHits >= 4)) {
-        cout << "hits: " << track.nValidHits << endl;
-        return false;
-    }
-    if(!(track.missingInnerHits == 0)) {
-        cout << "missing inner: " << track.missingInnerHits << endl;
-        return false;
-    }
-    if(!(track.missingMiddleHits == 0))  {
-        cout << "missing middle: " << track.missingMiddleHits << endl;
-        return false;
-    }
+    if(!(abs(track.eta) < 2.4)) return false;
+    if(!(track.pt > 55)) return false;
+    if(track.inGap) return false;
+    if(!(track.nValidPixelHits >= 4)) return false;
+    if(!(track.nValidHits >= 4)) return false;
+    if(!(track.missingInnerHits == 0)) return false;
+    if(!(track.missingMiddleHits == 0)) return false;
     
     return true;
 
@@ -90,12 +69,11 @@ double pileupMatching(TrackInfo track, vector<double> pileupZPosition){
         double dZ = fabs(track.vz - pileupZPosition[i]);
         if(dZ < min_dz) min_dz = dZ;
     }
-    cout << "DZ Matched " << min_dz << endl;
     return min_dz;
 }
 
 
-void selectData(int fileNum = 0, TString dataDir = "/store/user/mcarrigan/Images-v8-NeutrinoGun-MC2017-ext/", TString filelist = ""){
+void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v8-DYJets-MC2017_aMCNLO/", TString filelist = ""){
     
     if(filelist.Length()>0){
         string line;
@@ -119,8 +97,8 @@ void selectData(int fileNum = 0, TString dataDir = "/store/user/mcarrigan/Images
     double PU_cut = 0.1;
    
     //TString filename = "images.root";
-    //TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
-    TString filename = dataDir + "hist_" + int_tstring(fileNum) + ".root";
+    TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
+    //TString filename = dataDir + "hist_" + int_tstring(fileNum) + ".root";
     TFile* myFile = TFile::Open(filename, "read");
     if(myFile == nullptr) return;
     TTree * myTree = (TTree*)myFile->Get("trackImageProducer/tree");
@@ -196,6 +174,7 @@ void selectData(int fileNum = 0, TString dataDir = "/store/user/mcarrigan/Images
         
         v_tracks_fake->clear();
         v_tracks_real->clear();
+        v_tracks_pileup->clear();
 
         myTree->GetEvent(ievent);
         
@@ -223,9 +202,17 @@ void selectData(int fileNum = 0, TString dataDir = "/store/user/mcarrigan/Images
             double pu_dz = pileupMatching(track, *v_pileupZPosition);
 
             if(signalMC) if(genMatchedId != 1000024 && genMatchedId != 1000022) continue;
-            if(genMatchedDR > 0.1 && pu_dz > PU_cut) v_tracks_fake->push_back(track);
-            else if(genMatchedDR > 0.1 && pu_dz <= PU_cut) v_tracks_pileup->push_back(track);
-            else v_tracks_real->push_back(track);            
+            if(genMatchedDR > 0.1){
+                cout << genMatchedDR << " " << pu_dz << endl;
+                if(pu_dz > PU_cut) v_tracks_fake->push_back(track);
+                else if(pu_dz <= PU_cut) v_tracks_pileup->push_back(track);
+            }
+            //else if(genMatchedDR > 0.1 && pu_dz <= PU_cut) v_tracks_pileup->push_back(track);
+            else v_tracks_real->push_back(track);       
+            
+
+            //if(genMatchedDR > 0.1) v_tracks_fake->push_back(track);
+            //else v_tracks_real->push_back(track);     
 
         }//end of tracks loop
     
