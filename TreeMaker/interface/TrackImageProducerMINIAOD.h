@@ -238,6 +238,7 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       unsigned int lumiBlockNumber_;
       unsigned int runNumber_;
       vector<float> pileupZPosition_;
+      unsigned int numTruePV_;
 
       // event-wide cut results
       bool firesGrandOrTrigger_;
