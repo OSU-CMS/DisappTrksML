@@ -14,7 +14,7 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   triggers_     (cfg.getParameter<edm::InputTag> ("triggers")),
   trigObjs_     (cfg.getParameter<edm::InputTag> ("triggerObjects")),
   tracks_       (cfg.getParameter<edm::InputTag> ("tracks")),
-  //genParticles_ (cfg.getParameter<edm::InputTag> ("genParticles")),
+  genParticles_ (cfg.getParameter<edm::InputTag> ("genParticles")),
   met_          (cfg.getParameter<edm::InputTag> ("met")),
   electrons_    (cfg.getParameter<edm::InputTag> ("electrons")),
   muons_        (cfg.getParameter<edm::InputTag> ("muons")),
@@ -53,7 +53,7 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   triggersToken_     = consumes<edm::TriggerResults>           (triggers_);
   trigObjsToken_     = consumes<vector<pat::TriggerObjectStandAlone> > (trigObjs_);
   tracksToken_       = consumes<vector<CandidateTrack> >       (tracks_);
-  //genParticlesToken_ = consumes<reco::CandidateView>           (genParticles_);
+  genParticlesToken_ = consumes<reco::CandidateView>           (genParticles_);
   metToken_          = consumes<vector<pat::MET> >             (met_);
   electronsToken_    = consumes<vector<pat::Electron> >        (electrons_);
   muonsToken_        = consumes<vector<pat::Muon> >            (muons_);
@@ -84,14 +84,14 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
 
   trackInfos_.clear();
   recHitInfos_.clear();
-  //genParticleInfos_.clear();
+  genParticleInfos_.clear();
   pileupZPosition_.clear();
   vertexInfos_.clear();
 
   tree_ = fs_->make<TTree>("tree", "tree");
   tree_->Branch("tracks", &trackInfos_);
   tree_->Branch("recHits", &recHitInfos_);
-  //tree_->Branch("genParticles", &genParticleInfos_);
+  tree_->Branch("genParticles", &genParticleInfos_);
   tree_->Branch("vertexInfos", &vertexInfos_);
   
   tree_->Branch("nPV", &nPV_);
@@ -128,8 +128,8 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   edm::Handle<vector<CandidateTrack> > tracks;
   event.getByToken(tracksToken_, tracks);
 
-  //edm::Handle<reco::CandidateView> genParticles;
-  //event.getByToken(genParticlesToken_, genParticles);
+  edm::Handle<reco::CandidateView> genParticles;
+  event.getByToken(genParticlesToken_, genParticles);
 
   edm::Handle<vector<pat::MET> > met;
   event.getByToken (metToken_, met);
@@ -247,7 +247,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   if(trackInfos_.size() == 0) return; // only fill tree with passing tracks
 
   getRecHits(event);
-  //if(genParticles.isValid()) getGenParticles(*genParticles);
+  if(genParticles.isValid()) getGenParticles(*genParticles);
 
   // account for pileup in track ecalo
   double caloCorr = (*rhoCentralCalo) * 2. * M_PI_2 * 0.5 * 0.5;
