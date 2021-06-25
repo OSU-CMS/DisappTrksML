@@ -34,7 +34,7 @@ saveDir = "images/"
 
 #list of Track input labels
 labels = ['trackIso', 'eta', 'phi', 'nPV', 'dRMinJet', 'Ecalo', 'Pt', 'd0', 'dZ', 'Charge', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip',
-          'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 
+          'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'sumEnergy', 'diffEnergy', 'dz1', 'd01', 'dz2', 'd02', 'dz3', 'd03',
           'Layer1', 'Charge1', 'isPixel1', 'pixelHitSize1', 'pixelHitSizeX1', 'pixelHitSizeY1', 'stripShapeSelection1', 'hitPosX1', 'hitPoxY1',
           'Layer2', 'Charge2', 'isPixel2', 'pixelHitSize2', 'pixelHitSizeX2', 'pixelHitSizeY2', 'stripShapeSelection2', 'hitPosX2', 'hitPoxY2',
           'Layer3', 'Charge3', 'isPixel3', 'pixelHitSize3', 'pixelHitSizeX3', 'pixelHitSizeY3', 'stripShapeSelection3', 'hitPosX3', 'hitPoxY3',
@@ -77,6 +77,33 @@ def plotCM(truth, predictions, plotDir, outputfile = 'metricPlots.root'):
     h_cm.Write("h_confusionMatrix")
     out.Close()
 
+def plotCM3(predictions, plotDir, outputfile = 'metricPlots.root'):
+    out = r.TFile(plotDir + outputfile, "update")
+    labels = ["real", "pileup", "fake"]
+    c1 = r.TCanvas("c1", "Confusion Matrix", 800, 800)
+    h_cm = r.TH2F("h_cm", "Confusion Matrix", 3, 0, 3, 3, 0, 3)
+    for i in range(3):
+        for j in range(3):
+            h_cm.Fill(j, i, predictions[j][i])
+    c1.cd()
+    c1.SetLogz()
+    h_cm.Draw("colz text")
+    h_cm.GetXaxis().SetTitle("Truth")
+    h_cm.GetYaxis().SetTitle("Prediction")
+    h_cm.GetXaxis().SetBinLabel(1, labels[0])
+    h_cm.GetXaxis().SetBinLabel(2, labels[1])
+    h_cm.GetXaxis().SetBinLabel(3, labels[2])
+    h_cm.GetYaxis().SetBinLabel(1, labels[0])
+    h_cm.GetYaxis().SetBinLabel(2, labels[1])
+    h_cm.GetYaxis().SetBinLabel(3, labels[2])
+    r.gStyle.SetOptStat(0000)
+    h_cm.SetTitle("Confusion Matrix" + " Events: " + str(np.sum(predictions)))
+    c1.SaveAs(plotDir + "ConfusionMatrix.png")
+    c1.Write("c_ConfusionMatrix")
+    h_cm.Write("h_confusionMatrix")
+    out.Close()
+
+
 def getStats(truth, predictions):
     TP, FP, TN, FN = 0, 0, 0, 0
     for i in range(len(truth)):
@@ -117,8 +144,8 @@ def plotHistory(history, variables, plotDir, outputfile = 'metricPlots.root'):
 
 def permutationImportance(model, tracks, truth, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
-    h_importance = r.TH1F("h_importance", "Feature Importance", 163, 0, 163)
-    h_track = r.TH1F("h_track", "Track Permutation Importance", 19, 0, 19)
+    h_importance = r.TH1F("h_importance", "Feature Importance", 171, 0, 171)
+    h_track = r.TH1F("h_track", "Track Permutation Importance", 27, 0, 27)
     h_layer1 = r.TH1F("h_layer1", "Layer 1 Permutation Importance", 9, 0, 9)
     h_layer2 = r.TH1F("h_layer2", "Layer 2 Permutation Importance", 9, 0, 9)
     h_layer3 = r.TH1F("h_layer3", "Layer 3 Permutation Importance", 9, 0, 9)
@@ -144,12 +171,12 @@ def permutationImportance(model, tracks, truth, plotDir, outputfile = 'metricPlo
         print(i, labels[i], importance[i])
         h_importance.Fill(i, importance[i])
         h_importance.GetXaxis().SetBinLabel(i+1, labels[i])
-        if i < 19:
+        if i < 27:
             h_track.Fill(i, importance[i])
             h_track.GetXaxis().SetBinLabel(i+1, labels[i])
         else:
-            layer = int((i-19)/9)
-            index = int((i-19)%9)
+            layer = int((i-27)/9)
+            index = int((i-27)%9)
             print(i, layer, index)
             h_layers[layer].Fill(index,importance[i])
             h_layers[layer].GetXaxis().SetBinLabel(index+1,labels[i])  

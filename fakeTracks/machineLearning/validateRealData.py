@@ -50,21 +50,18 @@ def loadData(dataDir):
         reals = np.array(myfile["real_infos"])
         if(len(reals)==0): continue
         print(reals.shape, reals.shape[1])
-        if(reals.shape[1] < 163): reals = np.hstack((reals, np.zeros((len(reals), 163 - reals.shape[1]))))
-        other = np.array(myfile["real_d0"])
+        if(reals.shape[1] < 171): reals = np.hstack((reals, np.zeros((len(reals), 163 - reals.shape[1]))))
         if(file_count == 0):
             realTracks = reals
-            d0 = other
         else:
             print(realTracks.shape, reals.shape)
             realTracks = np.concatenate((realTracks, reals))
-            d0 = np.concatenate((d0, other))
         file_count += 1
 
 
     print("Number of tracks:", len(realTracks))
 
-    return realTracks, d0
+    return realTracks
 
 
 
@@ -72,13 +69,13 @@ if __name__ == "__main__":
 
 
     ################config parameters################
-    weightsDir = '/data/users/mcarrigan/fakeTracks_4PlusLayer_3_4/fakeTracks_4PlusLayer_3_4_p0/weights/'
+    weightsDir = '/data/users/mcarrigan/fakeTracks_4PlusLayer_PUveto0p1_aMCv8p1_4_14/fakeTracks_4PlusLayer_PUveto0p1_aMCv8p1_4_14_p3/weights/'
     workDir = '/data/users/mcarrigan/fakeTracks/'
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v1/"]
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_higgsino_700_10000_4PlusLayer_v9/"]
     metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
     batch_norm = True
-    filters = [12, 8]
-    input_dim = 163
+    filters = [24, 12]
+    input_dim = 171
     #################################################
 
     if(len(sys.argv) > 1):
@@ -96,22 +93,20 @@ if __name__ == "__main__":
     
     for i, dataSet in enumerate(dataDir):
         if i == 0:
-            tracks, d0 = loadData(str(dataSet))
+            tracks = loadData(str(dataSet))
         else:
-            tracks2, d02 = loadData(str(dataSet))
+            tracks2 = loadData(str(dataSet))
             tracks = np.concatenate((tracks, tracks2))
-            d0 = np.concatenate((d0, d02))
 
     print("Total Tracks: " + str(tracks.shape))
 
     indices = np.arange(len(tracks))
     np.random.shuffle(indices)   
     tracks = tracks[indices]
-    d0 = d0[indices]
 
     model = callModel()
 
-    model.load_weights(weightsDir + 'model.99.h5')
+    model.load_weights(weightsDir + 'lastEpoch.h5')
 
     predictions = model.predict(tracks)
     
@@ -123,7 +118,7 @@ if __name__ == "__main__":
     #plotMetrics.predictionCorrelation(predictions, d0, 20, -1, 1, 'predictionD0Correlation', plotDir)
     #plotMetrics.comparePredictions(predictions, d0, 20, -1, 1, 'd0', plotDir)
     plotMetrics.plotScores(predictions, sys.argv[1], plotDir)
-    np.savez_compressed(outputDir + "predictions.npz", tracks = tracks, d0 = d0, predictions = predictions)
+    np.savez_compressed(outputDir + "predictions.npz", tracks = tracks, predictions = predictions)
 
 
 

@@ -4,18 +4,29 @@ import os
 import sys
 
 
+#Suppress plots from printing to screen
+r.gROOT.SetBatch(1)
+
 #dyData = ['/store/user/mcarrigan/fakeTracks/converted_madgraph_fullSelection_4PlusLayer_v7p1/', '/store/user/mcarrigan/fakeTracks/converted_aMC_fullSelection_4PlusLayer_v7p1/']
-dyData = ['/store/user/mcarrigan/fakeTracks/converted_aMC_cat0p1_4PlusLayer_v7p1/']
+dyData = ['/store/user/mcarrigan/fakeTracks/selection_v9_DYJets_aMCNLO/']
 
 signalData = ['/store/user/mcarrigan/fakeTracks/converted_higgsino_700_10_4PlusLayer_v7p1/', '/store/user/mcarrigan/fakeTracks/converted_higgsino_700_100_4PlusLayer_v7p1/',
               '/store/user/mcarrigan/fakeTracks/converted_higgsino_700_1000_4PlusLayer_v7p1/', '/store/user/mcarrigan/fakeTracks/converted_higgsino_700_10000_4PlusLayer_v7p1/']
 
+neutrinoGunData = ['/store/user/mcarrigan/fakeTracks/selection_v8_NeutrinoGun_ext/']
+
+zeroBiasData = ['/store/user/mcarrigan/fakeTracks/selection_ZeroBias_2017D_v8/']
+
 #trackIso, eta, phi, nPV, dRMinJet, ecalo, pt, d0, dz, charge, nValidPixelHits, nValidHits, missingOuterHits, dEdxPixel, dEdxStrip, numMeasurementsPixel,
                           #numMeasurementsStrip, numSatMeasurementsPixel, numSatMeasurementsStrip]
 
-out = r.TFile("plottedVariablesMC.root", "recreate")
+out = r.TFile("plottedVariables.root", "recreate")
 
-layers = 6
+layers = -1
+
+Debug = True
+
+varDict = {'trackIso':0, 'eta':1, 'phi':2, 'nPV':3, 'drMinJet':4, 'ecalo':5, 'pt':6, 'd0':7, 'dz':8, 'charge':9, 'pixelHits':10, 'hits':11, 'missingOuter':12, 'dEdxPixel':13, 'dEdxStrip':14, 'pixelMeasurements':15, 'stripMeasurements':16, 'pixelSat':17, 'stripSat':18, 'sumEnergy':19, 'diffEnergy':20, 'dz1':21, 'd01':22, 'dz2':23, 'd02':24, 'dz3':25, 'd03':26, 'layer1':27, 'charge1':28, 'subDet1':29, 'pixelHitSize1':30, 'pixelHitSizeX1':31, 'pixelHitSizeY1':32, 'stripSelection1':33, 'hitPosX1':34, 'hitPosY1':35, 'layer2':36, 'charge2':37, 'subDet2':38, 'pixelHitSize2':39, 'pixelHitSizeX2':40, 'pixelHitSizeY2':41, 'stripSelection2':42, 'hitPosX2':43, 'hitPosY2':44, 'layer3':45, 'charge3':46, 'subDet3':47, 'pixelHitSize3':48, 'pixelHitSizeX3':49, 'pixelHitSizeY3':50, 'stripSelection3':51, 'hitPosX3':52, 'hitPosY3':53, 'layer4':54, 'charge4':55, 'subDet4':56, 'pixelHitSize4':57, 'pixelHitSizeX4':58, 'pixelHitSizeY4':59, 'stripSelection4':60, 'hitPosX4':61, 'hitPosY4':62, 'layer5':63, 'charge5':64, 'subDet5':65, 'pixelHitSize5':66, 'pixelHitSizeX5':67, 'pixelHitSizeY5':68, 'stripSelection5':69, 'hitPosX5':70, 'hitPosY5':71, 'layer6':72, 'charge6':73, 'subDet6':74, 'pixelHitSize6':75, 'pixelHitSizeX6':76, 'pixelHitSizeY6':77, 'stripSelection6':78, 'hitPosX6':79, 'hitPosY6':80}
 
 h_trackIso = r.TH1F("h_trackIso", "Track Iso", 100, 0, 50) 
 h_eta = r.TH1F("h_eta", "Eta", 50, -2.5, 2.5)
@@ -36,7 +47,14 @@ h_pixelMeasurements = r.TH1F("h_pixelMeasurements", "Number of Pixel Measurement
 h_stripMeasurements = r.TH1F("h_stripMeasurements", "Number of Strip Measurements", 30, 0, 30)
 h_pixelSat = r.TH1F("h_pixelSat", "Number of Saturated Pixel Measurements", 10, 0, 10)
 h_stripSat = r.TH1F("h_stripSat", "Number of Saturated Strip Meausrements", 15, 0, 15)
-
+h_sumEnergy = r.TH1F('h_sumEnergy', "Sum of Layer Energies", 1000, 0, 200)
+h_diffEnergy = r.TH1F('h_diffEnergy', "Max Difference Between Layer Energies", 500, 0, 50)
+h_dz1 = r.TH1F("h_dz1", "Track dz to Closest Vertex", 50, 0, 2)
+h_d01 = r.TH1F("h_d01", "Track d0 to Closest Vertex", 100, 0, 0.2)
+h_dz2 = r.TH1F("h_dz2", "Track dz to 2nd Closest Vertex", 50, 0, 2)
+h_d02 = r.TH1F("h_d02", "Track d0 to 2nd Closest Vertex", 100, 0, 0.2)
+h_dz3 = r.TH1F("h_dz3", "Track dz to 3rd Closest Vertex", 50, 0, 2)
+h_d03 = r.TH1F("h_d03", "Track d0 to 3rd Closest Vertex", 100, 0, 0.2)
 
 h_layer1 = r.TH1F("h_layer1", "Layer", 10, 0, 10)
 h_charge1 = r.TH1F("h_charge1", "Charge", 200, 0, 200)
@@ -108,383 +126,603 @@ h_stripSelections = [h_stripSelection1, h_stripSelection2, h_stripSelection3, h_
 h_hitPosXs = [h_hitPosX1, h_hitPosX2, h_hitPosX3, h_hitPosX4, h_hitPosX5, h_hitPosX6]
 h_hitPosYs = [h_hitPosY1, h_hitPosY2, h_hitPosY3, h_hitPosY4, h_hitPosY5, h_hitPosY6]
 
-def plotTogether(base_name, dataset_names, filename, outfile = 'combinedPlots_4PlusLayer.root'):
+def trackMatching(track, event):
+    v_dz = [10e6, 10e6, 10e6, 10e6, 10e6]
+    v_d0 = [10e6, 10e6, 10e6, 10e6, 10e6]
+    for v in event.vertexInfos:
+        #print(v.vertex.Z())
+        dZ = abs(track.vz - v.vertex.Z())
+        d0 = np.sqrt((track.vx - v.vertex.X())**2 + (track.vy - v.vertex.Y())**2)
+        v_dz.append(dZ)
+        v_d0.append(d0)
+    v_dz.sort()
+    v_d0.sort()
+    #print(v_d0[0], track.d0)
+    return v_dz, v_d0
 
-    colors = [1, 1, 2, 2, 3, 3, 4, 4, 6, 6, 7, 7, 9, 9]
+def makePUScaleFactors(dataPU, mcPU):
+    f_data = r.TFile(dataPU)
+    f_mc = r.TFile(mcPU)
+
+    h_data = r.TH1D(f_data.Get('pileup'))
+    h_mc = r.TH1D(f_mc.Get('mc2017_12Apr2018'))
+
+    scale_factors = []
+
+    for bin in range(h_mc.GetNbinsX()):
+        mc_bin = h_mc.GetBinContent(bin) / h_mc.Integral()
+        data_bin = -1
+        if bin <= h_data.GetNbinsX():
+            data_bin = h_data.GetBinContent(bin) / h_data.Integral()
+        sf = 1
+        if(data_bin == -1):
+            sf = -1
+        elif(data_bin == 0 and mc_bin == 0):
+            sf = 1
+        else:
+            sf = float(data_bin / mc_bin)
+        
+        scale_factors.append(sf)
+        
+        print("bin:" , bin, "mc_bin:", mc_bin, "data_bin:", data_bin, "weight:", sf)
+
+    return scale_factors
+
+def getScaleFactor(scale_factors, numPV):
+    return scale_factors[numPV]
+
+def plotDatasets(datasets, trees, track_names, dataType):
+    
+    trackNameCounter = 0
+
+    for idataSet, dataset in enumerate(datasets):
+        #print("Looking at dataset: " + dataset)
+
+        for iTree, tree in enumerate(trees):
+
+            fileCount = 0
+            mychain = r.TChain(tree)
+            if(Debug == True):
+                mychain.Add(dataset + "hist_8*.root")
+            else: mychain.Add(dataset+"hist*.root")
+            #for filename in os.listdir(dataset):
+            if(mychain.GetEntries() > 0):
+
+                print("Number of entries in dataset " + dataset + " " + str(mychain.GetEntries()))
+                #if 'root' not in filename: continue
+                #if(Debug == True):
+                #    if fileCount > 21: break
+                #fin = r.TFile(dataset + filename, "read")
+                #mytree = fin.Get(tree)
+                fileCount += 1
+                #print("Looking at file: " + filename + ", tree: " +  tree + ", with " + str(mytree.GetEntries()) + " entries.")
+                trackCount = 0
+                for event in mychain:
+
+                    plotEvent = False
+
+                    weight = 1
+                    if(dataType[idataSet] == 'mc'):
+                        numTruePV = event.numTruePV
+                        scale_factors = PU_dict[dataset]
+                        weight = getScaleFactor(scale_factors, numTruePV)
+
+                    for iTrack, track in enumerate(event.tracks):
+                      
+                        nLayersWithMeasurement = track.nLayersWithMeasurement
+                        #case for 4, 5 layers to pass
+                        if(layers < 6 and layers >= 4):
+                            if(nLayersWithMeasurement != layers): continue
+                        #case to allow >=6 to pass
+                        elif(layers == 6):
+                            if(nLayersWithMeasurement < layers): continue
+                            #case to allow all >=4 to pass
+                        elif(layers == -1):
+                            if(nLayersWithMeasurement < 4): continue
+                        eta = track.eta
+                        if(abs(eta) > 2.4): continue
+
+                        trackCount += 1
+                        plotEvent = True
+
+                        h_trackIso.Fill(track.trackIso, weight)
+                        h_eta.Fill(track.eta, weight)
+                        h_phi.Fill(track.phi, weight)
+                        h_drMinJet.Fill(track.dRMinJet,weight)
+                        h_ecalo.Fill(track.ecalo, weight)
+                        h_pt.Fill(track.pt, weight)
+                        h_d0.Fill(track.d0, weight)
+                        h_dz.Fill(track.dz, weight)
+                        h_charge.Fill(track.charge, weight)
+                        h_pixelHits.Fill(track.nValidPixelHits, weight)
+                        h_Hits.Fill(track.nValidHits, weight)
+                        h_missingOuter.Fill(track.missingOuterHits, weight)
+                        h_dEdxPixel.Fill(track.dEdxPixel, weight)
+                        h_dEdxStrip.Fill(track.dEdxStrip, weight)
+                        h_pixelMeasurements.Fill(track.numMeasurementsPixel, weight)
+                        h_stripMeasurements.Fill(track.numMeasurementsStrip, weight)
+                        h_pixelSat.Fill(track.numSatMeasurementsPixel, weight)
+                        h_stripSat.Fill(track.numSatMeasurementsStrip, weight)
+
+                        if(layers == 6 or layers == -1): nLayers = np.zeros((16, 9))
+                        else: nLayers = np.zeros((layers, 9))
+                        nLayerCount = 0
+
+                        max_energy, min_energy, sum_energy = 0, 10e6, 0
+
+                        for iHit, hit in enumerate(track.dEdxInfo):
+
+                            layerHits = []
+                            #print("Event: " + str(iEvent) + ", Track: " + str(iTrack) + " isFake: " + tree + ", subDet: " + str(hit.subDet) + " Layer: "
+                            #    + str(hit.hitLayerId), "nLayersWithMeasurement: " + str(nLayersWithMeasurement) + " Eta: " + str(track.eta) + " missingInnerHits: "
+                            #    + str(track.missingInnerHits) + " missingMiddleHits: " + str(track.missingMiddleHits) + " missingOuterHits: " + str(track.missingOuterHits) +
+                            #    " Charge: " + str(hit.charge))
+                            if(hit.hitLayerId < 0): continue
+                            layerHits.append(hit.hitLayerId)
+                            layerHits.append(hit.charge)
+                            layerHits.append(hit.subDet)
+                            layerHits.append(hit.pixelHitSize)
+                            layerHits.append(hit.pixelHitSizeX)
+                            layerHits.append(hit.pixelHitSizeY)
+                            layerHits.append(hit.stripShapeSelection)
+                            layerHits.append(hit.hitPosX)
+                            layerHits.append(hit.hitPosY)
+
+                            if(hit.charge > max_energy): max_energy = hit.charge
+                            if(hit.charge < min_energy): min_energy = hit.charge
+                            sum_energy += hit.charge
+
+                            newLayer = True
+                
+                            for iSaved, savedHit in enumerate(nLayers):
+                                if(hit.subDet == savedHit[2] and hit.hitLayerId == savedHit[0]):
+                                    newLayer = False
+                                    if (hit.charge > savedHit[1]):
+                                        for i in range(len(layerHits)):
+                                            nLayers[iSaved, i] = layerHits[i]
+
+                            if(newLayer==True):
+                                if(nLayerCount > len(nLayers)-1): continue
+                                for i in range(len(layerHits)):
+                                    nLayers[nLayerCount, i] = layerHits[i]
+                                nLayerCount += 1
+                            
+
+                        # Now fill plots that depend on layer/detector
+                        h_sumEnergy.Fill(sum_energy, weight)
+                        h_diffEnergy.Fill(max_energy-min_energy, weight)
+
+                        v_dz, v_d0 = trackMatching(track, event)
+
+                        h_dz1.Fill(v_d0[0], weight)
+                        h_d01.Fill(v_d0[1], weight)
+                        h_dz2.Fill(v_d0[2], weight)
+                        h_d02.Fill(v_dz[0], weight)
+                        h_dz3.Fill(v_dz[1], weight)
+                        h_d03.Fill(v_dz[2], weight)
+
+                        h_layers[0].Fill(nLayers[0,0], weight)
+                        h_charges[0].Fill(nLayers[0,1], weight)
+                        h_subDets[0].Fill(nLayers[0,2], weight)
+                        h_pixelHitSizes[0].Fill(nLayers[0,3], weight)
+                        h_pixelHitSizesX[0].Fill(nLayers[0,4], weight)
+                        h_pixelHitSizesY[0].Fill(nLayers[0,5], weight)
+                        h_stripSelections[0].Fill(nLayers[0,6], weight)
+                        h_hitPosXs[0].Fill(nLayers[0,7], weight)
+                        h_hitPosYs[0].Fill(nLayers[0,8], weight)
+                        h_layers[1].Fill(nLayers[1,0], weight)
+                        h_charges[1].Fill(nLayers[1,1], weight)
+                        h_subDets[1].Fill(nLayers[1,2], weight)
+                        h_pixelHitSizes[1].Fill(nLayers[1,3], weight)
+                        h_pixelHitSizesX[1].Fill(nLayers[1,4], weight)
+                        h_pixelHitSizesY[1].Fill(nLayers[1,5], weight)
+                        h_stripSelections[1].Fill(nLayers[1,6], weight)
+                        h_hitPosXs[1].Fill(nLayers[1,7], weight)
+                        h_hitPosYs[1].Fill(nLayers[1,8], weight)
+                        h_layers[2].Fill(nLayers[2,0], weight)
+                        h_charges[2].Fill(nLayers[2,1], weight)
+                        h_subDets[2].Fill(nLayers[2,2], weight)
+                        h_pixelHitSizes[2].Fill(nLayers[2,3], weight)
+                        h_pixelHitSizesX[2].Fill(nLayers[2,4], weight)
+                        h_pixelHitSizesY[2].Fill(nLayers[2,5], weight)
+                        h_stripSelections[2].Fill(nLayers[2,6], weight)
+                        h_hitPosXs[2].Fill(nLayers[2,7], weight)
+                        h_hitPosYs[2].Fill(nLayers[2,8], weight)
+                        h_layers[3].Fill(nLayers[3,0], weight)
+                        h_charges[3].Fill(nLayers[3,1], weight)
+                        h_subDets[3].Fill(nLayers[3,2], weight)
+                        h_pixelHitSizes[3].Fill(nLayers[3,3], weight)
+                        h_pixelHitSizesX[3].Fill(nLayers[3,4], weight)
+                        h_pixelHitSizesY[3].Fill(nLayers[3,5], weight)
+                        h_stripSelections[3].Fill(nLayers[3,6], weight)
+                        h_hitPosXs[3].Fill(nLayers[3,7], weight)
+                        h_hitPosYs[3].Fill(nLayers[3,8], weight)
+                        if(layers < 5): continue
+                        h_layers[4].Fill(nLayers[4,0], weight)
+                        h_charges[4].Fill(nLayers[4,1], weight)
+                        h_subDets[4].Fill(nLayers[4,2], weight)
+                        h_pixelHitSizes[4].Fill(nLayers[4,3], weight)
+                        h_pixelHitSizesX[4].Fill(nLayers[4,4], weight)
+                        h_pixelHitSizesY[4].Fill(nLayers[4,5], weight)
+                        h_stripSelections[4].Fill(nLayers[4,6], weight)
+                        h_hitPosXs[4].Fill(nLayers[4,7], weight)
+                        h_hitPosYs[4].Fill(nLayers[4,8], weight)
+                        if(layers < 6): continue
+                        h_layers[5].Fill(nLayers[5,0], weight)
+                        h_charges[5].Fill(nLayers[5,1], weight)
+                        h_subDets[5].Fill(nLayers[5,2], weight)
+                        h_pixelHitSizes[5].Fill(nLayers[5,3], weight)
+                        h_pixelHitSizesX[5].Fill(nLayers[5,4], weight)
+                        h_pixelHitSizesY[5].Fill(nLayers[5,5], weight)
+                        h_stripSelections[5].Fill(nLayers[5,6], weight)
+                        h_hitPosXs[5].Fill(nLayers[5,7], weight)
+                        h_hitPosYs[5].Fill(nLayers[5,8], weight)
+
+                    if(plotEvent==True):
+                        h_nPV.Fill(event.nPV, weight)
+
+                print("Looking at dataset: " + dataset + ", tree: " +  tree + ", with " + str(trackCount) + "passing tracks.")
+            out.cd() 
+             
+            print("Saving plots named " + track_names[trackNameCounter], trackNameCounter)
+   
+            # Write the histograms to root file           
+            h_trackIso.Write('h_trackIso_' + track_names[trackNameCounter])
+            h_eta.Write('h_eta_' + track_names[trackNameCounter])
+            h_phi.Write('h_phi_' + track_names[trackNameCounter])
+            h_nPV.Write('h_nPV_' + track_names[trackNameCounter])
+            h_drMinJet.Write('h_drMinJet_' + track_names[trackNameCounter])
+            h_ecalo.Write('h_ecalo_' + track_names[trackNameCounter])
+            h_pt.Write('h_pt_' + track_names[trackNameCounter])
+            h_d0.Write('h_d0_' + track_names[trackNameCounter])
+            h_dz.Write('h_dz_' + track_names[trackNameCounter])
+            h_charge.Write('h_charge_' + track_names[trackNameCounter])
+            h_pixelHits.Write('h_pixelHits_' + track_names[trackNameCounter])
+            h_Hits.Write('h_Hits_' + track_names[trackNameCounter])
+            h_missingOuter.Write('h_missingOuter_' + track_names[trackNameCounter])
+            h_dEdxPixel.Write('h_dEdxPixel_' + track_names[trackNameCounter])
+            h_dEdxStrip.Write('h_dEdxStrip_' + track_names[trackNameCounter])
+            h_pixelMeasurements.Write('h_pixelMeasurements_' + track_names[trackNameCounter])
+            h_stripMeasurements.Write('h_stripMeasurements_' + track_names[trackNameCounter])
+            h_pixelSat.Write('h_pixelSat_' + track_names[trackNameCounter])
+            h_stripSat.Write('h_stripSat_' + track_names[trackNameCounter])
+            h_sumEnergy.Write('h_sumEnergy_' + track_names[trackNameCounter])
+            h_diffEnergy.Write('h_diffEnergy_' + track_names[trackNameCounter])
+            h_dz1.Write('h_dz1_' + track_names[trackNameCounter])
+            h_d01.Write('h_d01_' + track_names[trackNameCounter])
+            h_dz2.Write('h_dz2_' + track_names[trackNameCounter])
+            h_d02.Write('h_d02_' + track_names[trackNameCounter])
+            h_dz3.Write('h_dz3_' + track_names[trackNameCounter])
+            h_d03.Write('h_d03_' + track_names[trackNameCounter])
+            h_layers[0].Write('h_layer1_' + track_names[trackNameCounter])
+            h_charges[0].Write('h_charge1_' + track_names[trackNameCounter])
+            h_subDets[0].Write('h_subDet1_' + track_names[trackNameCounter])
+            h_pixelHitSizes[0].Write('h_pixelHitSize1_' + track_names[trackNameCounter])
+            h_pixelHitSizesX[0].Write('h_pixelHitSizeX1_' + track_names[trackNameCounter])
+            h_pixelHitSizesY[0].Write('h_pixelHitSizeY1_' + track_names[trackNameCounter])
+            h_stripSelections[0].Write('h_stripSelection1_' + track_names[trackNameCounter])
+            h_hitPosXs[0].Write('h_hitPosX1_' + track_names[trackNameCounter])
+            h_hitPosYs[0].Write('h_hitPosY1_' + track_names[trackNameCounter])
+            h_layers[1].Write('h_layer2_' + track_names[trackNameCounter])
+            h_charges[1].Write('h_charge2_' + track_names[trackNameCounter])
+            h_subDets[1].Write('h_subDet2_' + track_names[trackNameCounter])
+            h_pixelHitSizes[1].Write('h_pixelHitSize2_' + track_names[trackNameCounter])
+            h_pixelHitSizesX[1].Write('h_pixelHitSizeX2_' + track_names[trackNameCounter])
+            h_pixelHitSizesY[1].Write('h_pixelHitSizeY2_' + track_names[trackNameCounter])
+            h_stripSelections[1].Write('h_stripSelection2_' + track_names[trackNameCounter])
+            h_hitPosXs[1].Write('h_hitPosX2_' + track_names[trackNameCounter])
+            h_hitPosYs[1].Write('h_hitPosY2_' + track_names[trackNameCounter])
+            h_layers[2].Write('h_layer3_' + track_names[trackNameCounter])
+            h_charges[2].Write('h_charge3_' + track_names[trackNameCounter])
+            h_subDets[2].Write('h_subDet3_' + track_names[trackNameCounter])
+            h_pixelHitSizes[2].Write('h_pixelHitSize3_' + track_names[trackNameCounter])
+            h_pixelHitSizesX[2].Write('h_pixelHitSizeX3_' + track_names[trackNameCounter])
+            h_pixelHitSizesY[2].Write('h_pixelHitSizeY3_' + track_names[trackNameCounter])
+            h_stripSelections[2].Write('h_stripSelection3_' + track_names[trackNameCounter])
+            h_hitPosXs[2].Write('h_hitPosX3_' + track_names[trackNameCounter])
+            h_hitPosYs[2].Write('h_hitPosY3_' + track_names[trackNameCounter])
+            h_layers[3].Write('h_layer4_' + track_names[trackNameCounter])
+            h_charges[3].Write('h_charge4_' + track_names[trackNameCounter])
+            h_subDets[3].Write('h_subDet4_' + track_names[trackNameCounter])
+            h_pixelHitSizes[3].Write('h_pixelHitSize4_' + track_names[trackNameCounter])
+            h_pixelHitSizesX[3].Write('h_pixelHitSizeX4_' + track_names[trackNameCounter])
+            h_pixelHitSizesY[3].Write('h_pixelHitSizeY4_' + track_names[trackNameCounter])
+            h_stripSelections[3].Write('h_stripSelection4_' + track_names[trackNameCounter])
+            h_hitPosXs[3].Write('h_hitPosX4_' + track_names[trackNameCounter])
+            h_hitPosYs[3].Write('h_hitPosY4_' + track_names[trackNameCounter])
+            if(layers != -1 and layers < 5): continue
+            h_layers[4].Write('h_layer5_' + track_names[trackNameCounter])
+            h_charges[4].Write('h_charge5_' + track_names[trackNameCounter])
+            h_subDets[4].Write('h_subDet5_' + track_names[trackNameCounter])
+            h_pixelHitSizes[4].Write('h_pixelHitSize5_' + track_names[trackNameCounter])
+            h_pixelHitSizesX[4].Write('h_pixelHitSizeX5_' + track_names[trackNameCounter])
+            h_pixelHitSizesY[4].Write('h_pixelHitSizeY5_' + track_names[trackNameCounter])
+            h_stripSelections[4].Write('h_stripSelection5_' + track_names[trackNameCounter])
+            h_hitPosXs[4].Write('h_hitPosX5_' + track_names[trackNameCounter])
+            h_hitPosYs[4].Write('h_hitPosY5_' + track_names[trackNameCounter])
+            if(layers != -1 and layers < 6): continue
+            h_layers[5].Write('h_layer6_' + track_names[trackNameCounter])
+            h_charges[5].Write('h_charge6_' + track_names[trackNameCounter])
+            h_subDets[5].Write('h_subDet6_' + track_names[trackNameCounter])
+            h_pixelHitSizes[5].Write('h_pixelHitSize6_' + track_names[trackNameCounter])
+            h_pixelHitSizesX[5].Write('h_pixelHitSizeX6_' + track_names[trackNameCounter])
+            h_pixelHitSizesY[5].Write('h_pixelHitSizeY6_' + track_names[trackNameCounter])
+            h_stripSelections[5].Write('h_stripSelection6_' + track_names[trackNameCounter])
+            h_hitPosXs[5].Write('h_hitPosX6_' + track_names[trackNameCounter])
+            h_hitPosYs[5].Write('h_hitPosY6_' + track_names[trackNameCounter])
+
+            #clear the histograms for the next set
+            h_trackIso.Reset()
+            h_eta.Reset()
+            h_phi.Reset()
+            h_nPV.Reset()
+            h_drMinJet.Reset()
+            h_ecalo.Reset()
+            h_pt.Reset()
+            h_d0.Reset()
+            h_dz.Reset()
+            h_charge.Reset()
+            h_pixelHits.Reset()
+            h_Hits.Reset()
+            h_missingOuter.Reset()
+            h_dEdxPixel.Reset()
+            h_dEdxStrip.Reset()
+            h_pixelMeasurements.Reset()
+            h_stripMeasurements.Reset()
+            h_pixelSat.Reset()
+            h_stripSat.Reset()
+            h_sumEnergy.Reset()
+            h_diffEnergy.Reset()
+            h_dz1.Reset()
+            h_d01.Reset()
+            h_dz2.Reset()
+            h_d02.Reset()
+            h_dz3.Reset()
+            h_d03.Reset()
+            h_layers[0].Reset()
+            h_charges[0].Reset()
+            h_subDets[0].Reset()
+            h_pixelHitSizes[0].Reset()
+            h_pixelHitSizesX[0].Reset()
+            h_pixelHitSizesY[0].Reset()
+            h_stripSelections[0].Reset()
+            h_hitPosXs[0].Reset()
+            h_hitPosYs[0].Reset()
+            h_layers[1].Reset()
+            h_charges[1].Reset()
+            h_subDets[1].Reset()
+            h_pixelHitSizes[1].Reset()
+            h_pixelHitSizesX[1].Reset()
+            h_pixelHitSizesY[1].Reset()
+            h_stripSelections[1].Reset()
+            h_hitPosXs[1].Reset()
+            h_hitPosYs[1].Reset()
+            h_layers[2].Reset()
+            h_charges[2].Reset()
+            h_subDets[2].Reset()
+            h_pixelHitSizes[2].Reset()
+            h_pixelHitSizesX[2].Reset()
+            h_pixelHitSizesY[2].Reset()
+            h_stripSelections[2].Reset()
+            h_hitPosXs[2].Reset()
+            h_hitPosYs[2].Reset()
+            h_layers[3].Reset()
+            h_charges[3].Reset()
+            h_subDets[3].Reset()
+            h_pixelHitSizes[3].Reset()
+            h_pixelHitSizesX[3].Reset()
+            h_pixelHitSizesY[3].Reset()
+            h_stripSelections[3].Reset()
+            h_hitPosXs[3].Reset()
+            h_hitPosYs[3].Reset()
+            if(layers != -1 and layers < 5): continue
+            h_layers[4].Reset()
+            h_charges[4].Reset()
+            h_subDets[4].Reset()
+            h_pixelHitSizes[4].Reset()
+            h_pixelHitSizesX[4].Reset()
+            h_pixelHitSizesY[4].Reset()
+            h_stripSelections[4].Reset()
+            h_hitPosXs[4].Reset()
+            h_hitPosYs[4].Reset()
+            if(layers != -1 and layers < 6): continue
+            h_layers[5].Reset()
+            h_charges[5].Reset()
+            h_subDets[5].Reset()
+            h_pixelHitSizes[5].Reset()
+            h_pixelHitSizesX[5].Reset()
+            h_pixelHitSizesY[5].Reset()
+            h_stripSelections[5].Reset()
+            h_hitPosXs[5].Reset()
+            h_hitPosYs[5].Reset()
+
+            trackNameCounter += 1
+            print("Increased track name counter " + str(trackNameCounter))
+
+    out.Close()
+            
+
+
+def plotTogether(base_name, dataset_names, dataType, filename, outfile = 'combinedPlots_4PlusLayer_v2Test.root'):
+
+    colors = [1, 807, 920, 4, 6, 7, 9, 2, 3]
     outfile = r.TFile(outfile, 'update')
     file = r.TFile.Open(filename)
     histograms = []
+    lineStyle = []
 
     for i in range(len(dataset_names)):
         h = file.Get(base_name+dataset_names[i])
         print(base_name+dataset_names[i])
-        h.Sumw2()
-        if(h.Integral() > 0): h.Scale(float(1)/h.Integral())
-        h.SetName('h' + str(i))
+        if(h.Integral() > 0): 
+            print("Histogram names", dataset_names[i], h.GetName())
+            h.Sumw2()
+            h.Scale(float(1)/h.Integral())
+            h.SetName('h' + str(i))
         histograms.append(h)
-
+        if "pileup" in dataset_names[i]: lineStyle.append(8)
+        elif "fake" in dataset_names[i]: lineStyle.append(2) 
+        elif "real" in dataset_names[i]: lineStyle.append(1)
+        else: print("This histogram is not pileup, fake, or real", dataset_names[i])
+            
 
     l1 = r.TLegend(0.7, 0.7, 0.8, 0.9)
     c1 = r.TCanvas("c1", base_name, 800, 800)
     c1.cd()
     for hist in range(len(histograms)):
         histograms[hist].SetMaximum(1)
-        if hist == 0: 
-            if(histograms[hist].GetEntries()>0): histograms[hist].Draw("HIST")
-            histograms[hist].SetLineColor(colors[hist])
-            l1.AddEntry(histograms[hist], dataset_names[hist], "l")
+        if hist == 0:
+            if(histograms[hist].GetEntries()>0): 
+                histograms[hist].Draw("HIST")
+                histograms[hist].SetLineColor(colors[hist])
+                l1.AddEntry(histograms[hist], dataset_names[hist], "l")
         else:
-            if(histograms[hist].GetEntries()>0): histograms[hist].Draw("HIST SAME")
-            histograms[hist].SetLineColor(colors[hist])
-            if('fake' in dataset_names[hist]): histograms[hist].SetLineStyle(2)
-            l1.AddEntry(histograms[hist], dataset_names[hist], "l")
+            if(histograms[hist].GetEntries()>0): 
+                histograms[hist].Draw("HIST SAMES")
+                #histograms[hist].SetLineStyle(lineStyle[hist])
+                histograms[hist].SetLineColor(colors[hist])
+                #if('fake' in dataset_names[hist]): histograms[hist].SetLineStyle(2)
+                l1.AddEntry(histograms[hist], dataset_names[hist], "l")
 
 
     l1.Draw("SAME")
+    r.gStyle.SetOptStat(0)
     outfile.cd()
     c1.Write(base_name)
 
     outfile.Close()
     file.Close()
+    c1.Close()
     c1.Delete()
     del histograms
 
 
 
-def plotDataset(datasets, track_types, track_names):
+if __name__ == "__main__":
 
-    for j in range(len(track_types)):
-        for dataset in datasets:
-            for filename in os.listdir(dataset):
-                if 'npz' not in filename: continue
-                #if int((filename.split('_')[1]).split('.')[0])>20: continue
-                print("Loading file..." + dataset + filename)
-                myfile = np.load(dataset+filename)
-                tracks = myfile[track_types[j]]
-                print("Number of tracks..." + str(len(tracks)))
-                for i in range(len(tracks)):
-                    h_trackIso.Fill(tracks[i,0])
-                    h_eta.Fill(tracks[i,1])
-                    h_phi.Fill(tracks[i,2])
-                    h_nPV.Fill(tracks[i,3])
-                    h_drMinJet.Fill(tracks[i,4])
-                    h_ecalo.Fill(tracks[i,5])
-                    h_pt.Fill(tracks[i,6])
-                    h_d0.Fill(tracks[i,7])
-                    h_dz.Fill(tracks[i,8])
-                    h_charge.Fill(tracks[i,9])
-                    h_pixelHits.Fill(tracks[i,10])
-                    h_Hits.Fill(tracks[i,11])
-                    h_missingOuter.Fill(tracks[i,12])
-                    h_dEdxPixel.Fill(tracks[i,13])
-                    h_dEdxStrip.Fill(tracks[i,14])
-                    h_pixelMeasurements.Fill(tracks[i,15])
-                    h_stripMeasurements.Fill(tracks[i,16])
-                    h_pixelSat.Fill(tracks[i,17])
-                    h_stripSat.Fill(tracks[i,18])
-                    h_layers[0].Fill(tracks[i, 19])
-                    h_charges[0].Fill(tracks[i,20])
-                    h_subDets[0].Fill(tracks[i, 21])
-                    h_pixelHitSizes[0].Fill(tracks[i,22])
-                    h_pixelHitSizesX[0].Fill(tracks[i,23])
-                    h_pixelHitSizesY[0].Fill(tracks[i, 24])
-                    h_stripSelections[0].Fill(tracks[i,25])
-                    h_hitPosXs[0].Fill(tracks[i,26])
-                    h_hitPosYs[0].Fill(tracks[i,27])
-                    h_layers[1].Fill(tracks[i, 28])
-                    h_charges[1].Fill(tracks[i,29])
-                    h_subDets[1].Fill(tracks[i, 30])
-                    h_pixelHitSizes[1].Fill(tracks[i,31])
-                    h_pixelHitSizesX[1].Fill(tracks[i,32])
-                    h_pixelHitSizesY[1].Fill(tracks[i, 33])
-                    h_stripSelections[1].Fill(tracks[i,34])
-                    h_hitPosXs[1].Fill(tracks[i,35])
-                    h_hitPosYs[1].Fill(tracks[i,36])
-                    h_layers[2].Fill(tracks[i, 37])
-                    h_charges[2].Fill(tracks[i,38])
-                    h_subDets[2].Fill(tracks[i, 39])
-                    h_pixelHitSizes[2].Fill(tracks[i,40])
-                    h_pixelHitSizesX[2].Fill(tracks[i,41])
-                    h_pixelHitSizesY[2].Fill(tracks[i, 42])
-                    h_stripSelections[2].Fill(tracks[i,43])
-                    h_hitPosXs[2].Fill(tracks[i,44])
-                    h_hitPosYs[2].Fill(tracks[i,45])
-                    h_layers[3].Fill(tracks[i, 46])
-                    h_charges[3].Fill(tracks[i,47])
-                    h_subDets[3].Fill(tracks[i, 48])
-                    h_pixelHitSizes[3].Fill(tracks[i,49])
-                    h_pixelHitSizesX[3].Fill(tracks[i,50])
-                    h_pixelHitSizesY[3].Fill(tracks[i, 51])
-                    h_stripSelections[3].Fill(tracks[i,52])
-                    h_hitPosXs[3].Fill(tracks[i,53])
-                    h_hitPosYs[3].Fill(tracks[i,54])
-                    if(layers < 5): continue
-                    h_layers[4].Fill(tracks[i, 55])
-                    h_charges[4].Fill(tracks[i,56])
-                    h_subDets[4].Fill(tracks[i, 57])
-                    h_pixelHitSizes[4].Fill(tracks[i,58])
-                    h_pixelHitSizesX[4].Fill(tracks[i,59])
-                    h_pixelHitSizesY[4].Fill(tracks[i, 60])
-                    h_stripSelections[4].Fill(tracks[i,61])
-                    h_hitPosXs[4].Fill(tracks[i,62])
-                    h_hitPosYs[4].Fill(tracks[i,63])
-                    if(layers < 6): continue
-                    h_layers[5].Fill(tracks[i, 64])
-                    h_charges[5].Fill(tracks[i,65])
-                    h_subDets[5].Fill(tracks[i, 66])
-                    h_pixelHitSizes[5].Fill(tracks[i,67])
-                    h_pixelHitSizesX[5].Fill(tracks[i,68])
-                    h_pixelHitSizesY[5].Fill(tracks[i, 69])
-                    h_stripSelections[5].Fill(tracks[i,70])
-                    h_hitPosXs[5].Fill(tracks[i,71])
-                    h_hitPosYs[5].Fill(tracks[i,72])
-                myfile.close()
+    trees = ['realTree', 'fakeTree', 'pileupTree']
+    zerobias_track_names = ['real_zb', 'fake_zb', 'pileup_zb']
+    dy_track_names = ['real_dy', 'fake_dy', 'pileup_dy']
+    neutrino_names = ['real_nu', 'fake_nu', 'pileup_nu']
+    higgsino_10_names = ['real_10', 'fake_10']
+    higgsino_100_names = ['real_100', 'fake_100']
+    higgsino_1000_names = ['real_1000', 'fake_1000']
+    higgsino_10000_names = ['real_10000', 'fake_10000']
 
-        # Write the histograms to root file           
-        h_trackIso.Write('h_trackIso_' + track_names[j])
-        h_eta.Write('h_eta_' + track_names[j])
-        h_phi.Write('h_phi_' + track_names[j])
-        h_nPV.Write('h_nPV_' + track_names[j])
-        h_drMinJet.Write('h_drMinJet_' + track_names[j])
-        h_ecalo.Write('h_ecalo_' + track_names[j])
-        h_pt.Write('h_pt_' + track_names[j])
-        h_d0.Write('h_d0_' + track_names[j])
-        h_dz.Write('h_dz_' + track_names[j])
-        h_charge.Write('h_charge_' + track_names[j])
-        h_pixelHits.Write('h_pixelHits_' + track_names[j])
-        h_Hits.Write('h_Hits_' + track_names[j])
-        h_missingOuter.Write('h_missingOuter_' + track_names[j])
-        h_dEdxPixel.Write('h_dEdxPixel_' + track_names[j])
-        h_dEdxStrip.Write('h_dEdxStrip_' + track_names[j])
-        h_pixelMeasurements.Write('h_pixelMeasurements_' + track_names[j])
-        h_stripMeasurements.Write('h_stripMeasurements_' + track_names[j])
-        h_pixelSat.Write('h_pixelSat_' + track_names[j])
-        h_stripSat.Write('h_stripSat_' + track_names[j])
-        h_layers[0].Write('h_layer1_' + track_names[j])
-        h_charges[0].Write('h_charge1_' + track_names[j])
-        h_subDets[0].Write('h_subDet1_' + track_names[j])
-        h_pixelHitSizes[0].Write('h_pixelHitSize1_' + track_names[j])
-        h_pixelHitSizesX[0].Write('h_pixelHitSizeX1_' + track_names[j])
-        h_pixelHitSizesY[0].Write('h_pixelHitSizeY1_' + track_names[j])
-        h_stripSelections[0].Write('h_stripSelection1_' + track_names[j])
-        h_hitPosXs[0].Write('h_hitPosX1_' + track_names[j])
-        h_hitPosYs[0].Write('h_hitPosY1_' + track_names[j])
-        h_layers[1].Write('h_layer2_' + track_names[j])
-        h_charges[1].Write('h_charge2_' + track_names[j])
-        h_subDets[1].Write('h_subDet2_' + track_names[j])
-        h_pixelHitSizes[1].Write('h_pixelHitSize2_' + track_names[j])
-        h_pixelHitSizesX[1].Write('h_pixelHitSizeX2_' + track_names[j])
-        h_pixelHitSizesY[1].Write('h_pixelHitSizeY2_' + track_names[j])
-        h_stripSelections[1].Write('h_stripSelection2_' + track_names[j])
-        h_hitPosXs[1].Write('h_hitPosX2_' + track_names[j])
-        h_hitPosYs[1].Write('h_hitPosY2_' + track_names[j])
-        h_layers[2].Write('h_layer3_' + track_names[j])
-        h_charges[2].Write('h_charge3_' + track_names[j])
-        h_subDets[2].Write('h_subDet3_' + track_names[j])
-        h_pixelHitSizes[2].Write('h_pixelHitSize3_' + track_names[j])
-        h_pixelHitSizesX[2].Write('h_pixelHitSizeX3_' + track_names[j])
-        h_pixelHitSizesY[2].Write('h_pixelHitSizeY3_' + track_names[j])
-        h_stripSelections[2].Write('h_stripSelection3_' + track_names[j])
-        h_hitPosXs[2].Write('h_hitPosX3_' + track_names[j])
-        h_hitPosYs[2].Write('h_hitPosY3_' + track_names[j])
-        h_layers[3].Write('h_layer4_' + track_names[j])
-        h_charges[3].Write('h_charge4_' + track_names[j])
-        h_subDets[3].Write('h_subDet4_' + track_names[j])
-        h_pixelHitSizes[3].Write('h_pixelHitSize4_' + track_names[j])
-        h_pixelHitSizesX[3].Write('h_pixelHitSizeX4_' + track_names[j])
-        h_pixelHitSizesY[3].Write('h_pixelHitSizeY4_' + track_names[j])
-        h_stripSelections[3].Write('h_stripSelection4_' + track_names[j])
-        h_hitPosXs[3].Write('h_hitPosX4_' + track_names[j])
-        h_hitPosYs[3].Write('h_hitPosY4_' + track_names[j])
-        if(layers < 5): continue
-        h_layers[4].Write('h_layer5_' + track_names[j])
-        h_charges[4].Write('h_charge5_' + track_names[j])
-        h_subDets[4].Write('h_subDet5_' + track_names[j])
-        h_pixelHitSizes[4].Write('h_pixelHitSize5_' + track_names[j])
-        h_pixelHitSizesX[4].Write('h_pixelHitSizeX5_' + track_names[j])
-        h_pixelHitSizesY[4].Write('h_pixelHitSizeY5_' + track_names[j])
-        h_stripSelections[4].Write('h_stripSelection5_' + track_names[j])
-        h_hitPosXs[4].Write('h_hitPosX5_' + track_names[j])
-        h_hitPosYs[4].Write('h_hitPosY5_' + track_names[j])
-        if(layers < 6): continue
-        h_layers[5].Write('h_layer6_' + track_names[j])
-        h_charges[5].Write('h_charge6_' + track_names[j])
-        h_subDets[5].Write('h_subDet6_' + track_names[j])
-        h_pixelHitSizes[5].Write('h_pixelHitSize6_' + track_names[j])
-        h_pixelHitSizesX[5].Write('h_pixelHitSizeX6_' + track_names[j])
-        h_pixelHitSizesY[5].Write('h_pixelHitSizeY6_' + track_names[j])
-        h_stripSelections[5].Write('h_stripSelection6_' + track_names[j])
-        h_hitPosXs[5].Write('h_hitPosX6_' + track_names[j])
-        h_hitPosYs[5].Write('h_hitPosY6_' + track_names[j])
+    track_names = zerobias_track_names + neutrino_names + dy_track_names
+    datasets = zeroBiasData + neutrinoGunData + dyData
+    dataType = ['real', 'mc', 'mc']
 
-        #clear the histograms for the next set
-        h_trackIso.Reset()
-        h_eta.Reset()
-        h_phi.Reset()
-        h_nPV.Reset()
-        h_drMinJet.Reset()
-        h_ecalo.Reset()
-        h_pt.Reset()
-        h_d0.Reset()
-        h_dz.Reset()
-        h_charge.Reset()
-        h_pixelHits.Reset()
-        h_Hits.Reset()
-        h_missingOuter.Reset()
-        h_dEdxPixel.Reset()
-        h_dEdxStrip.Reset()
-        h_pixelMeasurements.Reset()
-        h_stripMeasurements.Reset()
-        h_pixelSat.Reset()
-        h_stripSat.Reset()
-        h_layers[0].Reset()
-        h_charges[0].Reset()
-        h_subDets[0].Reset()
-        h_pixelHitSizes[0].Reset()
-        h_pixelHitSizesX[0].Reset()
-        h_pixelHitSizesY[0].Reset()
-        h_stripSelections[0].Reset()
-        h_hitPosXs[0].Reset()
-        h_hitPosYs[0].Reset()
-        h_layers[1].Reset()
-        h_charges[1].Reset()
-        h_subDets[1].Reset()
-        h_pixelHitSizes[1].Reset()
-        h_pixelHitSizesX[1].Reset()
-        h_pixelHitSizesY[1].Reset()
-        h_stripSelections[1].Reset()
-        h_hitPosXs[1].Reset()
-        h_hitPosYs[1].Reset()
-        h_layers[2].Reset()
-        h_charges[2].Reset()
-        h_subDets[2].Reset()
-        h_pixelHitSizes[2].Reset()
-        h_pixelHitSizesX[2].Reset()
-        h_pixelHitSizesY[2].Reset()
-        h_stripSelections[2].Reset()
-        h_hitPosXs[2].Reset()
-        h_hitPosYs[2].Reset()
-        h_layers[3].Reset()
-        h_charges[3].Reset()
-        h_subDets[3].Reset()
-        h_pixelHitSizes[3].Reset()
-        h_pixelHitSizesX[3].Reset()
-        h_pixelHitSizesY[3].Reset()
-        h_stripSelections[3].Reset()
-        h_hitPosXs[3].Reset()
-        h_hitPosYs[3].Reset()
-        if(layers < 5): continue
-        h_layers[4].Reset()
-        h_charges[4].Reset()
-        h_subDets[4].Reset()
-        h_pixelHitSizes[4].Reset()
-        h_pixelHitSizesX[4].Reset()
-        h_pixelHitSizesY[4].Reset()
-        h_stripSelections[4].Reset()
-        h_hitPosXs[4].Reset()
-        h_hitPosYs[4].Reset()
-        if(layers < 6): continue
-        h_layers[5].Reset()
-        h_charges[5].Reset()
-        h_subDets[5].Reset()
-        h_pixelHitSizes[5].Reset()
-        h_pixelHitSizesX[5].Reset()
-        h_pixelHitSizesY[5].Reset()
-        h_stripSelections[5].Reset()
-        h_hitPosXs[5].Reset()
-        h_hitPosYs[5].Reset()
-            
+    scale_factors_dy = makePUScaleFactors('puData_2017D_central.root', '/share/scratch0/mcarrigan/disTracksML/CMSSW_9_4_9/src/DisappTrks/StandardAnalysis/data/pu_disappTrks_run2.root')
+    scale_factors_NG = makePUScaleFactors('puData_2017D_central.root', '/share/scratch0/mcarrigan/disTracksML/CMSSW_9_4_9/src/DisappTrks/StandardAnalysis/data/pu_disappTrks_run2.root')
 
+    PU_dict = {dyData[0]:scale_factors_dy, neutrinoGunData[0]:scale_factors_NG}
 
-track_types = ['real_infos', 'fake_infos', 'pileup_infos']
-dy_track_names = ['real_DY', 'fake_DY', 'pileup_DY']
-higgsino_10_names = ['real_10', 'fake_10']
-higgsino_100_names = ['real_100', 'fake_100']
-higgsino_1000_names = ['real_1000', 'fake_1000']
-higgsino_10000_names = ['real_10000', 'fake_10000']
+    plotDatasets(datasets, trees, track_names, dataType)
 
-plotDataset(dyData, track_types, dy_track_names)
-#plotDataset([signalData[0]], track_types, higgsino_10_names)
-#plotDataset([signalData[1]], track_types, higgsino_100_names)
-#plotDataset([signalData[2]], track_types, higgsino_1000_names)
-#plotDataset([signalData[3]], track_types, higgsino_10000_names)
+    out.Close()
+
+    plottedVariableFile = "plottedVariables.root"
+
+    plotTogether('h_trackIso_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_eta_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_phi_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_nPV_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_drMinJet_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_ecalo_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_d0_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_dz_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pt_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_charge_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHits_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_Hits_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_missingOuter_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_dEdxPixel_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelMeasurements_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_stripMeasurements_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelSat_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_stripSat_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_sumEnergy_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_diffEnergy_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_dz1_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_d01_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_dz2_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_d02_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_dz3_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_d03_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_layer1_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_charge1_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_subDet1_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSize1_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeX1_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeY1_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_stripSelection1_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosX1_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosY1_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_layer2_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_charge2_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_subDet2_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSize2_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeX2_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeY2_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_stripSelection2_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosX2_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosY2_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_layer3_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_charge3_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_subDet3_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSize3_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeX3_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeY3_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_stripSelection3_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosX3_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosY3_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_layer4_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_charge4_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_subDet4_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSize4_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeX4_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeY4_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_stripSelection4_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosX4_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosY4_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_layer5_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_charge5_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_subDet5_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSize5_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeX5_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeY5_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_stripSelection5_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosX5_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosY5_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_layer6_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_charge6_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_subDet6_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSize6_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeX6_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_pixelHitSizeY6_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_stripSelection6_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosX6_', track_names,dataType, plottedVariableFile)
+    plotTogether('h_hitPosY6_', track_names,dataType, plottedVariableFile)
 
 
 
-out.Close()
 
 
-plotTogether('h_trackIso_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_eta_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_phi_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_nPV_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_drMinJet_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_ecalo_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_d0_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_dz_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pt_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_charge_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHits_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_Hits_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_missingOuter_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_dEdxPixel_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelMeasurements_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_stripMeasurements_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelSat_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_stripSat_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_layer1_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_charge1_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_subDet1_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSize1_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeX1_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeY1_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_stripSelection1_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosX1_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosY1_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_layer2_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_charge2_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_subDet2_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSize2_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeX2_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeY2_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_stripSelection2_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosX2_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosY2_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_layer3_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_charge3_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_subDet3_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSize3_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeX3_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeY3_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_stripSelection3_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosX3_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosY3_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_layer4_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_charge4_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_subDet4_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSize4_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeX4_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeY4_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_stripSelection4_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosX4_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosY4_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_layer5_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_charge5_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_subDet5_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSize5_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeX5_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeY5_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_stripSelection5_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosX5_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosY5_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_layer6_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_charge6_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_subDet6_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSize6_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeX6_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_pixelHitSizeY6_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_stripSelection6_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosX6_', dy_track_names, "plottedVariablesMC.root")
-plotTogether('h_hitPosY6_', dy_track_names, "plottedVariablesMC.root")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

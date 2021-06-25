@@ -10,16 +10,17 @@ import numpy as np
 
 if __name__=="__main__":
 
-    folder = "fakeTracks_4PlusLayer_PUveto0p1_3_24"
+    inputDim = 173
+    folder = "fakeTracks_4PlusLayer_aMCv9p1_6_25"
     logDir = "/data/users/mcarrigan/Logs/fakeTracks/"
     #dataDir = ["/store/user/mcarrigan/fakeTracks/converted_madgraph_4PlusLayer_v7p1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_4PlusLayer_v7p1/"]
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_aMC_veto0p1_4PlusLayer_v7p1/"]
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/"]
     #[filters, batch_norm, undersampling, epochs, dataDir, input_dim]
     #InputDim = 55 (4layers), 64 (5layers), 163 (6+ layers)
-    params = [[[32, 8], True, -1, 100, dataDir, 163],
-              [[16, 8], True, -1, 100, dataDir, 163], 
-              [[24, 8], True, -1, 100, dataDir, 163],
-              [[24, 12], True, -1, 100, dataDir, 163]]
+    params = [[[32, 8], True, -1, 100, dataDir, inputDim],
+              [[16, 8], True, -1, 100, dataDir, inputDim], 
+              [[24, 8], True, -1, 100, dataDir, inputDim],
+              [[24, 12], True, -1, 100, dataDir, inputDim]]
     np.save('params.npy',params)
     njobs = len(params)
 
@@ -40,7 +41,7 @@ if __name__=="__main__":
     error                   = {2}{0}/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = run_wrapper.sh, fakesNN.py, plotMetrics.py, params.npy
+    transfer_input_files = run_wrapper.sh, fakesNN.py, plotMetrics.py, params.npy, utilities.py
     getenv = true
     queue {1}
     """.format(folder, njobs, logDir)

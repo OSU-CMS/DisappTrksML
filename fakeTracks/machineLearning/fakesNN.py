@@ -19,7 +19,7 @@ import getopt
 import plotMetrics
 from datetime import date
 from sklearn.preprocessing import MinMaxScaler
-
+import utilities
 
 def buildModel(filters = [16, 8], input_dim = 55, batch_norm = False, metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
     #begin NN model
@@ -39,88 +39,6 @@ def buildModel(filters = [16, 8], input_dim = 55, batch_norm = False, metrics = 
 def callModel():
     model = buildModel(filters, input_dim, batch_norm)
     return model
-
-def loadData(dataDir, undersample):
-    #layerId, charge, isPixel, pixelHitSize, pixelHitSizeX, pixelHitSizeY, stripShapeSelection, hitPosX, hitPosY
-    # load the dataset
-    file_count = 0
-    realTracks = []
-    fakeTracks = []
-    for filename in os.listdir(dataDir):
-        print("Loading...", dataDir + filename)
-        #if file_count > 20: break
-        myfile = np.load(dataDir+filename)
-        fakes = np.array(myfile["fake_infos"])
-        reals = np.array(myfile["real_infos"])
-        if(file_count == 0):
-            fakeTracks = fakes
-            realTracks = reals
-        elif(file_count != 0 and len(fakeTracks) == 0): fakeTracks = fakes
-        elif(file_count != 0 and len(realTracks) == 0): realTracks = reals
-        else:
-            if(len(fakes)!=0): fakeTracks = np.concatenate((fakeTracks, fakes))
-            if(len(reals)!=0): realTracks = np.concatenate((realTracks, reals))
-        file_count += 1
-
-
-    print("Number of fake tracks:", len(fakeTracks))
-    print("Number of real tracks:", len(realTracks))
-
-    trainRealTracks, testRealTracks, trainRealTruth, testRealTruth = train_test_split(realTracks, np.zeros(len(realTracks)), test_size = 0.3)
-    trainFakeTracks, testFakeTracks, trainFakeTruth, testFakeTruth = train_test_split(fakeTracks, np.ones(len(fakeTracks)), test_size = 0.3)
-
-    testRealTracks, valRealTracks, testRealTruth, valRealTruth = train_test_split(testRealTracks, testRealTruth, test_size = 0.5)
-    testFakeTracks, valFakeTracks, testFakeTruth, valFakeTruth = train_test_split(testFakeTracks, testFakeTruth, test_size = 0.5)
-
-    # if undersampling
-    if(undersample != -1):
-        num_real = len(trainRealTracks)
-        num_select = int(undersample * num_real)
-        ind = np.arange(num_real)
-        ind = np.random.choice(ind, num_select)
-        trainRealTracks = trainRealTracks[ind]
-        
-
-    #combine all data and shuffle
-    trainTracks = np.concatenate((trainFakeTracks, trainRealTracks))
-    testTracks = np.concatenate((testFakeTracks, testRealTracks))
-    trainTruth = np.concatenate((trainFakeTruth, trainRealTruth))
-    testTruth = np.concatenate((testFakeTruth, testRealTruth))
-    valTracks = np.concatenate((valFakeTracks, valRealTracks))
-    valTruth = np.concatenate((valFakeTruth, valRealTruth))
-
-    # Apply min max scale over all data (scale set range [-1,1])
-    #scaler = MinMaxScaler(feature_range=(-1,1), copy=False)
-    #scaler.partial_fit(trainTracks)
-    #scaler.partial_fit(testTracks)
-    #scaler.partial_fit(valTracks)
-    #testTracks = scaler.transform(testTracks)
-    #trainTracks = scaler.transform(trainTracks)
-    #valTracks = scaler.transform(valTracks)
-
-    test_indices = np.arange(len(testTracks))
-    np.random.shuffle(test_indices)
-    train_indices = np.arange(len(trainTracks))
-    np.random.shuffle(train_indices)
-    val_indices = np.arange(len(valTracks))
-    np.random.shuffle(val_indices)
-
-    trainTracks = trainTracks[train_indices]
-    trainTracks = np.reshape(trainTracks, (-1,input_dim))
-    if(normalize_data): trainTracks = np.tanh(trainTracks)
-    trainTruth = trainTruth[train_indices]
-
-    testTracks = testTracks[test_indices]
-    testTracks = np.reshape(testTracks, (-1,input_dim))
-    if(normalize_data): testTracks = np.tanh(testTracks)
-    testTruth = testTruth[test_indices]
-
-    valTracks = valTracks[val_indices]
-    valTracks = np.reshape(valTracks, (-1,input_dim))
-    if(normalize_data): valTracks = np.tanh(valTracks)
-    valTruth = valTruth[val_indices]
-
-    return trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth
 
 
 if __name__ == "__main__":
@@ -178,7 +96,7 @@ if __name__ == "__main__":
 
     ################config parameters################
 
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_aMC_vetop01_4PlusLayer_v7p1/"]
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/"]
     normalize_data = False
     undersample = -1
     oversample = -1   
@@ -186,11 +104,13 @@ if __name__ == "__main__":
     batch_norm = False
     batch_size = 64
     epochs = 1
-    input_dim = 163
+    input_dim = 173
     patience_count = 20
     monitor = 'val_loss'
     #class_weights = False  
     metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
+    delete_elements = ['totalCharge', 'numSatMeasurements', 'stripSelection', 'hitPosX', 'hitPosY']
+    
     #################################################
 
     if(len(params) > 0):
@@ -206,12 +126,14 @@ if __name__ == "__main__":
     os.system('mkdir '+str(plotDir))
     os.system('mkdir '+str(weightsDir))
     os.system('mkdir '+str(outputDir))
-    
+   
+    inputs, input_dim = utilities.getInputs(input_dim, delete_elements)
+ 
     for i, dataSet in enumerate(dataDir):
         if i == 0:
-            trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = loadData(str(dataSet), undersample)
+            trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = utilities.loadData(str(dataSet), undersample, inputs, normalize_data)
         else:
-            trainTracks2, testTracks2, valTracks2, trainTruth2, testTruth2, valTruth2 = loadData(str(dataSet), undersample)
+            trainTracks2, testTracks2, valTracks2, trainTruth2, testTruth2, valTruth2 = utilities.loadData(str(dataSet), undersample, inputs, normalize_data)
             trainTracks = np.concatenate((trainTracks, trainTracks2))
             trainTruth = np.concatenate((trainTruth, trainTruth2))
             testTracks = np.concatenate((testTracks, testTracks2))
