@@ -10,12 +10,12 @@ import numpy as np
 if __name__=="__main__":
 
     layers = -1
-    dataDir = '/store/user/mcarrigan/fakeTracks/selection_v8_NeutrinoGun_ext/'
+    dataDir = '/store/user/mcarrigan/fakeTracks/selection_v9_DYJets_aMCNLO/'
     #dataDir = '/store/user/mcarrigan/fakeTracks/selection_v7_madgraph_fullSelection/'
     #dataDir = '/store/user/mcarrigan/fakeTracks/selection_higgsino_700_10_v7p1/'
     # v2 means only saving pileup with dR > 0.1 
-    outDir = '/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_cat0p1_4PlusLayer_v8/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_NeutrinoGun_ext_cat0p1_4PlusLayer_v8/'
+    outDir = '/store/user/mcarrigan/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)

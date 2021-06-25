@@ -41,15 +41,15 @@ bool trackSelection(TrackInfo track){
     if(!(track.nValidHits >= 4)) return false;
     if(!(track.missingInnerHits == 0)) return false;
     if(!(track.missingMiddleHits == 0)) return false;
-    if(!(track.trackIso /track.pt < 0.05)) return false;
+    //if(!(track.trackIso /track.pt < 0.05)) return false;
     //if(!(abs(track.d0) < 0.02)) return false;
     //if(!(abs(track.dz) < 0.5)) return false;
-    if(!(abs(track.dRMinJet) > 0.5)) return false;
+    //if(!(abs(track.dRMinJet) > 0.5)) return false;
 
     //candidate track selection
-    if(!(abs(track.deltaRToClosestElectron) > 0.15)) return false;
-    if(!(abs(track.deltaRToClosestMuon) > 0.15)) return false;
-    if(!(abs(track.deltaRToClosestTauHad) > 0.15)) return false;   
+    //if(!(abs(track.deltaRToClosestElectron) > 0.15)) return false;
+    //if(!(abs(track.deltaRToClosestMuon) > 0.15)) return false;
+    //if(!(abs(track.deltaRToClosestTauHad) > 0.15)) return false;   
     
     //disappearing track selection
     //if(!(track.missingOuterHits >= 3)) return false;

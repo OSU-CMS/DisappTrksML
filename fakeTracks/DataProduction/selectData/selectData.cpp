@@ -73,7 +73,7 @@ double pileupMatching(TrackInfo track, vector<double> pileupZPosition){
 }
 
 
-void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v8-DYJets-MC2017_aMCNLO/", TString filelist = ""){
+void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v8-NeutrinoGun-MC2017-ext/", TString filelist = ""){
     
     if(filelist.Length()>0){
         string line;
@@ -92,13 +92,13 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
     }
 
     // Booleans for creating signal MC, taking full selection on Training data, or creating a 3rd class for pileup
-    bool signalMC = false;
+    bool signalMC = true;
     bool fullSelection = false;
     double PU_cut = 0.1;
    
     //TString filename = "images.root";
-    TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
-    //TString filename = dataDir + "hist_" + int_tstring(fileNum) + ".root";
+    //TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
+    TString filename = dataDir + "hist_" + int_tstring(fileNum) + ".root";
     TFile* myFile = TFile::Open(filename, "read");
     if(myFile == nullptr) return;
     TTree * myTree = (TTree*)myFile->Get("trackImageProducer/tree");
@@ -108,7 +108,7 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
     vector<GenParticleInfo> * v_genParticles = new vector<GenParticleInfo>(); 
     vector<VertexInfo> * v_vertexInfos = new vector<VertexInfo>();
     int nPV;
-    int numTruePV;
+    unsigned int numTruePV;
     unsigned long long eventNumber;
     unsigned int lumiBlockNumber;
     unsigned int runNumber;
@@ -203,7 +203,7 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
 
             if(signalMC) if(genMatchedId != 1000024 && genMatchedId != 1000022) continue;
             if(genMatchedDR > 0.1){
-                cout << genMatchedDR << " " << pu_dz << endl;
+                //cout << genMatchedDR << " " << pu_dz << endl;
                 if(pu_dz > PU_cut) v_tracks_fake->push_back(track);
                 else if(pu_dz <= PU_cut) v_tracks_pileup->push_back(track);
             }

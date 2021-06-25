@@ -75,11 +75,71 @@ def trackMatching(track):
     #print(v_d0[0], track.d0)
     return v_dz, v_d0
 
+def signalSelection(track):
+
+    if not (track.trackIso /track.pt < 0.05): return False
+    if not (abs(track.d0) < 0.02): return False
+    if not (abs(track.dz) < 0.5): return False
+    if not (abs(track.dRMinJet) > 0.5): return False
+
+    #candidate track selection
+    if not (abs(track.deltaRToClosestElectron) > 0.15): return False
+    if not (abs(track.deltaRToClosestMuon) > 0.15): return False
+    if not (abs(track.deltaRToClosestTauHad) > 0.15): return False
+
+    #disappearing track selection
+    if not (track.missingOuterHits >= 3): return False
+    if not (track.ecalo < 10): return False
+    return True
+
+def getTrackInfo(track, track_info):
+    infos = []
+    for info in track_info:
+        infos.append(info)
+    return infos
+
+def getEventInfo(event, event_info):
+    infos = []
+    for info in event_info:
+        print(info)
+        infos.append(info)
+    return infos
+
+def getDeDxInfo(hit, hit_info):
+    infos = []
+    for info in hit_info:
+        infos.append(info)
+    return infos
+
+def defineEventInfos(network):
+    fake_infos = [event.nPV]
+    if network == 'fakes': return fake_infos
+    else: 
+        print('Network is not defined in defineEventInfos')
+        return 0
+
+def defineTrackInfos(network):
+    fake_infos = [track.trackIso, track.eta, track.phi, track.nValidPixelHits, track.nValidHits, track.missingOuterHits, track.dEdxPixel, track.dEdxStrip,                                           track.numMeasurementsPixel, track.numMeasurementsStrip, track.numSatMeasurementsPixel, track.numSatMeasurementsStrip, track.dRMinJet, track.ecalo,                                 track.pt, track.d0, track.dz, track.charge, track.deltaRToClosestElectron]
+    if network == 'fakes': return fake_infos
+    else:
+        print("Network is not defined in defineTrackInfos")
+        return 0
+
+def defineDeDxInfos(network):
+    fake_infos = [hit.hitLayerId, hit.charge, hit.subDet, hit.pixelHitSize, hit.pixelHitSizeX, hit.pixelHitSizeY, hit.stripShapeSelection, hit.hitPosX, hit.hitPosY]
+    if network == 'fakes': return fake_infos
+    else:
+        print("Network is not defined in defineHitInfos")
+        return 0               
+
 fake_infos, real_infos, pileup_infos = [], [], []
 for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
 
     for iEvent, event in enumerate(tree):
         nPV = event.nPV
+
+        #print(getEventInfo(event, defineEventInfos('fakes')))
+        event_info = getEventInfo(event, defineEventInfos('fakes'))
 
         for iTrack, track in enumerate(event.tracks):
             nLayersWithMeasurement = track.nLayersWithMeasurement
@@ -95,26 +155,13 @@ for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
             eta = track.eta
             if(abs(eta) > 2.4): continue
            
-            trackIso = track.trackIso
-            phi = track.phi
-            nValidPixelHits = track.nValidPixelHits
-            nValidHits = track.nValidHits
-            missingOuterHits = track.missingOuterHits
-            dEdxPixel = track.dEdxPixel
-            dEdxStrip = track.dEdxStrip
-            numMeasurementsPixel = track.numMeasurementsPixel
-            numMeasurementsStrip = track.numMeasurementsStrip
-            numSatMeasurementsPixel = track.numSatMeasurementsPixel
-            numSatMeasurementsStrip = track.numSatMeasurementsStrip
-            dRMinJet = track.dRMinJet
-            ecalo = track.ecalo
-            pt = track.pt
-            d0 = track.d0
-            dz = track.dz
-            charge = track.charge
+
+            track_info = getTrackInfo(track, defineTrackInfos('fakes'))
+
+            passesSelection = signalSelection(track)
             
-            track_info = [trackIso, eta, phi, nPV, dRMinJet, ecalo, pt, d0, dz, charge, nValidPixelHits, nValidHits, missingOuterHits, dEdxPixel, dEdxStrip, numMeasurementsPixel, 
-                          numMeasurementsStrip, numSatMeasurementsPixel, numSatMeasurementsStrip]
+            track_info = np.concatenate(([passesSelection], event_info, track_info))
+            print('track info length', len(track_info))
             
             if(layers == 6 or layers == -1): nLayers = np.zeros((16, 9))
             else: nLayers = np.zeros((layers, 9))
@@ -124,23 +171,10 @@ for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
             max_energy, min_energy, sum_energy = 0, 10e6, 0
 
             for iHit, hit in enumerate(track.dEdxInfo):
-                layerHits = []
-                print("Event: " + str(iEvent) + ", Track: " + str(iTrack) + " isFake: " + str(class_label) + ", subDet: " + str(hit.subDet) + " Layer: " 
-                        + str(hit.hitLayerId), "nLayersWithMeasurement: " + str(nLayersWithMeasurement) + " Eta: " + str(track.eta) + " missingInnerHits: " 
-                        + str(track.missingInnerHits) + " missingMiddleHits: " + str(track.missingMiddleHits) + " missingOuterHits: " + str(track.missingOuterHits) + 
-                        " Charge: " + str(hit.charge))
-                if(hit.hitLayerId < 0): 
-                    continue
-                layerHits.append(hit.hitLayerId)
-                layerHits.append(hit.charge)
-                layerHits.append(hit.subDet)
-                layerHits.append(hit.pixelHitSize)
-                layerHits.append(hit.pixelHitSizeX)
-                layerHits.append(hit.pixelHitSizeY)
-                layerHits.append(hit.stripShapeSelection)
-                layerHits.append(hit.hitPosX)
-                layerHits.append(hit.hitPosY)
+                if(hit.hitLayerId < 0): continue
                 
+                layerHits = getDeDxInfo(hit, defineDeDxInfos('fakes'))
+
                 if(hit.charge > max_energy): max_energy = hit.charge
                 if(hit.charge < min_energy): min_energy = hit.charge
                 sum_energy += hit.charge
@@ -160,7 +194,6 @@ for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
                         nLayers[nLayerCount, i] = layerHits[i]
                     nLayerCount += 1
  
-            print("*********************************************************************************************************************************************************")
             for iLayer in range(len(nLayers)):
                 print("subDet: " + str(nLayers[iLayer, 2]) + " Layer: " + str(nLayers[iLayer, 0]) + " Charge: " + str(nLayers[iLayer, 1]))
 
@@ -171,8 +204,8 @@ for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
             
             # Find max layer energy difference and energy sum
             print("sum energy: ", sum_energy, "diff energy:", max_energy-min_energy)
-            track_info.append(sum_energy)
-            track_info.append(max_energy - min_energy)
+            track_info = np.concatenate((track_info, [sum_energy]))
+            track_info = np.concatenate((track_info, [max_energy - min_energy]))
             
             # add dz and d0 for k nearest neighbors to track
             v_dz, v_d0 = trackMatching(track)
@@ -182,6 +215,8 @@ for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
             #print(track_info)
            
             track_info = np.concatenate((track_info, nLayers.flatten()))
+ 
+            print(len(track_info))
 
             if(class_label == 0): real_infos.append(track_info)
             if(class_label == 1): fake_infos.append(track_info)
