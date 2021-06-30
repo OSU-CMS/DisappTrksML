@@ -58,6 +58,7 @@ bool trackSelection(TrackInfo track){
 
 }
 
+
 double pileupMatching(TrackInfo track, vector<double> pileupZPosition){
     double min_dz = 10e6;
     for(int i = 0; i < pileupZPosition.size(); i++){
@@ -69,7 +70,10 @@ double pileupMatching(TrackInfo track, vector<double> pileupZPosition){
 }
 
 
-void selectDataReal(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images_v8_ZeroBias_2017/", TString filelist = ""){
+//Test files
+// ZeroBias  /store/user/mcarrigan/Images_v8_ZeroBias_2017/
+
+void selectDataReal(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v8-singleMuon2017F/", TString filelist = ""){
     
     if(filelist.Length()>0){
         string line;
@@ -94,6 +98,8 @@ void selectDataReal(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Im
     if(myFile == nullptr) return;
     TTree * myTree = (TTree*)myFile->Get("trackImageProducer/tree");
 
+    // boolean to select only Z->ll tracks
+    bool ZtoMuMuSelection = true;
 
     vector<TrackInfo> * v_tracks = new vector<TrackInfo>();
     vector<RecHitInfo> * v_recHits = new vector<RecHitInfo>(); 
@@ -189,7 +195,7 @@ void selectDataReal(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Im
             
             //look to see if track passes general selections
             if(!trackSelection(track)) continue;
-
+            //if(ZtoMuMuSelection && !track.isTagProbeMuon) continue;
             v_tracks_real->push_back(track);            
 
         }//end of tracks loop
