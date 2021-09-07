@@ -9,11 +9,13 @@ import numpy as np
 
 if __name__=="__main__":
 
-    layers = 6
-    dataDir = '/store/user/mcarrigan/fakeTracks/selection_v7_madgraph/'
-    #dataDir = '/store/user/mcarrigan/fakeTracks/selection_aMC_v1/'
-    outDir = '/store/user/mcarrigan/fakeTracks/converted_madgraph_6layer_v7p1/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_madgraph_6layer_v7p1/'
+    layers = -1
+    dataDir = '/store/user/mcarrigan/fakeTracks/selection_v9_DYJets_aMCNLO/'
+    #dataDir = '/store/user/mcarrigan/fakeTracks/selection_v7_madgraph_fullSelection/'
+    #dataDir = '/store/user/mcarrigan/fakeTracks/selection_higgsino_700_10_v7p1/'
+    # v2 means only saving pileup with dR > 0.1 
+    outDir = '/store/user/mcarrigan/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)

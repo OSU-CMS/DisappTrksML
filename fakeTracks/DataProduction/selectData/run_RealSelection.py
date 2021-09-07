@@ -10,9 +10,9 @@ import numpy as np
 if __name__=="__main__":
 
     #data dir needs to be run over 0001 as well as 0000
-    dataDir = '/store/user/bfrancis/images_v6/ZtoMuMu_2017F_noIsoCut/0000/'
-    outDir = '/store/user/mcarrigan/fakeTracks/selection_Z2MuMu_v1/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/selection_Z2MuMu_v1/'
+    dataDir = '/store/user/mcarrigan/Images-v8-ZeroBias-2017D/'
+    outDir = '/store/user/mcarrigan/fakeTracks/selection_ZeroBias_2017D_v8/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/selection_ZeroBias_2017D_v8/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)

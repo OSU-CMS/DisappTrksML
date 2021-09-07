@@ -256,13 +256,13 @@ class DeepSetsArchitecture:
 
         self.model.compile(optimizer=optimizers.Adagrad(), loss='categorical_crossentropy', metrics=metrics)
         
-        # training_callbacks = [
-        #     callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
-        #     callbacks.ModelCheckpoint(filepath=outdir + 'model.{epoch}.h5',
-        #                               save_best_only=True,
-        #                               monitor=monitor,
-        #                               mode='auto')
-        # ]
+        training_callbacks = [
+            callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
+            # callbacks.ModelCheckpoint(filepath=outdir + 'model.{epoch}.h5',
+            #                           save_best_only=True,
+            #                           monitor=monitor,
+            #                           mode='auto')
+        ]
 
         if val_generator is None:
             self.training_history = self.model.fit(train_generator,
@@ -272,7 +272,7 @@ class DeepSetsArchitecture:
         else:
             self.training_history = self.model.fit(train_generator, 
                                                    validation_data=val_generator,
-                                                   #callbacks=training_callbacks,
+                                                   callbacks=training_callbacks,
                                                    epochs=epochs,
                                                    verbose=2)
         

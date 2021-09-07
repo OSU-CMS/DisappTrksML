@@ -99,6 +99,7 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   tree_->Branch("lumiBlockNumber", &lumiBlockNumber_);
   tree_->Branch("runNumber", &runNumber_);
   tree_->Branch("pileupZPosition", &pileupZPosition_);
+  tree_->Branch("numTruePV", &numTruePV_);
 
   tree_->Branch("firesGrandOrTrigger", &firesGrandOrTrigger_);
   tree_->Branch("passMETFilters", &passMETFilters_);
@@ -260,7 +261,10 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
     edm::View<PileupSummaryInfo>::const_iterator iterPU;
     for(edm::View<PileupSummaryInfo>::const_iterator iterPU = pileupInfos->begin(); iterPU != pileupInfos->end(); iterPU++) {
       // Out of time pileup is also saved -> need to require 0th bunch crossing (in time bunch crossing)
-      if(iterPU->getBunchCrossing() == 0) pileupZPosition_ = iterPU->getPU_zpositions();
+      if(iterPU->getBunchCrossing() == 0){ 
+        pileupZPosition_ = iterPU->getPU_zpositions();
+        numTruePV_ = iterPU->getTrueNumInteractions();
+      }
     }
   }
 

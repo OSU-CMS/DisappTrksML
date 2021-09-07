@@ -24,16 +24,16 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(-1)
+    input = cms.untracked.int32(100)
 )
 
 # Input source
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring( (
-	#'file:/data/users/bfrancis/condor/signalMC/2017/step3/700_1000/hist_0.root',
-        'file:/store/user/mcarrigan/06C4ED85-A9F2-E711-87B6-0025905B85D8.root',
+	#'/store/data/Run2017F/ZeroBias/AOD/25Mar2019-v1/70000/007F3529-E74F-E911-9ECD-0242AC130002.root',
+        #'file:/store/user/mcarrigan/06C4ED85-A9F2-E711-87B6-0025905B85D8.root',
         #'/store/mc/RunIIFall17DRPremix/ZJetsToNuNu_HT-100To200_13TeV-madgraph/AODSIM/94X_mc2017_realistic_v10-v1/00000/F67AD86D-E915-E811-B51F-0CC47A0AD6AA.root',
-        #'/store/mc/RunIIFall17DRPremix/DYJetsToLL_M-50_TuneCP5_13TeV-amcatnloFXFX-pythia8/AODSIM/PU2017_94X_mc2017_realistic_v11-v1/00000/36A2F3FA-3C8F-E811-8A19-A4BF01159320.root',
+        '/store/mc/RunIIFall17DRPremix/DYJetsToLL_M-50_TuneCP5_13TeV-amcatnloFXFX-pythia8/AODSIM/PU2017_94X_mc2017_realistic_v11-v1/00000/36A2F3FA-3C8F-E811-8A19-A4BF01159320.root',
     ) ),
     secondaryFileNames = cms.untracked.vstring()
 )
@@ -185,8 +185,8 @@ process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducerMINIAOD",
 	"Flag_globalTightHalo2016Filter",
 	"Flag_globalSuperTightHalo2016Filter"]),
 
-    minGenParticlePt = cms.double(10.0),
-    minTrackPt       = cms.double(25.0),
+    minGenParticlePt = cms.double(-1),
+    minTrackPt       = cms.double(20.0),
     maxRelTrackIso   = cms.double(-1.0),
 
     dataTakingPeriod = cms.string("2017")

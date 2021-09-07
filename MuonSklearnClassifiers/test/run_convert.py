@@ -1,0 +1,60 @@
+import pickle
+import os,re
+import sys
+import time
+from decimal import Decimal
+import glob
+import subprocess
+import numpy as np
+
+if __name__=="__main__":
+
+    dataDir = '/store/user/bfrancis/images_v7/SingleMuon_2017F_wIso/0001/'
+    outDir = '/store/user/llavezzo/disappearingTracks/naiveBayes/SingleMu_training_pt2/'
+    logDir = '/data/users/llavezzo/Logs/convert/'
+    reprocessAllFiles = False
+
+    if(not os.path.isdir(outDir)): os.mkdir(outDir)
+    if(not os.path.isdir(logDir)): os.mkdir(logDir)
+
+    alreadyProcessedFiles = []
+    for filename in os.listdir(outDir):
+        if('.root' in filename and 'images' in filename):
+            index1 = filename.find("_")
+            index2 = filename.find(".root")
+            numFile = int(filename[index1+1:index2])
+            alreadyProcessedFiles.append(numFile)
+    files = []
+    for filename in os.listdir(dataDir):
+        if('.root' in filename and 'images' in filename):
+            index1 = filename.find("_")
+            index2 = filename.find(".root")
+            numFile = int(filename[index1+1:index2])
+            if(not reprocessAllFiles):
+                if(numFile in alreadyProcessedFiles): continue
+            files.append(numFile) 
+    filelist = 'filelist.txt'
+    np.savetxt(filelist,files)
+
+    f = open('run.sub', 'w')
+    submitLines = """
+    Universe = vanilla
+    +IsLocalJob = true
+    Rank = TARGET.IsLocalSlot
+    request_disk = 100MB
+    request_memory = 1GB
+    request_cpus = 2
+    executable              = convert_wrapper.sh
+    arguments               = $(PROCESS) {1} {2} {3}
+    log                     = {4}log_$(PROCESS).log
+    output                  = {4}out_$(PROCESS).txt
+    error                   = {4}error_$(PROCESS).txt
+    when_to_transfer_output = ON_EXIT
+    getenv = true
+    queue {0}
+    """.format(len(files),filelist,dataDir,outDir, logDir)
+
+    f.write(submitLines)
+    f.close()
+
+    os.system('condor_submit run.sub')
