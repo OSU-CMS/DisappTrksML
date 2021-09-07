@@ -11,7 +11,7 @@ import numpy as np
 if __name__=="__main__":
 
     inputDim = 173
-    folder = "fakeTracks_4PlusLayer_aMCv9p1_9_7_NGBoost_test1"
+    folder = "fakeTracks_4PlusLayer_aMCv9p1_9_7_NGBoost_test3"
     logDir = "/data/users/mcarrigan/Logs/fakeTracks/"
     #dataDir = ["/store/user/mcarrigan/fakeTracks/converted_madgraph_4PlusLayer_v7p1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_4PlusLayer_v7p1/"]
     #dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_PUTrain_v9p1/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_4PlusLayer_v9p1/"]
