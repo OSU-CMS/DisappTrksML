@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     ################config parameters################
 
-    DEBUG = True
+    DEBUG = False
 
     dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_4PlusLayer_v9p1/"]
     normalize_data = False
@@ -197,9 +197,10 @@ if __name__ == "__main__":
     predictions_raw = predictions_raw[:, 1]
     #predictions = [1 if x >= 0.5 else 0 for x in predictions_raw]
     plotMetrics.plotCM(testTruth, predictions, plotDir)
-    plotMetrics.getStats(testTruth, predictions)
+    classifications = plotMetrics.getStats(testTruth, predictions)
     plotMetrics.plotHistory(history, ['loss', 'auc', 'recall', 'precision'], plotDir)
     plotMetrics.plotScores(predictions_raw, testTruth, 'fakeNN', plotDir)
+    plotMetrics.predictionThreshold(predictions_raw, testTruth, plotDir)
     #plotMetrics.permutationImportance(estimator, testTracks, testTruth, plotDir)
     np.savez_compressed(outputDir + "predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions, predictionScores = predictions_raw)
 

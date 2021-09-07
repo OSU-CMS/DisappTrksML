@@ -25,6 +25,8 @@ class bcolors:
 
 saveDir = "images/"
 
+r.gROOT.SetBatch(1)
+
 #if len(sys.argv) > 1:
 #    inputFile = sys.argv[1]
 #    inputData = np.load(inputFile)
@@ -104,19 +106,23 @@ def plotCM3(predictions, plotDir, outputfile = 'metricPlots.root'):
     out.Close()
 
 
-def getStats(truth, predictions):
+def getStats(truth, predictions, threshold = 0.5):
     TP, FP, TN, FN = 0, 0, 0, 0
     for i in range(len(truth)):
-        if(truth[i] == 0 and predictions[i] == 0): TN += 1
-        if(truth[i] == 1 and predictions[i] == 1): TP += 1
-        if(truth[i] == 1 and predictions[i] == 0): FN += 1
-        if(truth[i] == 0 and predictions[i] == 1): FP += 1
-    if(FP > 0): P = float(TP) / float((TP+FP))
-    else: P = float(TP+1) / float((TP+FP+2))
-    if(FN > 0): R = float(TP) / float((TP+FN))
-    else: R = float(TP+1) / float((TP+FN+2))
-    print("Precision (TP/(TP+FP)): " + str(P) + " Recall (TP/(TP+FN)): " + str(R))
-    print("TP: " + str(TP) + ", FP: " + str(FP) + ", TN: " + str(TN) + ", FN: " + str(FN))       
+        if(truth[i] == 0 and predictions[i] < threshold): TN += 1
+        if(truth[i] == 1 and predictions[i] >= threshold): TP += 1
+        if(truth[i] == 1 and predictions[i] < threshold): FN += 1
+        if(truth[i] == 0 and predictions[i] >= threshold): FP += 1
+    if(TP > 0): 
+        P = float(TP) / float((TP+FP))
+        R = float(TP) / float((TP+FN))
+    else: 
+        P = 0
+        R = 0
+    if(threshold > -1): 
+        print("Precision (TP/(TP+FP)): " + str(P) + " Recall (TP/(TP+FN)): " + str(R))
+        print("TP: " + str(TP) + ", FP: " + str(FP) + ", TN: " + str(TN) + ", FN: " + str(FN))       
+    return [TP, FP, TN, FN]
 
 def plotHistory(history, variables, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
@@ -265,6 +271,47 @@ def plotScores(predictions, truth, name, plotDir, outputfile = 'metricPlots.root
     l1.Draw("same")
     out.cd()
     c1.Write("PredictionScores")
+    out.Close()
+
+def predictionThreshold(predictions, truth, plotDir, outputfile = 'metricPlots.root'):
+    out = r.TFile(plotDir + outputfile, "update")
+    h_precision = r.TH1F("h_precision", "Precision", 20, 0, 1)
+    h_recall = r.TH1F("h_recall", "Recall", 20, 0, 1)
+    c1 = r.TCanvas("c1", "c1", 800, 800)
+
+    bins = [x*0.05 for x in range(20)]
+
+    for iBin, Bin in enumerate(bins):
+           #[TP, FP, TN, FN]
+           metrics = getStats(truth, predictions, Bin)
+           if(metrics[0] > 0): 
+               precision = float(metrics[0]) / (float(metrics[0]) + float(metrics[1]))
+               recall = float(metrics[0]) / (float(metrics[0]) + float(metrics[3]))
+               h_precision.SetBinContent(iBin, precision)
+               h_recall.SetBinContent(iBin, recall)
+           else: 
+               precision = 0.
+               recall = 0.
+               h_precision.SetBinContent(iBin, precision)
+               h_recall.SetBinContent(iBin, recall)
+    
+    c1.cd()
+    l1 = r.TLegend(0.5, 0.7, 0.6, 0.8)
+    h_precision.GetYaxis().SetRangeUser(0,1)
+    h_precision.SetTitle("Prediction Threshold vs Metrics")
+    h_precision.GetYaxis().SetTitle("Metric Score")
+    h_precision.GetXaxis().SetTitle("Prediction Threshold")
+    h_precision.Draw()
+    h_recall.SetLineColor(2)
+    h_recall.Draw("same")
+    l1.AddEntry(h_precision, "Precision", "l")
+    l1.AddEntry(h_recall, "Recall", "l")
+    l1.Draw("same")
+
+    out.cd()
+    h_precision.Write("PrecisionVsThreshold")
+    h_recall.Write("RecallVsThreshold")
+    c1.Write("PredictionThresholdScores")
     out.Close()
 
 if __name__ == "__main__":

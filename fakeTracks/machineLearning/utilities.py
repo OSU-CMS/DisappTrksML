@@ -71,7 +71,7 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, test_
     for filename in os.listdir(dataDir):
         print("Loading...", dataDir + filename)
         if(DEBUG): 
-            if file_count > 20: break
+            if file_count > 100: break
         myfile = np.load(dataDir+filename)
         if(saveCategories['fake'] == True):
             fakes = np.array(myfile["fake_infos"])
