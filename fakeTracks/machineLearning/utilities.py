@@ -62,7 +62,7 @@ varDict = {}
 for x in range(len(variables)):
     varDict[variables[x]] = x
 
-def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, test_size, val_size):
+def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, test_size, val_size, DEBUG=False):
     # load the dataset
     file_count = 0
     realTracks = []
@@ -70,7 +70,8 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, test_
     pileupTracks = []
     for filename in os.listdir(dataDir):
         print("Loading...", dataDir + filename)
-        #if file_count > 20: break
+        if(DEBUG): 
+            if file_count > 20: break
         myfile = np.load(dataDir+filename)
         if(saveCategories['fake'] == True):
             fakes = np.array(myfile["fake_infos"])
@@ -107,7 +108,7 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, test_
 
     if(saveCategories['real'] == True):
         if(test_size > 0):
-            trainRealTracks, testRealTracks, trainRealTruth, testRealTruth = train_test_split(realTracks, np.zeros(len(realTracks)), test_size = test_size)
+            trainRealTracks, testRealTracks, trainRealTruth, testRealTruth = train_test_split(realTracks, np.zeros(len(realTracks)), test_size = 1-test_size)
         if(test_size == 0): 
             trainRealTracks = realTracks
             testRealTracks = []

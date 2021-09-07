@@ -11,20 +11,20 @@ import numpy as np
 if __name__=="__main__":
 
     inputDim = 173
-    folder = "fakeTracks_4PlusLayer_aMCv9p1_9_3_NGBoost_test2"
+    folder = "fakeTracks_4PlusLayer_aMCv9p1_9_7_NGBoost_test1"
     logDir = "/data/users/mcarrigan/Logs/fakeTracks/"
     #dataDir = ["/store/user/mcarrigan/fakeTracks/converted_madgraph_4PlusLayer_v7p1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_4PlusLayer_v7p1/"]
     #dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_PUTrain_v9p1/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_4PlusLayer_v9p1/"]
     dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_4PlusLayer_v9p1/"]
     delete_elements = ['totalCharge', 'numSatMeasurements', 'stripSelection', 'hitPosX', 'hitPosY']
     saveCategories = [{'fake':True, 'real':True, 'pileup':False}, {'fake':True, 'real':False, 'pileup':False}]
-    #[filters, batch_norm, undersampling, epochs, dataDir, input_dim]
+    #[filters, batch_norm, undersampling, epochs, dataDir, input_dim, input variables to delete, types of track to use, %of data to train on, % of (1-train) data to validate on]
     #InputDim = 55 (4layers), 64 (5layers), 163 (6+ layers)
 
-    params = np.array([[[32, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories],
-              [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories], 
-              [[24, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories],
-              [[24, 12], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories]], dtype='object')
+    params = np.array([[[32, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5],
+              [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5], 
+              [[24, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5],
+              [[24, 12], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5]], dtype='object')
     np.save('params.npy',np.array(params, dtype='object'))
     njobs = len(params)
 

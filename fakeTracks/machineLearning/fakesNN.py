@@ -96,6 +96,8 @@ if __name__ == "__main__":
 
     ################config parameters################
 
+    DEBUG = True
+
     dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_4PlusLayer_v9p1/"]
     normalize_data = False
     undersample = -1
@@ -111,6 +113,8 @@ if __name__ == "__main__":
     metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
     delete_elements = ['totalCharge', 'numSatMeasurements', 'stripSelection', 'hitPosX', 'hitPosY', 'numMeasurementsPixel', 'layer', 'subDet']
     saveCategories = [{'fake':True, 'real':True, 'pileup':False}, {'fake':True, 'real':False, 'pileup':False}]
+    trainPCT = 0.7
+    valPCT = 0.5
 
     #################################################
 
@@ -123,6 +127,8 @@ if __name__ == "__main__":
         input_dim = params[5]
         delete_elements = params[6]
         saveCategories = params[7]
+        trainPCT = params[8]
+        valPCT = params[9]
 
     # create output directories
     os.system('mkdir '+str(workDir))
@@ -134,9 +140,9 @@ if __name__ == "__main__":
  
     for i, dataSet in enumerate(dataDir):
         if i == 0:
-            trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], 0.7, 0.5)
+            trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], trainPCT, valPCT, DEBUG)
         else:
-            trainTracks2, testTracks2, valTracks2, trainTruth2, testTruth2, valTruth2 = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], 0.7, 0.5)
+            trainTracks2, testTracks2, valTracks2, trainTruth2, testTruth2, valTruth2 = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], trainPCT, valPCT, DEBUG)
             trainTracks = np.concatenate((trainTracks, trainTracks2))
             trainTruth = np.concatenate((trainTruth, trainTruth2))
             testTracks = np.concatenate((testTracks, testTracks2))
