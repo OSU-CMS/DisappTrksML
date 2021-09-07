@@ -32,6 +32,11 @@ categorical = True
 #Threshold for being identified as pileup
 pileupCut = 0.1
 
+#############
+
+#Option to include pileup tracks as real tracks
+trainPileup = True
+
 # script arguments
 if(len(sys.argv)>1): fileNum = int(sys.argv[1])
 if(len(sys.argv)>2): 
@@ -112,7 +117,7 @@ def getDeDxInfo(hit, hit_info):
     return infos
 
 def defineEventInfos(network):
-    fake_infos = [event.nPV]
+    fake_infos = [event.eventNumber, event.nPV]
     if network == 'fakes': return fake_infos
     else: 
         print('Network is not defined in defineEventInfos')
@@ -137,7 +142,7 @@ for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
 
     for iEvent, event in enumerate(tree):
         nPV = event.nPV
-
+        eventNumber = event.eventNumber
         #print(getEventInfo(event, defineEventInfos('fakes')))
         event_info = getEventInfo(event, defineEventInfos('fakes'))
 
@@ -218,17 +223,19 @@ for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
  
             print(len(track_info))
 
-            if(class_label == 0): real_infos.append(track_info)
-            if(class_label == 1): fake_infos.append(track_info)
-            if(class_label == 2): pileup_infos.append(track_info)
+            if(trainPileup):
+                if(class_label == 0 or class_label == 2): real_infos.append(track_info)
+                if(class_label == 1): fake_infos.append(track_info)
+
+            else:
+                if(class_label == 0): real_infos.append(track_info)
+                if(class_label == 1): fake_infos.append(track_info)
+                if(class_label == 2): pileup_infos.append(track_info)
 
 print("Real Tracks: " + str(len(real_infos)))
 print("Fake Tracks: " + str(len(fake_infos)))
 print("Pileup Tracks: " + str(len(pileup_infos)))
 
-#for i in range(len(real_infos)):
-#    print(real_infos[i])
-#    print("#####################################################################################################################################")
 
 np.savez_compressed("events_" + str(fileNum) + ".npz", fake_infos = fake_infos, real_infos = real_infos, pileup_infos = pileup_infos)
 

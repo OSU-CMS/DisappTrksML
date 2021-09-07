@@ -41,19 +41,19 @@ bool trackSelection(TrackInfo track){
     if(!(track.nValidHits >= 4)) return false;
     if(!(track.missingInnerHits == 0)) return false;
     if(!(track.missingMiddleHits == 0)) return false;
-    //if(!(track.trackIso /track.pt < 0.05)) return false;
+    if(!(track.trackIso /track.pt < 0.05)) return false;
     //if(!(abs(track.d0) < 0.02)) return false;
-    //if(!(abs(track.dz) < 0.5)) return false;
-    //if(!(abs(track.dRMinJet) > 0.5)) return false;
+    if(!(abs(track.dz) < 0.5)) return false;
+    if(!(abs(track.dRMinJet) > 0.5)) return false;
 
     //candidate track selection
-    //if(!(abs(track.deltaRToClosestElectron) > 0.15)) return false;
+    if(!(abs(track.deltaRToClosestElectron) > 0.15)) return false;
     //if(!(abs(track.deltaRToClosestMuon) > 0.15)) return false;
-    //if(!(abs(track.deltaRToClosestTauHad) > 0.15)) return false;   
+    if(!(abs(track.deltaRToClosestTauHad) > 0.15)) return false;   
     
     //disappearing track selection
-    //if(!(track.missingOuterHits >= 3)) return false;
-    //if(!(track.ecalo < 10)) return false;
+    if(!(track.missingOuterHits >= 3)) return false;
+    if(!(track.ecalo < 10)) return false;
     return true;
 
 }
@@ -100,6 +100,12 @@ void selectDataReal(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Im
 
     // boolean to select only Z->ll tracks
     bool ZtoMuMuSelection = true;
+
+    //boolean to apply basic selection 
+    bool basicSelection = false;
+
+    //boolean to apply track selection
+    bool selectTracks = true;
 
     vector<TrackInfo> * v_tracks = new vector<TrackInfo>();
     vector<RecHitInfo> * v_recHits = new vector<RecHitInfo>(); 
@@ -181,21 +187,21 @@ void selectDataReal(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Im
 
         myTree->GetEvent(ievent);
         
-        //basic selection
-        /*if(!passMETFilters) continue;
-        if(!(numGoodPVs >= 1)) continue;
-        if(!(metNoMu > 120)) continue;
-        if(!(numGoodJets >= 1)) continue;
-        if(!(dijetDeltaPhiMax < 2.5)) continue;
-        if(!(leadingJetMetPhi > 0.5)) continue;*/
-
-
-
         for(const auto &track : *v_tracks){
             
             //look to see if track passes general selections
-            if(!trackSelection(track)) continue;
-            //if(ZtoMuMuSelection && !track.isTagProbeMuon) continue;
+            if(selectTracks && !trackSelection(track)) continue;
+            if(ZtoMuMuSelection){
+                if(!track.isTagProbeMuon) continue;
+            }
+            if(basicSelection){
+                if(!passMETFilters) continue;
+                if(!(numGoodPVs >= 1)) continue;
+                if(!(metNoMu > 120)) continue;
+                if(!(numGoodJets >= 1)) continue;
+                if(!(dijetDeltaPhiMax < 2.5)) continue;
+                if(!(leadingJetMetPhi > 0.5)) continue;
+            }
             v_tracks_real->push_back(track);            
 
         }//end of tracks loop

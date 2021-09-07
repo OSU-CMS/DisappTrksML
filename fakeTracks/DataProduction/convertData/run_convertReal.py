@@ -8,10 +8,11 @@ import subprocess
 import numpy as np
 
 if __name__=="__main__":
-
-    dataDir = '/store/user/mcarrigan/fakeTracks/selection_ZeroBias_2017D_v8/'
-    outDir = '/store/user/mcarrigan/fakeTracks/converted_ZeroBias_2017D_v8/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_ZeroBias_2017D_v8/'
+    
+    layers = -1
+    dataDir = '/store/user/mcarrigan/fakeTracks/selection_ZToMuMu_v9/'
+    outDir = '/store/user/mcarrigan/fakeTracks/converted_ZToMuMu_v9/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_ZToMuMu_v9/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
@@ -45,16 +46,16 @@ if __name__=="__main__":
     request_memory = 2048MB
     request_cpus = 1
     executable              = real_wrapper.sh
-    arguments               = $(PROCESS) {1} {2} {3}
-    log                     = {4}log_$(PROCESS).log
-    output                  = {4}out_$(PROCESS).txt
-    error                   = {4}error_$(PROCESS).txt
+    arguments               = $(PROCESS) {1} {2} {3} {4}
+    log                     = {5}log_$(PROCESS).log
+    output                  = {5}out_$(PROCESS).txt
+    error                   = {5}error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
     transfer_input_files = {2}, real_wrapper.sh, convertDataReal.py, Infos.h
     getenv = true
     queue {0}
-    """.format(len(files),dataDir,filelist,outDir, logDir)
+    """.format(len(files),dataDir,filelist,outDir,layers,logDir)
 
     f.write(submitLines)
     f.close()

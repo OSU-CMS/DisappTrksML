@@ -92,7 +92,7 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
     }
 
     // Booleans for creating signal MC, taking full selection on Training data, or creating a 3rd class for pileup
-    bool signalMC = true;
+    bool signalMC = false;
     bool fullSelection = false;
     double PU_cut = 0.1;
    

@@ -9,11 +9,11 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/data/users/mcarrigan/condor/AMSB/v8p1/images_higgsino_700GeV_10000cm_step3/'
-    #dataDir = '/store/user/mcarrigan/Images-v8-NeutrinoGun-MC2017-ext/'
+    #dataDir = '/data/users/mcarrigan/condor/AMSB/v8p1/images_higgsino_700GeV_10000cm_step3/'
+    dataDir = '/store/user/mcarrigan/Images-v8-NeutrinoGun-MC2017-ext/'
     #dataDir ='/store/user/mcarrigan/AMSB/images_v7/images_higgsino_700GeV_10cm_step3/'
-    outDir = '/store/user/mcarrigan/fakeTracks/selection_v9_higgsino_700_10000/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/selection_v9_higgsino_700_10000/'
+    outDir = '/store/user/mcarrigan/fakeTracks/selection_v9_NeutrinoGun_ext/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/selection_v9_NeutrinoGun_ext/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)

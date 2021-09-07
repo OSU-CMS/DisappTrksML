@@ -10,9 +10,9 @@ import numpy as np
 if __name__=="__main__":
 
     #data dir needs to be run over 0001 as well as 0000
-    dataDir = '/store/user/mcarrigan/Images-v8-ZeroBias-2017D/'
-    outDir = '/store/user/mcarrigan/fakeTracks/selection_ZeroBias_2017D_v8/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/selection_ZeroBias_2017D_v8/'
+    dataDir = '/store/user/mcarrigan/Images-v8-singleMuon2017F/'
+    outDir = '/store/user/mcarrigan/fakeTracks/selection_ZToMuMu_signal_v9/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/selection_ZToMuMu_signal_v9/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
@@ -27,7 +27,7 @@ if __name__=="__main__":
             alreadyProcessedFiles.append(numFile)
     files = []
     for filename in os.listdir(dataDir):
-        if('.root' in filename and 'images' in filename):
+        if('.root' in filename and 'image' in filename):
             index1 = filename.find("_")
             index2 = filename.find(".")
             numFile = int(filename[index1+1:index2])
