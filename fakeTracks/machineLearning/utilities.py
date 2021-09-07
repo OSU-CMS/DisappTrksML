@@ -21,7 +21,7 @@ from datetime import date
 from sklearn.preprocessing import MinMaxScaler
 
 
-variables = ['passesSelection', 'nPV', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 
+variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 
 
     'layer1', 'charge1', 'subDet1', 'pixelHitSize1', 'pixelHitSizeX1', 
            'pixelHitSizeY1','stripSelection1', 'hitPosX1', 'hitPosY1', 
@@ -62,40 +62,72 @@ varDict = {}
 for x in range(len(variables)):
     varDict[variables[x]] = x
 
-def loadData(dataDir, undersample, inputs, normalize_data):
-    #layerId, charge, isPixel, pixelHitSize, pixelHitSizeX, pixelHitSizeY, stripShapeSelection, hitPosX, hitPosY
+def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, test_size, val_size):
     # load the dataset
     file_count = 0
     realTracks = []
     fakeTracks = []
+    pileupTracks = []
     for filename in os.listdir(dataDir):
         print("Loading...", dataDir + filename)
         #if file_count > 20: break
         myfile = np.load(dataDir+filename)
-        fakes = np.array(myfile["fake_infos"])
-        fakes = selectInputs(fakes, inputs)
-        reals = np.array(myfile["real_infos"])
-        reals = selectInputs(reals, inputs)
+        if(saveCategories['fake'] == True):
+            fakes = np.array(myfile["fake_infos"])
+            if len(fakes) == 0: continue
+            fakes = selectInputs(fakes, inputs)
+        if(saveCategories['real'] == True):
+            reals = np.array(myfile["real_infos"])
+            if len(reals) == 0: continue
+            reals = selectInputs(reals, inputs)
+        if(saveCategories['pileup'] == True):
+            pileup = np.array(myfile["pileup_infos"])
+            if len(pileup) == 0: continue
+            pileup = selectInputs(pileup, inputs)
         if(file_count == 0):
-            fakeTracks = fakes
-            realTracks = reals
-        elif(file_count != 0 and len(fakeTracks) == 0): fakeTracks = fakes
-        elif(file_count != 0 and len(realTracks) == 0): realTracks = reals
+            if(saveCategories['fake'] == True): fakeTracks = fakes
+            if(saveCategories['real'] == True): realTracks = reals
+            if(saveCategories['pileup'] == True): pileupTracks = pileup
+        elif(file_count != 0 and len(fakeTracks) == 0 and saveCategories['fake'] == True): fakeTracks = fakes
+        elif(file_count != 0 and len(realTracks) == 0 and saveCategories['real'] == True): realTracks = reals
+        elif(file_count != 0 and len(pileupTracks) == 0 and saveCategories['pileup'] == True): pileupTracks = pileup
         else:
-            if(len(fakes)!=0): fakeTracks = np.concatenate((fakeTracks, fakes))
-            if(len(reals)!=0): realTracks = np.concatenate((realTracks, reals))
+            if(saveCategories['fake'] == True):
+                if(len(fakes)!=0): fakeTracks = np.concatenate((fakeTracks, fakes))
+            if(saveCategories['real'] == True):
+                if(len(reals)!=0): realTracks = np.concatenate((realTracks, reals))
+            if(saveCategories['pileup'] == True):
+                if(len(pileup)!=0): pileupTracks = np.concatenate((pileupTracks, pileup))
         file_count += 1
 
 
     print("Number of fake tracks:", len(fakeTracks))
     print("Number of real tracks:", len(realTracks))
+    print("Number of pileup tracks:", len(pileupTracks))
 
-    trainRealTracks, testRealTracks, trainRealTruth, testRealTruth = train_test_split(realTracks, np.zeros(len(realTracks)), test_size = 0.3)
-    trainFakeTracks, testFakeTracks, trainFakeTruth, testFakeTruth = train_test_split(fakeTracks, np.ones(len(fakeTracks)), test_size = 0.3)
-
-    testRealTracks, valRealTracks, testRealTruth, valRealTruth = train_test_split(testRealTracks, testRealTruth, test_size = 0.5)
-    testFakeTracks, valFakeTracks, testFakeTruth, valFakeTruth = train_test_split(testFakeTracks, testFakeTruth, test_size = 0.5)
-
+    if(saveCategories['real'] == True):
+        if(test_size > 0):
+            trainRealTracks, testRealTracks, trainRealTruth, testRealTruth = train_test_split(realTracks, np.zeros(len(realTracks)), test_size = test_size)
+        if(test_size == 0): 
+            trainRealTracks = realTracks
+            testRealTracks = []
+            trainRealTruth = np.zeros(len(realTracks))
+            testRealTruth = []
+        if(val_size > 0):
+            testRealTracks, valRealTracks, testRealTruth, valRealTruth = train_test_split(testRealTracks, testRealTruth, test_size = val_size)
+        if(val_size == 0):
+            valRealTracks = []
+            valRealTruth = []
+    if(saveCategories['fake'] == True):
+        trainFakeTracks, testFakeTracks, trainFakeTruth, testFakeTruth = train_test_split(fakeTracks, np.ones(len(fakeTracks)), test_size = test_size)
+        testFakeTracks, valFakeTracks, testFakeTruth, valFakeTruth = train_test_split(testFakeTracks, testFakeTruth, test_size = val_size)
+     
+    if(saveCategories['pileup'] == True):
+        indices = np.arange(len(pileupTracks))
+        np.random.shuffle(indices)
+        pileupTracks = pileupTracks[indices]
+        return pileupTracks, [], [], 2*np.ones(len(pileupTracks)), [], [] 
+   
     # if undersampling
     if(undersample != -1):
         num_real = len(trainRealTracks)
@@ -106,12 +138,28 @@ def loadData(dataDir, undersample, inputs, normalize_data):
 
 
     #combine all data and shuffle
-    trainTracks = np.concatenate((trainFakeTracks, trainRealTracks))
-    testTracks = np.concatenate((testFakeTracks, testRealTracks))
-    trainTruth = np.concatenate((trainFakeTruth, trainRealTruth))
-    testTruth = np.concatenate((testFakeTruth, testRealTruth))
-    valTracks = np.concatenate((valFakeTracks, valRealTracks))
-    valTruth = np.concatenate((valFakeTruth, valRealTruth))
+    if(saveCategories['real'] == True and saveCategories['fake'] == True):
+        trainTracks = np.concatenate((trainFakeTracks, trainRealTracks))
+        testTracks = np.concatenate((testFakeTracks, testRealTracks))
+        trainTruth = np.concatenate((trainFakeTruth, trainRealTruth))
+        testTruth = np.concatenate((testFakeTruth, testRealTruth))
+        valTracks = np.concatenate((valFakeTracks, valRealTracks))
+        valTruth = np.concatenate((valFakeTruth, valRealTruth))
+    elif(saveCategories['real'] == True and saveCategories['fake'] == False):
+        trainTracks = np.array(trainRealTracks)
+        testTracks = np.array(testRealTracks)
+        trainTruth = np.array(trainRealTruth)
+        testTruth = np.array(testRealTruth)
+        valTracks = np.array(valRealTracks)
+        valTruth = np.array(valRealTruth)
+    elif(saveCategories['real'] == False and saveCategories['fake'] == True):
+        trainTracks = np.array(trainFakeTracks)
+        testTracks = np.array(testFakeTracks)
+        trainTruth = np.array(trainFakeTruth)
+        testTruth = np.array(testFakeTruth)
+        valTracks = np.array(valFakeTracks)
+        valTruth = np.array(valFakeTruth)
+
 
     # Apply min max scale over all data (scale set range [-1,1])
     #scaler = MinMaxScaler(feature_range=(-1,1), copy=False)

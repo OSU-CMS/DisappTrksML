@@ -18,6 +18,7 @@ import datetime
 import getopt
 import plotMetrics
 from datetime import date
+import utilities
 
 def buildModel(filters = [12, 8], input_dim = 64, batch_norm = True, metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
     #begin NN model
@@ -69,13 +70,18 @@ if __name__ == "__main__":
 
 
     ################config parameters################
-    weightsDir = '/data/users/mcarrigan/fakeTracks_4PlusLayer_PUveto0p1_aMCv8p1_4_14/fakeTracks_4PlusLayer_PUveto0p1_aMCv8p1_4_14_p3/weights/'
+    weightsDir = '/data/users/mcarrigan/fakeTracks_4PlusLayer_aMCv9p1_6_25/fakeTracks_4PlusLayer_aMCv9p1_6_25_p1/weights/'
+    plotsName = 'validation_singleMuon2017F'
     workDir = '/data/users/mcarrigan/fakeTracks/'
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_higgsino_700_10000_4PlusLayer_v9/"]
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_ZToMuMu_v9/"]
     metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
     batch_norm = True
-    filters = [24, 12]
-    input_dim = 171
+    filters = [16, 8]
+    input_dim = 173
+    undersample = -1
+    delete_elements = ['totalCharge', 'numSatMeasurements', 'stripSelection', 'hitPosX', 'hitPosY']
+    saveCategories = [{'fake':False, 'real':False, 'pileup':True}]
+    normalize_data = False
     #################################################
 
     if(len(sys.argv) > 1):
@@ -90,15 +96,18 @@ if __name__ == "__main__":
     os.system('mkdir '+str(workDir))
     os.system('mkdir '+str(plotDir))
     os.system('mkdir '+str(outputDir))
+
+    inputs, input_dim = utilities.getInputs(input_dim, delete_elements)
     
     for i, dataSet in enumerate(dataDir):
         if i == 0:
-            tracks = loadData(str(dataSet))
+            tracks = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], 0, 0)
         else:
-            tracks2 = loadData(str(dataSet))
+            tracks2 = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], 0, 0)
             tracks = np.concatenate((tracks, tracks2))
 
-    print("Total Tracks: " + str(tracks.shape))
+
+    tracks = tracks[0]
 
     indices = np.arange(len(tracks))
     np.random.shuffle(indices)   
@@ -117,7 +126,7 @@ if __name__ == "__main__":
 
     #plotMetrics.predictionCorrelation(predictions, d0, 20, -1, 1, 'predictionD0Correlation', plotDir)
     #plotMetrics.comparePredictions(predictions, d0, 20, -1, 1, 'd0', plotDir)
-    plotMetrics.plotScores(predictions, sys.argv[1], plotDir)
+    #plotMetrics.plotScores(predictions, sys.argv[1], plotDir)
     np.savez_compressed(outputDir + "predictions.npz", tracks = tracks, predictions = predictions)
 
 

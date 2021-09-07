@@ -243,18 +243,38 @@ def comparePredictions(predictions, variable, bins, min_bin, max_bin, name, plot
     h_eff.Write("efficiency_" + name)
     out.Close()
 
-def plotScores(predictions, name, plotDir, outputfile = 'metricPlots.root'):
+def plotScores(predictions, truth, name, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
-    h_pred = r.TH1F("h_pred", "Prediction Scores" + name, 100, 0, 1)
-    for pred in predictions:
-        h_pred.Fill(pred)
-    h_pred.Write("Scores_"+name)
+    h_predReal = r.TH1F("h_predReal", "Prediction Scores Real" + name, 100, 0, 1)
+    h_predFake = r.TH1F("h_predFake", "Prediction Scores Fake" + name, 100, 0, 1)
+    for pred, truth in zip(predictions, truth):
+        if truth == 0: h_predReal.Fill(pred)
+        if truth == 1: h_predFake.Fill(pred)
+    h_predReal.Write("Real_Scores_"+name)
+    h_predFake.Write("Fake_Scores_"+name)
+
+    c1 = r.TCanvas("c1", "c1", 800, 800)
+    l1 = r.TLegend(0.7, 0.7, 0.8, 0.8)
+    l1.AddEntry(h_predReal, "Real Tracks", "l")
+    l1.AddEntry(h_predFake, "Fake Tracks", "l")
+    c1.cd()
+    c1.SetLogy()
+    h_predReal.SetLineColor(2)
+    h_predReal.Draw()
+    h_predFake.Draw("sames")
+    l1.Draw("same")
+    out.cd()
+    c1.Write("PredictionScores")
     out.Close()
 
 if __name__ == "__main__":
 
-    plotCM(inputTruth, inputPredictions)
-    getStats(inputTruth, inputPredictions)
-    plotHistory(history, ['loss','auc'])
+    #plotCM(inputTruth, inputPredictions)
+    #getStats(inputTruth, inputPredictions)
+    #plotHistory(history, ['loss','auc'])
+
+
+    pred = np.load('/data/users/mcarrigan/fakeTracks_4PlusLayer_aMCv9p1_9_1_NGBoost_PUReal/fakeTracks_4PlusLayer_aMCv9p1_9_1_NGBoost_PUReal_p1/outputFiles/predictions.npz')['predictions']
+    plotScores(pred, "test", '/data/users/mcarrigan/fakeTracks_4PlusLayer_aMCv9p1_9_1_NGBoost_PUReal/fakeTracks_4PlusLayer_aMCv9p1_9_1_NGBoost_PUReal_p1/plots/')
 
 
