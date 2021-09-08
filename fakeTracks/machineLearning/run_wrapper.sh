@@ -18,8 +18,15 @@ python3 fakesNN.py -d $1 -p params.npy -i $2
 rm *.py
 rm *.npy
 
-mkdir /data/users/mcarrigan/fakeTracks/networks/$1/
-mv * /data/users/mcarrigan/fakeTracks/networks/$1/
+echo $3/$1
+
+if [ -d "$3/$1" ]
+then 
+    mv * $3/$1/
+else
+    mkdir $3/$1/
+    mv * $3/$1/
+fi
 
 cd ..
 cd ..

@@ -96,9 +96,10 @@ if __name__ == "__main__":
 
     ################config parameters################
 
-    DEBUG = False
+    DEBUG = True
 
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_4PlusLayer_v9p1/"]
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_v9p2/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_v9p2/"]
+    #dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_4PlusLayer_v9p1/"]
     normalize_data = False
     undersample = -1
     oversample = -1   
@@ -106,12 +107,13 @@ if __name__ == "__main__":
     batch_norm = False
     batch_size = 64
     epochs = 1
-    input_dim = 173
+    input_dim = 176
     patience_count = 20
     monitor = 'val_loss'
     #class_weights = False  
     metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
-    delete_elements = ['totalCharge', 'numSatMeasurements', 'stripSelection', 'hitPosX', 'hitPosY', 'numMeasurementsPixel', 'layer', 'subDet']
+    #delete_elements = ['totalCharge', 'numSatMeasurements', 'stripSelection', 'hitPosX', 'hitPosY', 'numMeasurementsPixel', 'layer', 'subDet']
+    delete_elements = ['eventNumber']
     saveCategories = [{'fake':True, 'real':True, 'pileup':False}, {'fake':True, 'real':False, 'pileup':False}]
     trainPCT = 0.7
     valPCT = 0.5
@@ -204,5 +206,6 @@ if __name__ == "__main__":
     #plotMetrics.permutationImportance(estimator, testTracks, testTruth, plotDir)
     np.savez_compressed(outputDir + "predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions, predictionScores = predictions_raw)
 
-
-
+    fout = open(outputDir + 'networkInfo.txt', 'w')
+    fout.write('Datasets: ' + str(dataDir) + '\nFilters: ' + str(filters) + '\nBatch Size: ' + str(batch_size) + '\nBatch Norm: ' + str(batch_norm) +  '\nInput Dim: ' + str(input_dim) + '\nPatience Count: ' + str(patience_count) + '\nMetrics: ' + str(metrics) + '\nDeleted Elements: ' + str(delete_elements) + '\nSaved Tracks: ' + str(saveCategories) + '\nTrain Percentage: ' + str(trainPCT) + '\nVal Percentage: ' + str(valPCT) + '\nTotal Epochs: ' + str(max_epoch) + '\nMetrics: TP = %d, FP = %d, TN = %d, FN = %d' % (classifications[0], classifications[1], classifications[2], classifications[3]) + '\nPrecision: ' + str(classifications[4]) + '\nRecall: ' + str(classifications[5]))
+    fout.close()

@@ -35,7 +35,7 @@ pileupCut = 0.1
 #############
 
 #Option to include pileup tracks as real tracks
-trainPileup = True
+trainPileup = False
 
 # script arguments
 if(len(sys.argv)>1): fileNum = int(sys.argv[1])
@@ -116,6 +116,12 @@ def getDeDxInfo(hit, hit_info):
         infos.append(info)
     return infos
 
+def getVertexInfo(vertex, vertex_info):
+    infos = []
+    for info in vertex_info:
+        infos.append(info)
+    return infos
+
 def defineEventInfos(network):
     fake_infos = [event.eventNumber, event.nPV]
     if network == 'fakes': return fake_infos
@@ -124,7 +130,7 @@ def defineEventInfos(network):
         return 0
 
 def defineTrackInfos(network):
-    fake_infos = [track.trackIso, track.eta, track.phi, track.nValidPixelHits, track.nValidHits, track.missingOuterHits, track.dEdxPixel, track.dEdxStrip,                                           track.numMeasurementsPixel, track.numMeasurementsStrip, track.numSatMeasurementsPixel, track.numSatMeasurementsStrip, track.dRMinJet, track.ecalo,                                 track.pt, track.d0, track.dz, track.charge, track.deltaRToClosestElectron]
+    fake_infos = [track.trackIso, track.eta, track.phi, track.nValidPixelHits, track.nValidHits, track.missingOuterHits, track.dEdxPixel, track.dEdxStrip,                                           track.numMeasurementsPixel, track.numMeasurementsStrip, track.numSatMeasurementsPixel, track.numSatMeasurementsStrip, track.dRMinJet, track.ecalo,                                 track.pt, track.d0, track.dz, track.charge, track.deltaRToClosestElectron, track.deltaRToClosestMuon, track.deltaRToClosestTauHad, track.normalizedChi2]
     if network == 'fakes': return fake_infos
     else:
         print("Network is not defined in defineTrackInfos")
@@ -136,6 +142,13 @@ def defineDeDxInfos(network):
     else:
         print("Network is not defined in defineHitInfos")
         return 0               
+
+def defineVertexInfos(network):
+    fake_infos = [vertex.chi2]
+    if network == 'fakes': return fake_infos
+    else:
+        print("Network is not defined in defineVertexInfos")
+        return 0
 
 fake_infos, real_infos, pileup_infos = [], [], []
 for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):

@@ -119,10 +119,10 @@ def getStats(truth, predictions, threshold = 0.5):
     else: 
         P = 0
         R = 0
-    if(threshold > -1): 
+    if(threshold == 0.5): 
         print("Precision (TP/(TP+FP)): " + str(P) + " Recall (TP/(TP+FN)): " + str(R))
         print("TP: " + str(TP) + ", FP: " + str(FP) + ", TN: " + str(TN) + ", FN: " + str(FN))       
-    return [TP, FP, TN, FN]
+    return [TP, FP, TN, FN, P, R]
 
 def plotHistory(history, variables, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
@@ -282,18 +282,18 @@ def predictionThreshold(predictions, truth, plotDir, outputfile = 'metricPlots.r
     bins = [x*0.05 for x in range(20)]
 
     for iBin, Bin in enumerate(bins):
-           #[TP, FP, TN, FN]
-           metrics = getStats(truth, predictions, Bin)
-           if(metrics[0] > 0): 
-               precision = float(metrics[0]) / (float(metrics[0]) + float(metrics[1]))
-               recall = float(metrics[0]) / (float(metrics[0]) + float(metrics[3]))
-               h_precision.SetBinContent(iBin, precision)
-               h_recall.SetBinContent(iBin, recall)
-           else: 
-               precision = 0.
-               recall = 0.
-               h_precision.SetBinContent(iBin, precision)
-               h_recall.SetBinContent(iBin, recall)
+        #[TP, FP, TN, FN]
+        metrics = getStats(truth, predictions, Bin)
+          #if(metrics[0] > 0): 
+           #    precision = float(metrics[0]) / (float(metrics[0]) + float(metrics[1]))
+           #    recall = float(metrics[0]) / (float(metrics[0]) + float(metrics[3]))
+        h_precision.SetBinContent(iBin, metrics[4])
+        h_recall.SetBinContent(iBin, metrics[5])
+           #else: 
+           #    precision = 0.
+           #    recall = 0.
+           #    h_precision.SetBinContent(iBin, precision)
+           #    h_recall.SetBinContent(iBin, recall)
     
     c1.cd()
     l1 = r.TLegend(0.5, 0.7, 0.6, 0.8)

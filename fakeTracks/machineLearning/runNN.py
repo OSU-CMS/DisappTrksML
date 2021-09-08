@@ -10,9 +10,9 @@ import numpy as np
 
 if __name__=="__main__":
 
-    inputDim = 173
-    folder = "fakeTracks_4PlusLayer_aMCv9p1_9_7_NGBoost_test3"
-    logDir = "/data/users/mcarrigan/Logs/fakeTracks/"
+    inputDim = 176
+    folder = "fakeTracks_4PlusLayer_aMCv9p1_9_8_NGBoost_test1"
+    logDir = "/data/users/mcarrigan/fakeTracks/networks/"
     #dataDir = ["/store/user/mcarrigan/fakeTracks/converted_madgraph_4PlusLayer_v7p1/", "/store/user/mcarrigan/fakeTracks/converted_aMC_4PlusLayer_v7p1/"]
     #dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_PUTrain_v9p1/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_4PlusLayer_v9p1/"]
     dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_4PlusLayer_v9p1/"]
@@ -39,7 +39,7 @@ if __name__=="__main__":
     request_memory = 2GB
     request_cpus = 3
     executable              = run_wrapper.sh
-    arguments               = {0} $(PROCESS)
+    arguments               = {0} $(PROCESS) {2}
     log                     = {2}{0}/log_$(PROCESS).log
     output                  = {2}{0}/out_$(PROCESS).txt
     error                   = {2}{0}/error_$(PROCESS).txt
