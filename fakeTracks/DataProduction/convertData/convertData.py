@@ -11,11 +11,11 @@ import numpy as np
 import time
 
 
-fileNum = 0
+fileNum = 1
 #dataDir = '/store/user/mcarrigan/fakeTracks/selection_v8_aMCNLO/'
 #dataDir = "/store/user/mcarrigan/fakeTracks/selection_Z2MuMu_v1/"
-#dataDir = "/store/user/mcarrigan/fakeTracks/selection_higgsino_700_10000_v1/"
-dataDir = ''
+dataDir = "/store/user/mcarrigan/fakeTracks/selection_v9_DYJets_aMCNLO/"
+#dataDir = ''
 
 layers = -1
 
@@ -57,6 +57,17 @@ pileupTree = fin.Get('pileupTree')
 print("Fake Tree Events: " + str(fakeTree.GetEntries()))
 print("Real Tree Events: " + str(realTree.GetEntries()))
 print("Pileup Tree Events: " + str(pileupTree.GetEntries()))
+
+def layersEncode(layer, subdet, encodedHits):
+    #number of layers in each subdetector (pbx, pex, TIB, TOB, TID, TEC) 
+    numLayers = [4, 3, 4, 6, 3, 9]
+    bit = layer-1
+    if(subdet > 1): 
+        for sub in range(subdet-1):    
+            bit += numLayers[sub]
+    print('subdet:', subdet, 'layer', layer, 'bit', bit) 
+    encodedHits = encodedHits | 1<<bit
+    return encodedHits
 
 def pileupMatching(track):
     min_dz = 10e6
@@ -187,6 +198,7 @@ for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
             print("--------------------------------------------------------------------------------------------------------------------------------------------------")
             
             max_energy, min_energy, sum_energy = 0, 10e6, 0
+            encodedHits = 0b00000000000000000000000000000
 
             for iHit, hit in enumerate(track.dEdxInfo):
                 if(hit.hitLayerId < 0): continue
@@ -210,7 +222,10 @@ for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
                     if(nLayerCount > len(nLayers)-1): continue
                     for i in range(len(layerHits)):
                         nLayers[nLayerCount, i] = layerHits[i]
+                    encodedHits = layersEncode(layerHits[0], layerHits[2], encodedHits)
                     nLayerCount += 1
+
+                print('subdet:', layerHits[2], ', layer:', layerHits[0], ', encodedHits:', bin(encodedHits))
  
             for iLayer in range(len(nLayers)):
                 print("subDet: " + str(nLayers[iLayer, 2]) + " Layer: " + str(nLayers[iLayer, 0]) + " Charge: " + str(nLayers[iLayer, 1]))
@@ -224,6 +239,7 @@ for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
             print("sum energy: ", sum_energy, "diff energy:", max_energy-min_energy)
             track_info = np.concatenate((track_info, [sum_energy]))
             track_info = np.concatenate((track_info, [max_energy - min_energy]))
+            track_info = np.concatenate((track_info, [encodedHits]))
             
             # add dz and d0 for k nearest neighbors to track
             v_dz, v_d0 = trackMatching(track)

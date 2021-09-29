@@ -49,6 +49,17 @@ realTree = fin.Get('realTree')
 
 print("Real Tree Events: " + str(realTree.GetEntries()))
 
+def layersEncode(layer, subdet, encodedHits):
+    #number of layers in each subdetector (pbx, pex, TIB, TOB, TID, TEC) 
+    numLayers = [4, 3, 4, 6, 3, 9]
+    bit = layer-1
+    if(subdet > 1):
+        for sub in range(subdet-1):
+            bit += numLayers[sub]
+    print('subdet:', subdet, 'layer', layer, 'bit', bit)
+    encodedHits = encodedHits | 1<<bit
+    return encodedHits
+
 def pileupMatching(track):
     min_dz = 10e6
     for vertex in event.pileupZPosition:
@@ -108,14 +119,14 @@ def getDeDxInfo(hit, hit_info):
     return infos
 
 def defineEventInfos(network):
-    fake_infos = [event.nPV]
+    fake_infos = [event.eventNumber, event.nPV]
     if network == 'fakes': return fake_infos
     else: 
         print('Network is not defined in defineEventInfos')
         return 0
 
 def defineTrackInfos(network):
-    fake_infos = [track.trackIso, track.eta, track.phi, track.nValidPixelHits, track.nValidHits, track.missingOuterHits, track.dEdxPixel, track.dEdxStrip,                                           track.numMeasurementsPixel, track.numMeasurementsStrip, track.numSatMeasurementsPixel, track.numSatMeasurementsStrip, track.dRMinJet, track.ecalo,                                 track.pt, track.d0, track.dz, track.charge, track.deltaRToClosestElectron]
+    fake_infos = [track.trackIso, track.eta, track.phi, track.nValidPixelHits, track.nValidHits, track.missingOuterHits, track.dEdxPixel, track.dEdxStrip,                                           track.numMeasurementsPixel, track.numMeasurementsStrip, track.numSatMeasurementsPixel, track.numSatMeasurementsStrip, track.dRMinJet, track.ecalo,                                 track.pt, track.d0, track.dz, track.charge, track.deltaRToClosestElectron, track.deltaRToClosestMuon, track.deltaRToClosestTauHad, track.normalizedChi2]
     if network == 'fakes': return fake_infos
     else:
         print("Network is not defined in defineTrackInfos")
@@ -165,6 +176,7 @@ for class_label,tree in zip([0],[realTree]):
             print("--------------------------------------------------------------------------------------------------------------------------------------------------")
             
             max_energy, min_energy, sum_energy = 0, 10e6, 0
+            encodedHits = 0b00000000000000000000000000000
 
             for iHit, hit in enumerate(track.dEdxInfo):
                 if(hit.hitLayerId < 0): continue
@@ -188,6 +200,7 @@ for class_label,tree in zip([0],[realTree]):
                     if(nLayerCount > len(nLayers)-1): continue
                     for i in range(len(layerHits)):
                         nLayers[nLayerCount, i] = layerHits[i]
+                    encodedHits = layersEncode(layerHits[0], layerHits[2], encodedHits)
                     nLayerCount += 1
  
             for iLayer in range(len(nLayers)):
@@ -202,6 +215,7 @@ for class_label,tree in zip([0],[realTree]):
             print("sum energy: ", sum_energy, "diff energy:", max_energy-min_energy)
             track_info = np.concatenate((track_info, [sum_energy]))
             track_info = np.concatenate((track_info, [max_energy - min_energy]))
+            track_info = np.concatenate((track_info, [encodedHits]))
             
             # add dz and d0 for k nearest neighbors to track
             v_dz, v_d0 = trackMatching(track)
