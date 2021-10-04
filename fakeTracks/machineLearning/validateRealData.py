@@ -19,8 +19,9 @@ import getopt
 import plotMetrics
 from datetime import date
 import utilities
+from fakeClass import fakeNN
 
-def buildModel(filters = [12, 8], input_dim = 64, batch_norm = True, metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
+def buildModel(filters = [16, 8], input_dim = 55, batch_norm = False, metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
     #begin NN model
     model = Sequential()
     model.add(Dense(filters[0], input_dim=input_dim, activation='relu'))
@@ -39,49 +40,34 @@ def callModel():
     model = buildModel(filters, input_dim, batch_norm)
     return model
 
-def loadData(dataDir):
-    #layerId, charge, isPixel, pixelHitSize, pixelHitSizeX, pixelHitSizeY, stripShapeSelection, hitPosX, hitPosY
-    # load the dataset
-    file_count = 0
-    for filename in os.listdir(dataDir):
-        if('events' and '.npz' not in filename): continue
-        print("Loading...", dataDir + filename)
-        #if file_count > 10: break
-        myfile = np.load(dataDir+filename)
-        reals = np.array(myfile["real_infos"])
-        if(len(reals)==0): continue
-        print(reals.shape, reals.shape[1])
-        if(reals.shape[1] < 171): reals = np.hstack((reals, np.zeros((len(reals), 163 - reals.shape[1]))))
-        if(file_count == 0):
-            realTracks = reals
-        else:
-            print(realTracks.shape, reals.shape)
-            realTracks = np.concatenate((realTracks, reals))
-        file_count += 1
-
-
-    print("Number of tracks:", len(realTracks))
-
-    return realTracks
-
-
 
 if __name__ == "__main__":
 
 
     ################config parameters################
-    weightsDir = '/data/users/mcarrigan/fakeTracks_4PlusLayer_aMCv9p1_6_25/fakeTracks_4PlusLayer_aMCv9p1_6_25_p1/weights/'
+    weightsDir = '/data/users/mcarrigan/fakeTracks/networks/input_search/inputRemoval/fakeTracks_4PlusLayer_aMCv9p1_9_29_NGBoost_layerEncoded/fakeTracks_4PlusLayer_aMCv9p1_9_29_NGBoost_layerEncoded_p8/weights/'
     plotsName = 'validation_singleMuon2017F'
     workDir = '/data/users/mcarrigan/fakeTracks/'
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_ZToMuMu_v9/"]
-    metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_ZToMuMu_v9p1/"]
+    val_metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
     batch_norm = True
+    batch_size = 64
+    epochs = 1
     filters = [16, 8]
-    input_dim = 173
+    input_dim = 178
     undersample = -1
-    delete_elements = ['totalCharge', 'numSatMeasurements', 'stripSelection', 'hitPosX', 'hitPosY']
-    saveCategories = [{'fake':False, 'real':False, 'pileup':True}]
+    #delete_elements = []
+    delete_elements = ['eventNumber', 'layer1', 'subDet1', 'stripSelection1', 'hitPosX1', 'hitPosY1','layer2', 'subDet2', 'stripSelection2', 'hitPosX2', 'hitPosY2',
+                       'layer3', 'subDet3', 'stripSelection3', 'hitPosX3', 'hitPosY3', 'layer4', 'subDet4', 'stripSelection4', 'hitPosX4', 'hitPosY4',
+                       'layer5', 'subDet5', 'stripSelection5', 'hitPosX5', 'hitPosY5', 'layer6', 'subDet6', 'stripSelection6', 'hitPosX6', 'hitPosY6',
+                       'layer7', 'subDet7', 'stripSelection7', 'hitPosX7', 'hitPosY7', 'layer8', 'subDet8', 'stripSelection8', 'hitPosX8', 'hitPosY8',
+                       'layer9', 'subDet9', 'stripSelection9', 'hitPosX9', 'hitPosY9', 'layer10', 'subDet10', 'stripSelection10', 'hitPosX10', 'hitPosY10',
+                       'layer11', 'subDet11', 'stripSelection11', 'hitPosX11', 'hitPosY11', 'layer12', 'subDet12', 'stripSelection12', 'hitPosX12', 'hitPosY12',
+                       'layer13', 'subDet13', 'stripSelection13', 'hitPosX13', 'hitPosY13', 'layer14', 'subDet14', 'stripSelection14', 'hitPosX14', 'hitPosY14',
+                       'layer15', 'subDet15', 'stripSelection15', 'hitPosX15', 'hitPosY15', 'layer16', 'subDet16', 'stripSelection16', 'hitPosX16', 'hitPosY16']
+    saveCategories = [{'fake':False, 'real':True, 'pileup':False}]
     normalize_data = False
+    DEBUG = True
     #################################################
 
     if(len(sys.argv) > 1):
@@ -97,13 +83,16 @@ if __name__ == "__main__":
     os.system('mkdir '+str(plotDir))
     os.system('mkdir '+str(outputDir))
 
+    if 'eventNumber' not in delete_elements:
+        delete_elements.append('eventNumber')
+
     inputs, input_dim = utilities.getInputs(input_dim, delete_elements)
     
     for i, dataSet in enumerate(dataDir):
         if i == 0:
-            tracks = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], 0, 0)
+            tracks = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], 0, 0, DEBUG)
         else:
-            tracks2 = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], 0, 0)
+            tracks2 = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], 0, 0, DEBUG)
             tracks = np.concatenate((tracks, tracks2))
 
 
@@ -113,20 +102,21 @@ if __name__ == "__main__":
     np.random.shuffle(indices)   
     tracks = tracks[indices]
 
-    model = callModel()
+    print("tracks shape", tracks.shape)
 
-    model.load_weights(weightsDir + 'lastEpoch.h5')
+    model = fakeNN(filters, input_dim, batch_norm, val_metrics)
+    estimator = KerasClassifier(build_fn=model, epochs=epochs, batch_size=batch_size, verbose=1)
 
-    predictions = model.predict(tracks)
+    #dummy fit to get estimator compiled
+    history = estimator.fit(tracks, np.zeros(len(tracks)))
     
+    estimator.model.load_weights(weightsDir + 'lastEpoch.h5')
+    predictions = estimator.predict_proba(tracks)
     pred_fakes = np.argwhere(predictions >= 0.5)
     pred_reals = np.argwhere(predictions < 0.5)
 
     print("Number of predicted fakes: " + str(len(pred_fakes)) + ", Number of predicted Reals: " + str(len(pred_reals)))
 
-    #plotMetrics.predictionCorrelation(predictions, d0, 20, -1, 1, 'predictionD0Correlation', plotDir)
-    #plotMetrics.comparePredictions(predictions, d0, 20, -1, 1, 'd0', plotDir)
-    #plotMetrics.plotScores(predictions, sys.argv[1], plotDir)
     np.savez_compressed(outputDir + "predictions.npz", tracks = tracks, predictions = predictions)
 
 

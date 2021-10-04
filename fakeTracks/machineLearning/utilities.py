@@ -56,13 +56,32 @@ variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 
     'layer16', 'charge16', 'subDet16', 'pixelHitSize16', 'pixelHitSizeX16', 
            'pixelHitSizeY16', 'stripSelection16', 'hitPosX16', 'hitPosY16',
 
-    'sumEnergy', 'diffEnergy', 'dz1', 'd01', 'dz2', 'd02', 'dz3', 'd03']
+    'sumEnergy', 'diffEnergy', 'encodedLayers', 'dz1', 'd01', 'dz2', 'd02', 'dz3', 'd03']
 
 varDict = {}
 for x in range(len(variables)):
     varDict[variables[x]] = x
 
-def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, test_size, val_size, DEBUG=False):
+def buildModel(filters = [16, 8], input_dim = 55, batch_norm = False, metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
+    #begin NN model
+    model = Sequential()
+    model.add(Dense(filters[0], input_dim=input_dim, activation='relu'))
+    for i in range(len(filters)-1):
+        model.add(Dense(filters[i+1], activation='relu'))
+        if(batch_norm): model.add(BatchNormalization())
+        model.add(Dropout(0.2))
+    model.add(Dense(1, activation='sigmoid'))
+
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=metrics)
+
+    print(model.summary())
+    return model
+
+def callModel():
+    model = buildModel(filters, input_dim, batch_norm)
+    return model
+
+def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, train_size, val_size, DEBUG=False):
     # load the dataset
     file_count = 0
     realTracks = []
@@ -71,7 +90,7 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, test_
     for filename in os.listdir(dataDir):
         print("Loading...", dataDir + filename)
         if(DEBUG): 
-            if file_count > 100: break
+            if file_count > 10: break
         myfile = np.load(dataDir+filename)
         if(saveCategories['fake'] == True):
             fakes = np.array(myfile["fake_infos"])
@@ -107,9 +126,9 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, test_
     print("Number of pileup tracks:", len(pileupTracks))
 
     if(saveCategories['real'] == True):
-        if(test_size > 0):
-            trainRealTracks, testRealTracks, trainRealTruth, testRealTruth = train_test_split(realTracks, np.zeros(len(realTracks)), test_size = 1-test_size)
-        if(test_size == 0): 
+        if(train_size > 0):
+            trainRealTracks, testRealTracks, trainRealTruth, testRealTruth = train_test_split(realTracks, np.zeros(len(realTracks)), test_size = 1-train_size)
+        if(train_size == 0): 
             trainRealTracks = realTracks
             testRealTracks = []
             trainRealTruth = np.zeros(len(realTracks))
@@ -120,7 +139,7 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, test_
             valRealTracks = []
             valRealTruth = []
     if(saveCategories['fake'] == True):
-        trainFakeTracks, testFakeTracks, trainFakeTruth, testFakeTruth = train_test_split(fakeTracks, np.ones(len(fakeTracks)), test_size = test_size)
+        trainFakeTracks, testFakeTracks, trainFakeTruth, testFakeTruth = train_test_split(fakeTracks, np.ones(len(fakeTracks)), test_size = 1-train_size)
         testFakeTracks, valFakeTracks, testFakeTruth, valFakeTruth = train_test_split(testFakeTracks, testFakeTruth, test_size = val_size)
      
     if(saveCategories['pileup'] == True):
@@ -195,6 +214,25 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, test_
 
     return trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth
 
+def createSplitDataset():
+
+    return 0
+
+def loadSplitDataset(dataset, inputs):
+    fin = np.load(dataset)
+    trainTracks = fin['trainTracks']
+    testTracks = fin['testTracks']
+    valTracks = fin['valTracks']
+    trainTruth = fin['trainTruth']
+    testTruth = fin['testTruth']
+    valTruth = fin['valTruth']
+
+    trainTracks = selectInputs(trainTracks, inputs)
+    testTracks = selectInputs(testTracks, inputs)
+    valTracks = selectInputs(valTracks, inputs)
+
+    return trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth
+
 def selectInputs(array, inputs):
     if inputs.any() == -1: return array
 
@@ -213,7 +251,7 @@ def getInputs(input_dim, delete):
             if y in x:
                 print(x, varDict[x])
                 delete_array.append(varDict[x])
-
+    print(delete_array)
     inputs = np.delete(inputs, delete_array)
     input_dim = len(inputs)
     print(input_dim)
@@ -230,37 +268,39 @@ def createDict(variables):
 
 if __name__ == '__main__':
 
+    print(len(variables))
+
     for x in range(len(variables)):
         varDict[variables[x]] = x
 
     print(varDict)
 
-    #inputs = np.arange(0, len(variables))
 
 
-    delete_elements = ['totalCharge', 'numSatMeasurements', 'stripSelection', 'hitPosX', 'hitPosY']
-    #delete_array = []
-    #for x in varDict:
-    #    for y in delete_elements:
-    #        if y in x:
-    #            print(x, varDict[x]) 
-    #            delete_array.append(varDict[x])
-
-    #inputs = np.delete(inputs, delete_array)
-    #inputs = np.delete(inputs, varDict['charge'])
-    #print(inputs, len(inputs))
-
+    delete_elements = []
     undersample = -1
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_v9_DYJets_aMCNLO_4PlusLayer_v9p1/"]
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_v9p2/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_v9p2/"]
     input_dim = len(variables)
     normalize_data = False
-
+    saveCategories = [{'fake':True, 'real':True, 'pileup':False}, {'fake':True, 'real':False, 'pileup':False}]
+    train_size = 0.7
+    val_size = 0.5
 
     inputs, input_dim = getInputs(input_dim, delete_elements)
-    trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = loadData(str(dataDir[0]), undersample)
-    print("shape of array", trainTracks.shape)
+    #trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = loadData(dataDir[0], undersample, inputs, normalize_data, saveCategories[0], train_size, val_size, DEBUG=False)
 
+    #np.savez_compressed('fakeNNInputDataset_DYJets.npz', trainTracks = trainTracks, testTracks = testTracks, valTracks = valTracks, trainTruth = trainTruth, testTruth = testTruth, valTruth = valTruth)
 
+    trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = loadData(dataDir[1], undersample, inputs, normalize_data, saveCategories[1], train_size, val_size, DEBUG=False)
+
+    np.savez_compressed('fakeNNInputDataset_NG.npz', trainTracks = trainTracks, testTracks = testTracks, valTracks = valTracks, trainTruth = trainTruth, testTruth = testTruth, valTruth = valTruth)
+
+    print("Train Tracks " + str(trainTracks.shape))
+    print("Train Truth " + str(trainTruth.shape))
+    print("Test Tracks " + str(testTracks.shape))
+    print("Test Truth " + str(testTruth.shape))
+    print("Val Tracks " + str(valTracks.shape))
+    print("Val Truth " + str(valTruth.shape))
 
 
 
