@@ -1,5 +1,6 @@
 import os
 import tensorflow as tf
+from tensorboard.plugins.hparams import api as hp
 from tensorflow import keras
 from keras import backend as K
 import numpy as np
@@ -90,6 +91,7 @@ if __name__ == "__main__":
     batch_size = 64
     epochs = 1
     input_dim = 178
+    dropout = 0.1
     patience_count = 20
     monitor = 'val_loss'
     #class_weights = False  
@@ -116,6 +118,7 @@ if __name__ == "__main__":
         trainPCT = params[8]
         valPCT = params[9]
         loadSplitDataset = params[10]
+        dropout = params[11]
 
     #make sure event number is not input to network
     if 'eventNumber' not in delete_elements:
@@ -170,10 +173,9 @@ if __name__ == "__main__":
     valTracks = valTracks[indices]
     valTruth = valTruth[indices]         
     
-    callbacks = [keras.callbacks.EarlyStopping(patience=patience_count),                                                                                                                            keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5',                                                                                                            save_best_only=True,                                                                                                                                                               monitor=monitor,                                                                                                                                                                   mode='auto')]
+    callbacks = [keras.callbacks.EarlyStopping(patience=patience_count), keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5', save_best_only=True, monitor=monitor, mode='auto')]
 
-    #model = callModel
-    model = fakeNN(filters, input_dim, batch_norm, val_metrics)
+    model = fakeNN(filters, input_dim, batch_norm, val_metrics, dropout)
 
     estimator = KerasClassifier(build_fn=model, epochs=epochs, batch_size=batch_size, verbose=1)
     history = estimator.fit(trainTracks, trainTruth, validation_data=(valTracks, valTruth), callbacks = callbacks)
@@ -203,7 +205,10 @@ if __name__ == "__main__":
     plotMetrics.plotScores(predictions_raw, testTruth, 'fakeNN', plotDir)
     plotMetrics.predictionThreshold(predictions_raw, testTruth, plotDir)
     #plotMetrics.permutationImportance(estimator, testTracks, testTruth, plotDir)
-    np.savez_compressed(outputDir + "predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions, predictionScores = predictions_raw)
+    
+    inputs = utilities.listVariables(inputs)    
+
+    np.savez_compressed(outputDir + "predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions, predictionScores = predictions_raw, inputs = inputs)
 
     fout = open(outputDir + 'networkInfo.txt', 'w')
     fout.write('Datasets: ' + str(dataDir) + '\nFilters: ' + str(filters) + '\nBatch Size: ' + str(batch_size) + '\nBatch Norm: ' + str(batch_norm) +  '\nInput Dim: ' + str(input_dim) + '\nPatience Count: ' + str(patience_count) + '\nMetrics: ' + str(val_metrics) + '\nDeleted Elements: ' + str(delete_elements) + '\nSaved Tracks: ' + str(saveCategories) + '\nTrain Percentage: ' + str(trainPCT) + '\nVal Percentage: ' + str(valPCT) + '\nTotal Epochs: ' + str(max_epoch) + '\nMetrics: TP = %d, FP = %d, TN = %d, FN = %d' % (classifications[0], classifications[1], classifications[2], classifications[3]) + '\nPrecision: ' + str(classifications[4]) + '\nRecall: ' + str(classifications[5]))

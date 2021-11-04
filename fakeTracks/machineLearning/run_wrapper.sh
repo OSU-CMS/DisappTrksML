@@ -8,12 +8,16 @@ scramv1 project CMSSW_11_2_1_patch2
 cp fakesNN.py CMSSW_11_2_1_patch2/src/fakesNN.py
 cp plotMetrics.py CMSSW_11_2_1_patch2/src/plotMetrics.py
 cp params.npy CMSSW_11_2_1_patch2/src/params.npy
+#cp gridSearchParams.npy CMSSW_11_2_1_patch2/src/gridSearchParams.npy
 cp utilities.py CMSSW_11_2_1_patch2/src/utilities.py
+cp fakeClass.py CMSSW_11_2_1_patch2/src/fakeClass.py
 
 cd CMSSW_11_2_1_patch2/src/
 eval `scramv1 runtime -sh`
 
+#python3 fakesNN.py -d $1 -p gridSearchParams.npy -i $2
 python3 fakesNN.py -d $1 -p params.npy -i $2
+
 
 rm *.py
 rm *.npy

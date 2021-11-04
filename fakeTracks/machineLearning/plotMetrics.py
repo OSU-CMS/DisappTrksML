@@ -12,6 +12,7 @@ from sklearn.inspection import permutation_importance
 import sys
 import ROOT as r
 from ROOT.TMath import Gaus
+import utilities
 
 class bcolors:
     HEADER = '\033[95m'
@@ -106,7 +107,8 @@ def plotCM3(predictions, plotDir, outputfile = 'metricPlots.root'):
     out.Close()
 
 
-def getStats(truth, predictions, threshold = 0.5):
+def getStats(truth, predictions, plotDir, plot = False, threshold = 0.5, outputfile = 'metricPlots.root'):
+
     TP, FP, TN, FN = 0, 0, 0, 0
     for i in range(len(truth)):
         if(truth[i] == 0 and predictions[i] < threshold): TN += 1
@@ -122,6 +124,33 @@ def getStats(truth, predictions, threshold = 0.5):
     if(threshold == 0.5): 
         print("Precision (TP/(TP+FP)): " + str(P) + " Recall (TP/(TP+FN)): " + str(R))
         print("TP: " + str(TP) + ", FP: " + str(FP) + ", TN: " + str(TN) + ", FN: " + str(FN))       
+
+    if(plot):
+        out = r.TFile(plotDir + outputfile, "update")
+        h_id = r.TH1F("h_id", "Predictions vs Truth", 4, 0, 4)
+        h_score = r.TH1F("h_score", "Metric Score", 2, 0, 2)
+        h_id.Fill(0, TN)
+        h_id.Fill(1, TP)
+        h_id.Fill(2, FN)
+        h_id.Fill(3, FP)
+        h_id.SetTitle("Classifications")
+        h_id.GetXaxis().SetBinLabel(1, 'TN')
+        h_id.GetXaxis().SetBinLabel(2, 'TP')
+        h_id.GetXaxis().SetBinLabel(3, 'FN')
+        h_id.GetXaxis().SetBinLabel(4, 'FP')
+        h_id.GetXaxis().SetTitle('Classification')
+        h_id.GetYaxis().SetTitle('Number of Tracks')
+        h_id.Write("h_classification")
+        h_score.Fill(0, P)
+        h_score.Fill(1, R)
+        h_score.SetTitle("Metric Scores")
+        h_score.GetXaxis().SetBinLabel(0, 'Precision')
+        h_score.GetXaxis().SetBinLabel(1, 'Recall')
+        h_score.GetXaxis().SetTitle('Metric Scores')
+        h_score.GetYaxis().SetTitle('Percent')
+        h_score.Write('h_scoreReference')
+        out.Close()
+
     return [TP, FP, TN, FN, P, R]
 
 def plotHistory(history, variables, plotDir, outputfile = 'metricPlots.root'):
@@ -283,17 +312,10 @@ def predictionThreshold(predictions, truth, plotDir, outputfile = 'metricPlots.r
 
     for iBin, Bin in enumerate(bins):
         #[TP, FP, TN, FN]
-        metrics = getStats(truth, predictions, Bin)
-          #if(metrics[0] > 0): 
-           #    precision = float(metrics[0]) / (float(metrics[0]) + float(metrics[1]))
-           #    recall = float(metrics[0]) / (float(metrics[0]) + float(metrics[3]))
-        h_precision.SetBinContent(iBin, metrics[4])
-        h_recall.SetBinContent(iBin, metrics[5])
-           #else: 
-           #    precision = 0.
-           #    recall = 0.
-           #    h_precision.SetBinContent(iBin, precision)
-           #    h_recall.SetBinContent(iBin, recall)
+        metrics = getStats(truth, predictions, plotDir, threshold = Bin)
+        print(Bin, metrics)
+        h_precision.SetBinContent(iBin+1, metrics[4])
+        h_recall.SetBinContent(iBin+1, metrics[5])
     
     c1.cd()
     l1 = r.TLegend(0.5, 0.7, 0.6, 0.8)
@@ -313,6 +335,40 @@ def predictionThreshold(predictions, truth, plotDir, outputfile = 'metricPlots.r
     h_recall.Write("RecallVsThreshold")
     c1.Write("PredictionThresholdScores")
     out.Close()
+
+def backgroundEstimation(tracks, predictions, d0Index, plotDir, outputfile = 'metricPlots.root'):
+    
+    out = r.TFile(plotDir + outputfile, "update")
+    h_d0Bkg = r.TH1F("h_d0Bkg", "d0 of Tracks Labeled Real", 100, -0.1, 0.1)
+    h_d0Fake = r.TH1F("h_d0Fake" ,"d0 of Tracks Labeled Fake", 100, -0.1, 0.1)
+    c1 = r.TCanvas("c1", "c1", 600, 800)
+
+    fake, background = 0, 0
+
+    for itrack, track in enumerate(tracks):
+        if abs(tracks[itrack, d0Index]) < 0.0002:
+            if predictions[itrack] > 0.5:
+                fake += 1
+                h_d0Fake.Fill(tracks[itrack, d0Index])
+            else:
+                background += 1
+                h_d0Bkg.Fill(tracks[itrack, d0Index])
+
+    
+    c1.cd()
+    h_d0Bkg.Draw()
+    h_d0Fake.SetLineColor(2)
+    h_d0Fake.Draw("same")
+    l1 = r.TLegend(0.2, 0.7, 0.3, 0.9)
+    l1.AddEntry(h_d0Bkg, "Labeled Real", "l")
+    l1.AddEntry(h_d0Fake, "Labeled Fake", "l")
+    l1.Draw("same")
+    out.cd()
+    h_d0Bkg.Write()
+    h_d0Fake.Write()
+    c1.Draw("PredictedD0")
+    out.Close()
+    print("Predicted background is %d out of %d events" % (fake, background+fake))
 
 if __name__ == "__main__":
 

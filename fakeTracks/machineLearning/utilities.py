@@ -91,7 +91,7 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, train
         print("Loading...", dataDir + filename)
         if(DEBUG): 
             if file_count > 10: break
-        myfile = np.load(dataDir+filename)
+        myfile = np.load(dataDir+filename, allow_pickle=True)
         if(saveCategories['fake'] == True):
             fakes = np.array(myfile["fake_infos"])
             if len(fakes) == 0: continue
@@ -264,7 +264,11 @@ def createDict(variables):
 
     return varDict
 
+def listVariables(inputs):
 
+    myinputs = variables
+    myinputs = np.take(myinputs, inputs)
+    return myinputs
 
 if __name__ == '__main__':
 
@@ -279,7 +283,7 @@ if __name__ == '__main__':
 
     delete_elements = []
     undersample = -1
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_v9p2/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_v9p2/"]
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_v9p3/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_v9p3/"]
     input_dim = len(variables)
     normalize_data = False
     saveCategories = [{'fake':True, 'real':True, 'pileup':False}, {'fake':True, 'real':False, 'pileup':False}]
@@ -287,9 +291,9 @@ if __name__ == '__main__':
     val_size = 0.5
 
     inputs, input_dim = getInputs(input_dim, delete_elements)
-    #trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = loadData(dataDir[0], undersample, inputs, normalize_data, saveCategories[0], train_size, val_size, DEBUG=False)
+    trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = loadData(dataDir[0], undersample, inputs, normalize_data, saveCategories[0], train_size, val_size, DEBUG=False)
 
-    #np.savez_compressed('fakeNNInputDataset_DYJets.npz', trainTracks = trainTracks, testTracks = testTracks, valTracks = valTracks, trainTruth = trainTruth, testTruth = testTruth, valTruth = valTruth)
+    np.savez_compressed('fakeNNInputDataset_DYJets.npz', trainTracks = trainTracks, testTracks = testTracks, valTracks = valTracks, trainTruth = trainTruth, testTruth = testTruth, valTruth = valTruth)
 
     trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = loadData(dataDir[1], undersample, inputs, normalize_data, saveCategories[1], train_size, val_size, DEBUG=False)
 

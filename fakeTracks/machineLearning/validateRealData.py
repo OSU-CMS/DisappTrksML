@@ -67,7 +67,7 @@ if __name__ == "__main__":
                        'layer15', 'subDet15', 'stripSelection15', 'hitPosX15', 'hitPosY15', 'layer16', 'subDet16', 'stripSelection16', 'hitPosX16', 'hitPosY16']
     saveCategories = [{'fake':False, 'real':True, 'pileup':False}]
     normalize_data = False
-    DEBUG = True
+    DEBUG = False
     #################################################
 
     if(len(sys.argv) > 1):
@@ -112,12 +112,22 @@ if __name__ == "__main__":
     
     estimator.model.load_weights(weightsDir + 'lastEpoch.h5')
     predictions = estimator.predict_proba(tracks)
+    predictions = predictions[:, 1]
+
     pred_fakes = np.argwhere(predictions >= 0.5)
     pred_reals = np.argwhere(predictions < 0.5)
+    
+    plotMetrics.plotScores(predictions, np.zeros(len(predictions)), plotsName, plotDir)
 
     print("Number of predicted fakes: " + str(len(pred_fakes)) + ", Number of predicted Reals: " + str(len(pred_reals)))
+           #    h_recall.SetBinContent(iBin, recall)
+    
+    inputs = utilities.listVariables(inputs)
+    
+    d0Index = np.where(inputs == 'd0')
+    plotMetrics.backgroundEstimation(tracks, predictions, d0Index, plotDir)
 
-    np.savez_compressed(outputDir + "predictions.npz", tracks = tracks, predictions = predictions)
+    np.savez_compressed(outputDir + "predictions.npz", tracks = tracks, predictions = predictions, inputs = inputs)
 
 
 
