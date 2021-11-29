@@ -16,8 +16,14 @@ cd CMSSW_11_2_1_patch2/src/
 eval `scramv1 runtime -sh`
 
 #python3 fakesNN.py -d $1 -p gridSearchParams.npy -i $2
-python3 fakesNN.py -d $1 -p params.npy -i $2
+if [[$4 -gt 0]]
+then
+    python3 fakesNN.py -d $1 -p params.npy -i $2 -g $((1/4))
+else
+    python3 fakesNN.py -d $1 -p params.npy -i $2
+fi
 
+echo $((1/4))
 
 rm *.py
 rm *.npy

@@ -7,13 +7,14 @@ import glob
 import subprocess
 from itertools import product 
 import numpy as np
+import shutil
 
 if __name__=="__main__":
 
 
     inputDim = 178
-    folder = "fakeTracks_4PlusLayer_aMCv9p3_11_4_NGBoost_filterSearch"
-    logDir = "/data/users/mcarrigan/fakeTracks/networks/filterSearch/"
+    folder = "fakeTracks_4PlusLayer_aMCv9p3_11_4_NGBoost_dropoutSearch_11_23"
+    logDir = "/data/users/mcarrigan/fakeTracks/networks/dropoutSearch/"
     dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_v9p3/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_v9p3/"]
     #delete_elements = ['dEdxPixel', 'pixelHitSize7', 'charge8', 'hitPosY9', 'numSatMeasurements', 'layer13', 'pixelHitSizeX12', 'pixelHitSize15', 'pixelHitSize13']
     delete_elements = ['eventNumber', 'layer1', 'subDet1', 'stripSelection1', 'hitPosX1', 'hitPosY1','layer2', 'subDet2', 'stripSelection2', 'hitPosX2', 'hitPosY2',
@@ -47,11 +48,14 @@ if __name__=="__main__":
 
     #np.save('params.npy',np.array(params, dtype='object'))
     #njobs = len(params)
-    
 
     params = np.load('params.npy', allow_pickle=True)
+    jobInfo = np.load('jobInfo.npy', allow_pickle=True)
+    repeatSearches = jobInfo[0]
     njobs = len(params)
     os.system('mkdir ' + logDir + str(folder))
+    shutil.copy('params.npy', logDir + str(folder))
+    shutil.copy('jobInfo.npy', logDir + str(folder))
 
     f = open('run.sub', 'w')
     submitLines = """
@@ -61,8 +65,9 @@ if __name__=="__main__":
     request_disk = 250MB
     request_memory = 2GB
     request_cpus = 3
+    hold = True
     executable              = run_wrapper.sh
-    arguments               = {0} $(PROCESS) {2}
+    arguments               = {0} $(PROCESS) {2} {3}
     log                     = {2}{0}/log_$(PROCESS).log
     output                  = {2}{0}/out_$(PROCESS).txt
     error                   = {2}{0}/error_$(PROCESS).txt
@@ -71,7 +76,7 @@ if __name__=="__main__":
     transfer_input_files = run_wrapper.sh, fakesNN.py, plotMetrics.py, params.npy, utilities.py, fakeClass.py
     getenv = true
     queue {1}
-    """.format(folder, njobs, logDir)
+    """.format(folder, njobs, logDir, repeatSearches)
 
     f.write(submitLines)
     f.close()

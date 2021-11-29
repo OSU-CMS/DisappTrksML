@@ -37,9 +37,9 @@ if __name__ == "__main__":
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "d:p:i:", ["dir=","params=","index="])
+        opts, args = getopt.getopt(sys.argv[1:], "d:p:i:g:", ["dir=","params=","index=", "grid="])
     except getopt.GetoptError:
-        print(plotMetrics.bcolors.RED+"USAGE: fakesNN.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+plotMetrics.bcolors.ENDC)
+        print(plotMetrics.bcolors.RED+"USAGE: fakesNN.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index -g/--grid= grid_search"+plotMetrics.bcolors.ENDC)
         sys.exit(2)
 
     workDir = 'outfakesNN_' + date.today().strftime('%m_%d')
@@ -47,6 +47,7 @@ if __name__ == "__main__":
     paramsFile = ""
     params = []
     paramsIndex = 0
+    gridSearch = -1
     for opt, arg in opts:
         if(opt in ('-d','--dir')):
             workDir = str(arg)
@@ -54,6 +55,8 @@ if __name__ == "__main__":
             paramsFile = str(arg)
         elif(opt in ('-i','--index')):
             paramsIndex = int(arg)
+        elif(opt in ('-g', '--grid')):
+            gridSearch = int(arg)
 
     if(len(paramsFile)>0):
         try:
@@ -62,7 +65,10 @@ if __name__ == "__main__":
             print(plotMetrics.bcolors.RED+"ERROR: Index outside range or no parameter list passed"+plotMetrics.bcolors.ENDC)
             print(plotMetrics.bcolors.RED+"USAGE: fakesNN.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+plotMetrics.bcolors.ENDC)
             sys.exit(2)
-        workDir = workDir + "_p" + str(paramsIndex)
+        if(gridSearch > 0):
+            workDir = workDir + "_g" + str(gridSearch) + "_p" + str(paramsIndex)
+        else:
+            workDir = workDir + "_p" + str(paramsIndex)
     cnt=0
     while(os.path.isdir(workDir)):
         cnt+=1
@@ -125,10 +131,14 @@ if __name__ == "__main__":
         delete_elements.append('eventNumber')
 
     # create output directories
-    os.system('mkdir '+str(workDir))
-    os.system('mkdir '+str(plotDir))
-    os.system('mkdir '+str(weightsDir))
-    os.system('mkdir '+str(outputDir))
+    if not os.path.isdir(workDir):
+        os.system('mkdir '+str(workDir))
+    if not os.path.isdir(plotDir):
+        os.system('mkdir '+str(plotDir))
+    if not os.path.isdir(weightsDir):
+        os.system('mkdir '+str(weightsDir))
+    if not os.path.isdir(outputDir):
+        os.system('mkdir '+str(outputDir))
    
     inputs, input_dim = utilities.getInputs(input_dim, delete_elements)
  
@@ -211,5 +221,5 @@ if __name__ == "__main__":
     np.savez_compressed(outputDir + "predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions, predictionScores = predictions_raw, inputs = inputs)
 
     fout = open(outputDir + 'networkInfo.txt', 'w')
-    fout.write('Datasets: ' + str(dataDir) + '\nFilters: ' + str(filters) + '\nBatch Size: ' + str(batch_size) + '\nBatch Norm: ' + str(batch_norm) +  '\nInput Dim: ' + str(input_dim) + '\nPatience Count: ' + str(patience_count) + '\nMetrics: ' + str(val_metrics) + '\nDeleted Elements: ' + str(delete_elements) + '\nSaved Tracks: ' + str(saveCategories) + '\nTrain Percentage: ' + str(trainPCT) + '\nVal Percentage: ' + str(valPCT) + '\nTotal Epochs: ' + str(max_epoch) + '\nMetrics: TP = %d, FP = %d, TN = %d, FN = %d' % (classifications[0], classifications[1], classifications[2], classifications[3]) + '\nPrecision: ' + str(classifications[4]) + '\nRecall: ' + str(classifications[5]))
+    fout.write('Datasets: ' + str(dataDir) + '\nFilters: ' + str(filters) + '\nBatch Size: ' + str(batch_size) + '\nBatch Norm: ' + str(batch_norm) +  '\nInput Dim: ' + str(input_dim) + '\nPatience Count: ' + str(patience_count) + '\nMetrics: ' + str(val_metrics) + '\nDeleted Elements: ' + str(delete_elements) + '\nSaved Tracks: ' + str(saveCategories) + '\nTrain Percentage: ' + str(trainPCT) + '\nVal Percentage: ' + str(valPCT) + '\nTotal Epochs: ' + str(max_epoch) + '\nDropout: ' + str(dropout) + '\nMetrics: TP = %d, FP = %d, TN = %d, FN = %d' % (classifications[0], classifications[1], classifications[2], classifications[3]) + '\nPrecision: ' + str(classifications[4]) + '\nRecall: ' + str(classifications[5]))
     fout.close()
