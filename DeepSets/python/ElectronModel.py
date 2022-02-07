@@ -100,9 +100,9 @@ class ElectronModel(DeepSetsArchitecture):
 								background=background,
 								background_info=background_info)
 
-			print 'Wrote', outputFileName
+			print('Wrote', outputFileName)
 		else:
-			print 'No events found in file'
+			print('No events found in file')
 
 		inputFile.Close()
 
@@ -136,9 +136,9 @@ class ElectronModel(DeepSetsArchitecture):
 			np.savez_compressed(outputFileName,
 								signal=signal,
 								signal_infos=signal_infos)
-			print 'Wrote', outputFileName
+			print('Wrote', outputFileName)
 		else:
-			print 'No events passed the selections'
+			print('No events passed the selections')
 
 		inputFile.Close()
 
@@ -168,11 +168,11 @@ class ElectronModel(DeepSetsArchitecture):
 								tracks=tracks,
 								infos=infos)
 
-			print 'Wrote', outputFileName
+			print('Wrote', outputFileName)
 
 			inputFile.Close()
 		else:
-			print 'No events found in file'
+			print('No events found in file')
 
 	def buildModel(self):
 		inputs = Input(shape=(self.input_shape[-1],))
@@ -218,9 +218,9 @@ class ElectronModel(DeepSetsArchitecture):
 		if(self.track_info_shape == 0): model = Model(inputs=deepset_inputs, outputs=deepset_outputs)
 		else: model = Model(inputs=[deepset_inputs,info_inputs], outputs=deepset_outputs)
 
-		print(f_model.summary())
-		print(phi_model.summary())
-		print(model.summary())
+		print((f_model.summary()))
+		print((phi_model.summary()))
+		print((model.summary()))
 
 		self.model = model
 

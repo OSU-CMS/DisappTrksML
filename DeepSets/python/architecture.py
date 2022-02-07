@@ -62,37 +62,37 @@ def isGenMatched(event, track, pdgId):
     return (abs(matchID) == pdgId and abs(matchDR2) < 0.1**2)
 
 def printEventInfo(event, track):
-    print 'EVENT INFO'
-    print 'Trigger:', event.firesGrandOrTrigger
-    print 'MET filters:', event.passMETFilters
-    print 'Num good PVs (>=1):', event.numGoodPVs
-    print 'MET (no mu) (>120):', event.metNoMu
-    print 'Num good jets (>=1):', event.numGoodJets
-    print 'max dijet dPhi (<=2.5):', event.dijetDeltaPhiMax
-    print 'dPhi(lead jet, met no mu) (>0.5):', abs(event.leadingJetMetPhi)
-    print
-    print 'TRACK INFO'
-    print '\teta (<2.1):', abs(track.eta)
-    print '\tpt (>55):', track.pt
-    print '\tIn gap (false):', track.inGap
-    print '\tNot in 2017 low eff. region (true):', (track.phi < 2.7 or track.eta < 0 or track.eta > 1.42)
-    print '\tmin dR(track, bad ecal channel) (>= 0.05):', track.dRMinBadEcalChannel
-    print '\tnValidPixelHits (>=4):', track.nValidPixelHits
-    print '\tnValidHits (>=4):', track.nValidHits
-    print '\tmissing inner hits (==0):', track.missingInnerHits
-    print '\tmissing middle hits (==0):', track.missingMiddleHits
-    print '\ttrackIso/pt (<0.05):', track.trackIso / track.pt
-    print '\td0 (<0.02):', abs(track.d0)
-    print '\tdz (<0.5):', abs(track.dz)
-    print '\tmin dR(track, jet) (>0.5):', abs(track.dRMinJet)
-    print '\tmin dR(track, ele) (>0.15):', abs(track.deltaRToClosestElectron)
-    print '\tmin dR(track, muon) (>0.15):', abs(track.deltaRToClosestMuon)
-    print '\tmin dR(track, tauHad) (>0.15):', abs(track.deltaRToClosestTauHad)
-    print '\tecalo (<10):', track.ecalo
-    print '\tmissing outer hits (>=3):', track.missingOuterHits
-    print
-    print '\tisTagProbeElectron:', track.isTagProbeElectron
-    print '\tisTagProbeMuon:', track.isTagProbeMuon
+    print('EVENT INFO')
+    print('Trigger:', event.firesGrandOrTrigger)
+    print('MET filters:', event.passMETFilters)
+    print('Num good PVs (>=1):', event.numGoodPVs)
+    print('MET (no mu) (>120):', event.metNoMu)
+    print('Num good jets (>=1):', event.numGoodJets)
+    print('max dijet dPhi (<=2.5):', event.dijetDeltaPhiMax)
+    print('dPhi(lead jet, met no mu) (>0.5):', abs(event.leadingJetMetPhi))
+    print()
+    print('TRACK INFO')
+    print('\teta (<2.1):', abs(track.eta))
+    print('\tpt (>55):', track.pt)
+    print('\tIn gap (false):', track.inGap)
+    print('\tNot in 2017 low eff. region (true):', (track.phi < 2.7 or track.eta < 0 or track.eta > 1.42))
+    print('\tmin dR(track, bad ecal channel) (>= 0.05):', track.dRMinBadEcalChannel)
+    print('\tnValidPixelHits (>=4):', track.nValidPixelHits)
+    print('\tnValidHits (>=4):', track.nValidHits)
+    print('\tmissing inner hits (==0):', track.missingInnerHits)
+    print('\tmissing middle hits (==0):', track.missingMiddleHits)
+    print('\ttrackIso/pt (<0.05):', track.trackIso / track.pt)
+    print('\td0 (<0.02):', abs(track.d0))
+    print('\tdz (<0.5):', abs(track.dz))
+    print('\tmin dR(track, jet) (>0.5):', abs(track.dRMinJet))
+    print('\tmin dR(track, ele) (>0.15):', abs(track.deltaRToClosestElectron))
+    print('\tmin dR(track, muon) (>0.15):', abs(track.deltaRToClosestMuon))
+    print('\tmin dR(track, tauHad) (>0.15):', abs(track.deltaRToClosestTauHad))
+    print('\tecalo (<10):', track.ecalo)
+    print('\tmissing outer hits (>=3):', track.missingOuterHits)
+    print()
+    print('\tisTagProbeElectron:', track.isTagProbeElectron)
+    print('\tisTagProbeMuon:', track.isTagProbeMuon)
 
 class DeepSetsArchitecture:
 
@@ -278,16 +278,16 @@ class DeepSetsArchitecture:
         
     def save_model(self, outputFileName):
         self.model.save(outputFileName)
-        print 'Saved model in file:', outputFileName
+        print('Saved model in file:', outputFileName)
 
     def save_weights(self, outputFileName):
         self.model.save_weights(outputFileName)
-        print 'Saved model weights in file:', outputFileName
+        print('Saved model weights in file:', outputFileName)
 
     def save_trainingHistory(self, outputFileName):
         with open(outputFileName, 'wb') as f:
             pickle.dump(self.training_history.history, f)
-        print 'Saved training history in file:', outputFileName
+        print('Saved training history in file:', outputFileName)
 
     def displayTrainingHistory(self):
         acc = self.training_history.history['accuracy']
@@ -296,7 +296,7 @@ class DeepSetsArchitecture:
         loss = self.training_history.history['loss']
         val_loss = self.training_history.history['val_loss']
 
-        epochs = range(1, len(acc) + 1)
+        epochs = list(range(1, len(acc) + 1))
 
         plt.plot(epochs, acc, 'bo', label='Training acc')
         plt.plot(epochs, val_acc, 'b', label='Validation acc')
@@ -318,7 +318,7 @@ class DeepSetsArchitecture:
         loss = history[metric]
         val_loss = history['val_'+metric]
 
-        epochs = range(1, len(loss) + 1)
+        epochs = list(range(1, len(loss) + 1))
 
         plt.figure()
         plt.plot(epochs, loss, 'bo', label='Training '+metric)

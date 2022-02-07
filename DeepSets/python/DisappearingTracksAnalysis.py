@@ -48,7 +48,7 @@ def calculateFidicualMaps(electron_payload, muon_payload, payload_suffix):
                 stdDevInefficiency += (thisInefficiency - meanInefficiency)**2
 
         if nRegionsWithTag < 2:
-            print 'Only ', nRegionsWithTag, ' regions with a tag lepton exist, cannot calculate fiducial map!!!'
+            print('Only ', nRegionsWithTag, ' regions with a tag lepton exist, cannot calculate fiducial map!!!')
             return hotSpots
 
         stdDevInefficiency /= nRegionsWithTag - 1
@@ -147,7 +147,7 @@ def processDataset(dataset, inputDirs, models, deep_sets_arch, fiducial_maps):
 
     for iFile, inputFile in enumerate(inputFiles):
     	if iFile % 10 == 0:
-    		print '\tFile', iFile, '/', nFiles, '...'
+    		print('\tFile', iFile, '/', nFiles, '...')
 
     	n, new_results = processFile(inputFile, models, deep_sets_arch, fiducial_maps, dataset)
     	if n > 0:
@@ -175,7 +175,7 @@ def getROC(h_ele, h_mu, h_fake, h_signal, nlayers):
     best_cut_x = best_cut_y = 1
 
     i = 0
-    for j in reversed(range(h1d_bkg.GetNbinsX())):
+    for j in reversed(list(range(h1d_bkg.GetNbinsX()))):
         n_pass_bkg = h1d_bkg.Integral(1, j+1)
         n_pass_sig = h1d_sig.Integral(1, j+1)
 
@@ -287,7 +287,7 @@ def printChanges(label, h_sigma, h_disc, disc_cut, nlayers, iClone):
 
     eff_ratio = eff_disc / eff_sigma if eff_sigma > 0 else 0
 
-    print label, eff_ratio
+    print(label, eff_ratio)
 
     return label + ' ' + str(eff_ratio)
 
@@ -335,7 +335,7 @@ def analyze(datasets, inputDir='.'):
     fout = TFile('durp.root', 'recreate')
     for curve_name in roc_curves:
         roc_curves[curve_name][0].Write(curve_name)
-        print 'Optimal cut for', curve_name, '=', roc_curves[curve_name][1]
+        print('Optimal cut for', curve_name, '=', roc_curves[curve_name][1])
         m = TMarker(roc_curves[curve_name][2], roc_curves[curve_name][3], 29)
         m.Write(curve_name + '_optimal')
     fout.Close()
@@ -347,11 +347,11 @@ def analyze(datasets, inputDir='.'):
     for dataset in h_disc_signal:
         for i in [4, 5, 6]:
             wp = getWP(h_disc_ele, h_sigma_ele, h_disc_muon, h_sigma_muon, h_disc_fake, h_sigma_fake, h_disc_signal[dataset], h_sigma_signal[dataset], i)
-            print dataset, '--', wp
+            print(dataset, '--', wp)
 
     iClone = -1
 
-    print '\nComparing disc < 0.3 to fiducial map method:\n'
+    print('\nComparing disc < 0.3 to fiducial map method:\n')
     printChanges('Electrons nLayers=4',  h_sigma_ele, h_disc_ele, 0.3, 4, iClone)
     printChanges('Electrons nLayers=5',  h_sigma_ele, h_disc_ele, 0.3, 5, iClone)
     printChanges('Electrons nLayers>=6', h_sigma_ele, h_disc_ele, 0.3, 6, iClone)
@@ -372,7 +372,7 @@ def analyze(datasets, inputDir='.'):
     }
 
     for i in [4, 5, 6]:
-        print 'NLAYERS: ', i
+        print('NLAYERS: ', i)
         for mass in range(100, 1000, 100):
             for lifetime in [10, 100, 1000, 10000]:
                 datasetName = 'higgsino_%d_%d' % (mass, lifetime)
@@ -383,4 +383,4 @@ def analyze(datasets, inputDir='.'):
                                              i,
                                              iClone)
                 for extra_lifetime in extra_samples[lifetime]:
-                    print change_string.replace('Higgsino_%dGeV_%dcm_94X' % (mass, lifetime), 'Higgsino_%dGeV_%scm_94X' % (mass, extra_lifetime))
+                    print(change_string.replace('Higgsino_%dGeV_%dcm_94X' % (mass, lifetime), 'Higgsino_%dGeV_%scm_94X' % (mass, extra_lifetime)))

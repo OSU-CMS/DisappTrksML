@@ -172,8 +172,8 @@ class DataGeneratorV3(keras.utils.Sequence):
 		self.num_signal = len(self.signal_events)
 		self.num_background = len(self.background_events)
 
-		print self.num_signal
-		print self.num_background
+		print(self.num_signal)
+		print(self.num_background)
 
 	def __len__(self):
 		max_signal_batches = np.floor(self.num_signal / self.num_signal_batch)
@@ -283,11 +283,11 @@ class DataGeneratorV4(keras.utils.Sequence):
 			self.classes = np.concatenate((self.classes,np.zeros(num_bkg_file)))
 
 		assert len(self.files) == len(self.events) and len(self.files) == len(self.classes)
- 		print "Found",len(self.files),"events:", len(self.classes[np.where(self.classes==1)]),"signal events and",len(self.classes[np.where(self.classes==0)]),"background events"
+		print("Found",len(self.files),"events:", len(self.classes[np.where(self.classes==1)]),"signal events and",len(self.classes[np.where(self.classes==0)]),"background events")
 
- 		self.classes = self.classes.astype(int)
- 		self.files = self.files.astype(int)
- 		self.events = self.events.astype(int)
+		self.classes = self.classes.astype(int)
+		self.files = self.files.astype(int)
+		self.events = self.events.astype(int)
 
 	def __len__(self):
 		return int(np.floor(len(self.files) / self.batch_size))
@@ -372,7 +372,7 @@ class BalancedGenerator(keras.utils.Sequence):
 		self.num_signal = len(self.signal_events)
 		self.num_background = len(self.background_events)
 
-		print "Found", self.num_signal + self.num_background,"events:", self.num_signal,"signal events and",self.num_background,"background events"
+		print("Found", self.num_signal + self.num_background,"events:", self.num_signal,"signal events and",self.num_background,"background events")
 
 	def __len__(self):
 		max_signal_batches = np.floor(self.num_signal / self.num_signal_batch)
@@ -483,11 +483,11 @@ class Generator(keras.utils.Sequence):
 			self.classes = np.concatenate((self.classes,np.zeros(num_bkg_file)))
 
 		assert len(self.files) == len(self.events) and len(self.files) == len(self.classes)
- 		print "Found",len(self.files),"events:", len(self.classes[np.where(self.classes==1)]),"signal events and",len(self.classes[np.where(self.classes==0)]),"background events"
+		print("Found",len(self.files),"events:", len(self.classes[np.where(self.classes==1)]),"signal events and",len(self.classes[np.where(self.classes==0)]),"background events")
 
- 		self.classes = self.classes.astype(int)
- 		self.files = self.files.astype(int)
- 		self.events = self.events.astype(int)
+		self.classes = self.classes.astype(int)
+		self.files = self.files.astype(int)
+		self.events = self.events.astype(int)
 
 	def __len__(self):
 		return int(np.floor(len(self.files) / self.batch_size))

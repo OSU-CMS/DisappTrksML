@@ -357,9 +357,9 @@ class GeneralArchitecture:
 								# signal_calos = signal_calos,
 								# background_calos = background_calos)
 
-			print 'Wrote', outputFileName
+			print('Wrote', outputFileName)
 		else:
-			print 'No events found in file'
+			print('No events found in file')
 
 		inputFile.Close()
 
@@ -411,9 +411,9 @@ class GeneralArchitecture:
 								signal_infos = signal_infos,
 								bkg_tracks = bkg_tracks,
 								bkg_infos = bkg_infos)
-			print 'Wrote', outputFileName
+			print('Wrote', outputFileName)
 		else:
-			print 'No events passed the selections'
+			print('No events passed the selections')
 
 		inputFile.Close()
 
@@ -443,9 +443,9 @@ class GeneralArchitecture:
 			np.savez_compressed(outputFileName,
 								signal=signal,
 								signal_infos=signal_infos)
-			print 'Wrote', outputFileName
+			print('Wrote', outputFileName)
 		else:
-			print 'No events passed the selections'
+			print('No events passed the selections')
 
 		inputFile.Close()
 
