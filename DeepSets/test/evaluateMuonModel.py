@@ -66,7 +66,7 @@ for i,fname in enumerate(inputFiles):
 		predBkg_infos = np.vstack((predBkg_infos, data['infos'][preds[:,1] <= 0.5]))
 
 
-print cm
+print(cm)
 np.savez_compressed("muonPreds2.npz",
 					predMu_tracks = predMu_tracks,
 					predMu_infos = predMu_infos,

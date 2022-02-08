@@ -56,7 +56,7 @@ arch.save_model(train_params['outdir']+'initial_model.h5')
 inputFiles = glob.glob(train_generator_params['input_dir']+'images_*.root.npz')
 inputIndices = np.array([f.split('images_')[-1][:-9] for f in inputFiles])
 nFiles = len(inputIndices)
-print('Found', nFiles, 'input files')
+print(('Found', nFiles, 'input files'))
 
 kf = KFold(n_splits=5,random_state=42,shuffle=True)
 k = 0

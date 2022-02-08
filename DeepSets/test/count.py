@@ -29,4 +29,4 @@ for file in os.listdir(dataDir):
 		class_count[iClass] += int(fin[obj].shape[0])
 	
 for obj, count in zip(objects, class_count):
-	print(obj, "\t", count)
+	print((obj, "\t", count))

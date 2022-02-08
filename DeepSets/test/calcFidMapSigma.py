@@ -42,17 +42,20 @@ fiducial_maps_2017F = calculateFidicualMaps(
 #     payload_dir + 'muonFiducialMap_2017_data.root',
 #    '')
 
-dirs = ["/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt1_FIXED/",
-		"/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt2_FIXED/"]
+#dirs = ["/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt1_FIXED/",
+#		"/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt2_FIXED/"]
+
+dirs = ["/store/user/mcarrigan/deepSets/validation/higgsino_700_10000/"]
 inputFiles = []
-for d in dirs: inputFiles += glob.glob(d+'*.root.npz')
+#for d in dirs: inputFiles += glob.glob(d+'*.root.npz')
+for d in dirs: inputFiles += glob.glob(d+'*.npz')
 
 sigmas = []
 for i,fname in enumerate(inputFiles):
 	print(i)
-	infile = np.load(fname, allow_pickle=True)['infos']
+	infile = np.load(fname, allow_pickle=True)['signal_infos']
 
 	for track in infile:
 		sigmas.append(fiducialMapSigma(track[8], track[9], fiducial_maps_2017F))
 
-np.save("ele_fidMap.npy", sigmas)
+np.save("h10000_fidMap.npy", sigmas)

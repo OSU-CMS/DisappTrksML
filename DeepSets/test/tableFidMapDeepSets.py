@@ -75,4 +75,4 @@ for i in range(len(totals)):
 	else:
 		row += r"{0}\pm{1}".format(round(n, findSigFigIndex(s)), round1(s))
 	row += r" \\"
-	print row
+	print(row)

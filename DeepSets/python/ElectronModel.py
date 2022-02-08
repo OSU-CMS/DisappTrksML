@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from DisappTrksML.DeepSets.architecture import *
+import sys
 
 class ElectronModel(DeepSetsArchitecture):
 
@@ -27,6 +28,7 @@ class ElectronModel(DeepSetsArchitecture):
 		
 	def convertTrackFromTree(self, event, track, class_label):
 		hits = []
+		miniHits = []
 
 		for hit in event.recHits:
 			dEta, dPhi = imageCoordinates(track, hit)
@@ -36,16 +38,35 @@ class ElectronModel(DeepSetsArchitecture):
 			energy = hit.energy if detIndex != 2 else 1
 			hits.append((dEta, dPhi, energy, detIndex))
 
+		for hit in event.miniRecHits:
+                        dEta, dPhi = imageCoordinates(track, hit)
+                        if abs(dEta) >= self.eta_range or abs(dPhi) >= self.phi_range:
+                                continue
+                        detIndex = detectorIndex(hit.detType)
+                        energy = hit.energy if detIndex != 2 else 1
+                        miniHits.append((dEta, dPhi, energy, detIndex))
+
 		if len(hits) > 0:
 			hits = np.reshape(hits, (len(hits), 4))
 			hits = hits[hits[:, 2].argsort()]
 			hits = np.flip(hits, axis=0)
 			assert np.max(hits[:, 2]) == hits[0, 2]
 
+		if len(miniHits) > 0:
+                        miniHits = np.reshape(miniHits, (len(miniHits), 4))
+                        miniHits = miniHits[miniHits[:, 2].argsort()]
+                        miniHits = np.flip(miniHits, axis=0)
+                        assert np.max(miniHits[:, 2]) == miniHits[0, 2]
+
 		sets = np.zeros(self.input_shape)
 		for i in range(min(len(hits), self.max_hits)):
 			for j in range(4):
 				sets[i][j] = hits[i][j]
+
+		miniSets = np.zeros(self.input_shape)
+		for i in range(min(len(miniHits), self.max_hits)):
+			for j in range(4):
+				miniSets[i][j] = miniHits[i][j]
 
 		infos = np.array([event.eventNumber, event.lumiBlockNumber, event.runNumber,
 						  class_label,
@@ -61,6 +82,7 @@ class ElectronModel(DeepSetsArchitecture):
 
 		values = {
 			'sets' : sets,
+			'miniSets' : miniSets,
 			'infos' : infos,
 		}
 
@@ -71,12 +93,14 @@ class ElectronModel(DeepSetsArchitecture):
 		inputTree = inputFile.Get('trackImageProducer/tree')
 
 		signal = []
+		miniSignal = []
 		signal_info = []
 		background = []
+		miniBackground = []
 		background_info = []
 
 		for event in inputTree:
-			eventPasses, trackPasses = self.eventSelection(event)
+			eventPasses, trackPasses = self.eventSelectionTraining(event)
 			if not eventPasses: continue
 
 			for i, track in enumerate(event.tracks):
@@ -85,10 +109,12 @@ class ElectronModel(DeepSetsArchitecture):
 				if isGenMatched(event, track, 11):
 					values = self.convertTrackFromTree(event, track, 1)
 					signal.append(values['sets'])
+					miniSignal.append(values['miniSets'])
 					signal_info.append(values['infos'])
 				else:
 					values = self.convertTrackFromTree(event, track, 0)
 					background.append(values['sets'])
+					miniBackground.append(values['miniSets'])
 					background_info.append(values['infos'])
 
 		outputFileName = fileName.split('/')[-1] + '.npz'
@@ -96,13 +122,15 @@ class ElectronModel(DeepSetsArchitecture):
 		if len(signal) != 0 or len(background) != 0:
 			np.savez_compressed(outputFileName,
 								signal=signal,
+								miniSignal=miniSignal,
 								signal_info=signal_info,
 								background=background,
+								miniBackground=miniBackground,
 								background_info=background_info)
 
-			print 'Wrote', outputFileName
+			print(('Wrote', outputFileName))
 		else:
-			print 'No events found in file'
+			print('No events found in file')
 
 		inputFile.Close()
 
@@ -130,15 +158,17 @@ class ElectronModel(DeepSetsArchitecture):
 				signal.append(values['sets'])
 				signal_infos.append(values['infos'])
 
-		outputFileName = fileName.split('/')[-1] + '.npz'
+		outputFileName = (fileName.split('/')[-1]).split('.')[0] + '.npz'
+
+		print(outputFileName)
 
 		if len(signal) > 0:
 			np.savez_compressed(outputFileName,
 								signal=signal,
 								signal_infos=signal_infos)
-			print 'Wrote', outputFileName
+			print(('Wrote', outputFileName))
 		else:
-			print 'No events passed the selections'
+			print('No events passed the selections')
 
 		inputFile.Close()
 
@@ -168,11 +198,11 @@ class ElectronModel(DeepSetsArchitecture):
 								tracks=tracks,
 								infos=infos)
 
-			print 'Wrote', outputFileName
+			print(('Wrote', outputFileName))
 
 			inputFile.Close()
 		else:
-			print 'No events found in file'
+			print('No events found in file')
 
 	def buildModel(self):
 		inputs = Input(shape=(self.input_shape[-1],))
@@ -218,9 +248,9 @@ class ElectronModel(DeepSetsArchitecture):
 		if(self.track_info_shape == 0): model = Model(inputs=deepset_inputs, outputs=deepset_outputs)
 		else: model = Model(inputs=[deepset_inputs,info_inputs], outputs=deepset_outputs)
 
-		print(f_model.summary())
-		print(phi_model.summary())
-		print(model.summary())
+		print((f_model.summary()))
+		print((phi_model.summary()))
+		print((model.summary()))
 
 		self.model = model
 

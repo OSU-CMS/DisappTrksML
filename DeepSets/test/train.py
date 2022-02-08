@@ -27,25 +27,22 @@ if(len(sys.argv)>1):
 	outdir = str(input_params[0])
 
 info_indices = [4, 	# nPV
-				6, 	# deltaRToClosestMuon
 				8, 	# eta
 				9, 	# phi
-				11, # nLayersWithMeasurement
-				14, # ECAL energy
-				15	# HCAL energy
+				12	# nValidPixelHits
 				]
 model_params = {
-	'eta_range':1.0,
-	'phi_range':1.0,
-	'phi_layers':[128,64,32],
-	'f_layers':[64,32,32],
-	'max_hits' : 20,
+	'eta_range':0.25,
+	'phi_range':0.25,
+	'phi_layers':[64,64,256],
+	'f_layers':[64,64,64],
+	'max_hits' : 100,
 	'track_info_indices' : info_indices
 }	
 val_generator_params = {
-	'input_dir' : '/store/user/llavezzo/disappearingTracks/MC_training_v7_V3/',
+	'input_dir' : '/store/user/mcarrigan/deepSets/electronModel/',
 	'batch_size' : 256,
-	'max_hits' : 20,
+	'max_hits' : 100,
 	'info_indices' : info_indices
 }
 train_generator_params = val_generator_params.copy()
@@ -61,17 +58,17 @@ train_params = {
 
 if(not os.path.isdir(outdir)): os.mkdir(outdir)
 
-arch = MuonModel(**model_params)
+arch = ElectronModel(**model_params)
 arch.buildModel()
 
-inputFiles = glob.glob(train_generator_params['input_dir']+'images_*.root.npz')
+inputFiles = glob.glob(train_generator_params['input_dir']+'images_*10.root.npz')
 inputIndices = np.array([f.split('images_')[-1][:-9] for f in inputFiles])
 nFiles = len(inputIndices)
-print('Found', nFiles, 'input files')
+print(('Found', nFiles, 'input files'))
 
 file_ids = {
-	'train'      : inputIndices[:500],
-	'validation' : inputIndices[500:600]
+	'train'      : inputIndices[:10],
+	'validation' : inputIndices[10:]
 }
 
 train_generator = BalancedGenerator(file_ids['train'], **train_generator_params)

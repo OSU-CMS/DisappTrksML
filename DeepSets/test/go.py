@@ -33,7 +33,7 @@ for file in [muons, higgsino_700_10, higgsino_700_100, higgsino_700_1000, higgsi
 	n_after = events_fidMap.shape[0]
 	eff_fidMap = n_after*1.0 / n_before if n_before > 0 else 0
 
-	print eff_fidMap
+	print(eff_fidMap)
 	# print n_before, n_after
 
 	# events_clf = file['results'][:,3]

@@ -14,7 +14,7 @@ def get_kfold_metrics(folders):
 
 		fname = folder+'/kfold_metrics.pkl'
 		if not os.path.isfile(fname):
-			print("Could not find",fname,". Skipping to next folder.")
+			print(("Could not find",fname,". Skipping to next folder."))
 			continue
 		with open(fname,'rb') as f:
 			metrics = pickle.load(f)
@@ -45,7 +45,7 @@ def plot_history(infile,outfile):
 	loss = history['loss']
 	val_loss = history['val_loss']
 
-	epochs = range(1, len(loss) + 1)
+	epochs = list(range(1, len(loss) + 1))
 
 	plt.figure()
 	plt.plot(epochs, loss, 'bo', label='Training loss')
@@ -68,4 +68,4 @@ min_l = np.array(metrics[0])[np.argsort(metrics[0])]
 length = 1.5*max([len(i) for i in min_i])
 for i in range(len(min_i)):
 	if i > 5: break
-	print str(min_i[i]) + " "*int((length-len(min_i[i]))) + str(round(min_l[i],4))
+	print(str(min_i[i]) + " "*int((length-len(min_i[i]))) + str(round(min_l[i],4)))
