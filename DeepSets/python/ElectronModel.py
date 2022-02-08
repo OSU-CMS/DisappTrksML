@@ -128,7 +128,7 @@ class ElectronModel(DeepSetsArchitecture):
 								miniBackground=miniBackground,
 								background_info=background_info)
 
-			print(('Wrote', outputFileName))
+			print('Wrote', outputFileName)
 		else:
 			print('No events found in file')
 
@@ -166,7 +166,7 @@ class ElectronModel(DeepSetsArchitecture):
 			np.savez_compressed(outputFileName,
 								signal=signal,
 								signal_infos=signal_infos)
-			print(('Wrote', outputFileName))
+			print('Wrote', outputFileName)
 		else:
 			print('No events passed the selections')
 
@@ -198,7 +198,7 @@ class ElectronModel(DeepSetsArchitecture):
 								tracks=tracks,
 								infos=infos)
 
-			print(('Wrote', outputFileName))
+			print('Wrote', outputFileName)
 
 			inputFile.Close()
 		else:
