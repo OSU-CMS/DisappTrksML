@@ -24,7 +24,10 @@ backup_suffix = datetime.now().strftime('%Y-%m-%d_%H.%M.%S')
 outdir = "train_"+backup_suffix+"/"
 if(len(sys.argv)>1):
 	input_params = np.load("params.npy",allow_pickle=True)[int(sys.argv[1])]
-	outdir = str(input_params[0])
+	print(input_params)
+	outdir = str(input_params[-1])
+
+print("output directory", outdir)
 
 info_indices = [4, 	# nPV
 				8, 	# eta

@@ -439,7 +439,6 @@ class BalancedGenerator(keras.utils.Sequence):
 		X = X[p]
 		y = y[p]
 		X_info = X_info[p]
-		print("size of info indices", self.info_indices)
 		X_info = X_info[:,self.info_indices]
 
 		X = X[:,:self.max_hits,:]	
