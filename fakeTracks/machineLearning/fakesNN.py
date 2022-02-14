@@ -22,7 +22,7 @@ from datetime import date
 from sklearn.preprocessing import MinMaxScaler
 import utilities
 from fakeClass import fakeNN
-    
+import cmsml
 
 if __name__ == "__main__":
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     filters=[12,8]
     batch_norm = False
     batch_size = 64
-    epochs = 1
+    epochs = 10
     input_dim = 178
     dropout = 0.1
     patience_count = 20
@@ -190,6 +190,9 @@ if __name__ == "__main__":
     estimator = KerasClassifier(build_fn=model, epochs=epochs, batch_size=batch_size, verbose=1)
     history = estimator.fit(trainTracks, trainTruth, validation_data=(valTracks, valTruth), callbacks = callbacks)
  
+    cmsml.tensorflow.save_graph("graph.pb", estimator.model, variables_to_constants=True)
+
+
     print(history.history.keys())
 
     estimator.model.save_weights(weightsDir+'lastEpoch.h5')

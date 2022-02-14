@@ -25,15 +25,14 @@ class fakeNN(keras.Model):
 
     def buildModel(self, filters, input_dim, batch_norm, val_metrics, dropout):
         model = Sequential()
-        model.add(Dense(filters[0], input_dim=input_dim, activation='relu'))
+        model.add(Dense(filters[0], input_dim=input_dim, activation='relu', name="Input"))
         for i in range(len(filters)-1):
             model.add(Dense(filters[i+1], activation='relu'))
             if(batch_norm): model.add(BatchNormalization())
             model.add(Dropout(dropout))
-        model.add(Dense(1, activation='sigmoid'))
+        model.add(Dense(1, activation='sigmoid', name="Output"))
 
         model.compile(loss='binary_crossentropy', optimizer='adam', metrics=val_metrics)
 
         print(model.summary())
         return model
-
