@@ -10,6 +10,7 @@ from ROOT import TFile, TTree
 import sys
 import tensorflow as tf
 from tensorflow import keras
+import cmsml
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization, concatenate

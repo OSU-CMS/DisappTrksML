@@ -39,12 +39,12 @@ class ElectronModel(DeepSetsArchitecture):
 			hits.append((dEta, dPhi, energy, detIndex))
 
 		for hit in event.miniRecHits:
-                        dEta, dPhi = imageCoordinates(track, hit)
-                        if abs(dEta) >= self.eta_range or abs(dPhi) >= self.phi_range:
-                                continue
-                        detIndex = detectorIndex(hit.detType)
-                        energy = hit.energy if detIndex != 2 else 1
-                        miniHits.append((dEta, dPhi, energy, detIndex))
+			dEta, dPhi = imageCoordinates(track, hit)
+			if abs(dEta) >= self.eta_range or abs(dPhi) >= self.phi_range:
+				continue
+			detIndex = detectorIndex(hit.detType)
+			energy = hit.energy if detIndex != 2 else 1
+			miniHits.append((dEta, dPhi, energy, detIndex))
 
 		if len(hits) > 0:
 			hits = np.reshape(hits, (len(hits), 4))
@@ -53,10 +53,10 @@ class ElectronModel(DeepSetsArchitecture):
 			assert np.max(hits[:, 2]) == hits[0, 2]
 
 		if len(miniHits) > 0:
-                        miniHits = np.reshape(miniHits, (len(miniHits), 4))
-                        miniHits = miniHits[miniHits[:, 2].argsort()]
-                        miniHits = np.flip(miniHits, axis=0)
-                        assert np.max(miniHits[:, 2]) == miniHits[0, 2]
+			miniHits = np.reshape(miniHits, (len(miniHits), 4))
+			miniHits = miniHits[miniHits[:, 2].argsort()]
+			miniHits = np.flip(miniHits, axis=0)
+			assert np.max(miniHits[:, 2]) == miniHits[0, 2]
 
 		sets = np.zeros(self.input_shape)
 		for i in range(min(len(hits), self.max_hits)):
@@ -189,7 +189,7 @@ class ElectronModel(DeepSetsArchitecture):
 
 				values = self.convertTrackFromTree(event, track, 1)
 				tracks.append(values['sets'])
-				infos.append(values['infos'])       
+				infos.append(values['infos'])	    
 
 		if len(tracks) != 0:
 			outputFileName = fileName.split('/')[-1] + '.npz'
@@ -205,54 +205,36 @@ class ElectronModel(DeepSetsArchitecture):
 			print('No events found in file')
 
 	def buildModel(self):
-		inputs = Input(shape=(self.input_shape[-1],))
-
-		# build phi network for each individual hit
-		phi_network = Masking()(inputs)
+		#Rewrite
+		inputs = Input(shape = self.input_shape,  name = "input" )
+		inputs_track = Input(shape = (self.track_info_shape,), name = "input_track" )
+		print("input shape", self.input_shape, "input track shape", self.track_info_shape)
+		phi_inputs = Input(shape = (self.input_shape[-1],))
+		phi_network = Masking()(phi_inputs)
 		for layerSize in self.phi_layers[:-1]:
 			phi_network = Dense(layerSize)(phi_network)
 			phi_network = Activation('relu')(phi_network)
 			#phi_network = BatchNormalization()(phi_network)
 		phi_network = Dense(self.phi_layers[-1])(phi_network)
 		phi_network = Activation('linear')(phi_network)
-
-		# build summed model for latent space
-		unsummed_model = Model(inputs=inputs, outputs=phi_network)
-		set_input = Input(shape=self.input_shape)
-		phi_set = TimeDistributed(unsummed_model)(set_input)
+		unsummed_model = Model(inputs=phi_inputs, outputs=phi_network)
+		phi_set = TimeDistributed(unsummed_model)(inputs)
 		summed = Lambda(lambda x: tf.reduce_sum(x, axis=1))(phi_set)
-		phi_model = Model(inputs=set_input, outputs=summed)
-
-		# define F (rho) network evaluating in the latent space
-		if(self.track_info_shape == 0): f_inputs = Input(shape=(self.phi_layers[-1],)) # plus any other track/event-wide variable
-		else: f_inputs = Input(shape=(self.phi_layers[-1]+self.track_info_shape,))
-		f_network = Dense(self.f_layers[0])(f_inputs)
+		if (self.track_info_shape == 0):
+			f_network = Dense(self.f_layers[0])(summed)
+		else:
+			f_network = Dense(self.f_layers[0])(concatenate([summed,inputs_track]))
 		f_network = Activation('relu')(f_network)
 		for layerSize in self.f_layers[1:]:
 			f_network = Dense(layerSize)(f_network)
 			f_network = Activation('relu')(f_network)
 		f_network = Dense(2)(f_network)
-		f_outputs = Activation('softmax')(f_network)
-		f_model = Model(inputs=f_inputs, outputs=f_outputs)
+		f_outputs = Activation('softmax',name="output_xyz")(f_network)
+		integratedmodel = Model(inputs=[inputs,inputs_track], outputs=f_outputs)
 
-		# build the DeepSets architecture
-		deepset_inputs = Input(shape=self.input_shape)
-		latent_space = phi_model(deepset_inputs)
-		if(self.track_info_shape == 0): 
-			deepset_outputs = f_model(latent_space)
-		else: 
-			info_inputs = Input(shape=(self.track_info_shape,))
-			deepset_inputs_withInfo = concatenate([latent_space,info_inputs])
-			deepset_outputs = f_model(deepset_inputs_withInfo)
+		print(integratedmodel.summary())
 
-		if(self.track_info_shape == 0): model = Model(inputs=deepset_inputs, outputs=deepset_outputs)
-		else: model = Model(inputs=[deepset_inputs,info_inputs], outputs=deepset_outputs)
-
-		print((f_model.summary()))
-		print((phi_model.summary()))
-		print((model.summary()))
-
-		self.model = model
+		self.model = integratedmodel
 
 	def evaluate_model(self, event, track):
 		event_converted = self.convertTrackFromTree(event, track, 1) # class_label doesn't matter
@@ -272,3 +254,8 @@ class ElectronModel(DeepSetsArchitecture):
 			x.append(info)
 			
 		return False, self.model.predict(x,)
+
+	def saveGraph(self):
+		cmsml.tensorflow.save_graph("graph.pb", self.model, variables_to_constants=True)
+		cmsml.tensorflow.save_graph("graph.pb.txt", self.model, variables_to_constants=True)
+

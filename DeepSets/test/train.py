@@ -3,6 +3,7 @@ warnings.filterwarnings('ignore')
 import glob, os
 
 import tensorflow as tf
+import cmsml
 from sklearn.model_selection import KFold
 
 from DisappTrksML.DeepSets.ElectronModel import *
@@ -54,7 +55,7 @@ train_generator_params.update({
 	'batch_ratio': 0.5
 })
 train_params = {
-	'epochs': 5,
+	'epochs': 1,
 	'outdir':outdir,
 	'patience_count':5
 }
@@ -80,6 +81,8 @@ val_generator = Generator(file_ids['validation'], **val_generator_params)
 arch.fit_generator(train_generator=train_generator, 
 				   val_generator=val_generator, 	
 					**train_params)
+
+arch.saveGraph()
 
 arch.save_trainingHistory(train_params['outdir']+'trainingHistory.pkl')
 arch.plot_trainingHistory(train_params['outdir']+'trainingHistory.pkl',train_params['outdir']+'trainingHistory.png','loss')
