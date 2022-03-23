@@ -18,10 +18,14 @@ class fakeNN(keras.Model):
         self.batch_norm = batch_norm
         self.val_metrics = val_metrics
         self.dropout = dropout
+        self.dense = keras.layers.Dense(1, activation='sigmoid', name='Output')
 
     def __call__(self):
         model = self.buildModel(self.filters, self.input_dim, self.batch_norm, self.val_metrics, self.dropout)
         return model
+
+    def call(self, inputs):
+        return self.dense(inputs)
 
     def buildModel(self, filters, input_dim, batch_norm, val_metrics, dropout):
         model = Sequential()
@@ -30,7 +34,7 @@ class fakeNN(keras.Model):
             model.add(Dense(filters[i+1], activation='relu'))
             if(batch_norm): model.add(BatchNormalization())
             model.add(Dropout(dropout))
-        model.add(Dense(1, activation='sigmoid', name="Output"))
+        model.add(Dense(1, activation='sigmoid', name="Output_xyz"))
 
         model.compile(loss='binary_crossentropy', optimizer='adam', metrics=val_metrics)
 

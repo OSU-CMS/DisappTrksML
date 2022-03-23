@@ -22,7 +22,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
-
+    'sumEnergy', 'diffEnergy', 'encodedLayers', 'dz1', 'dz2', 'dz3', 'd01', 'd02', 'd03',
     'layer1', 'charge1', 'subDet1', 'pixelHitSize1', 'pixelHitSizeX1', 
            'pixelHitSizeY1','stripSelection1', 'hitPosX1', 'hitPosY1', 
     'layer2', 'charge2', 'subDet2', 'pixelHitSize2', 'pixelHitSizeX2', 
@@ -54,9 +54,8 @@ variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 
     'layer15', 'charge15', 'subDet15', 'pixelHitSize15', 'pixelHitSizeX15', 
            'pixelHitSizeY15', 'stripSelection15', 'hitPosX15', 'hitPosY15',
     'layer16', 'charge16', 'subDet16', 'pixelHitSize16', 'pixelHitSizeX16', 
-           'pixelHitSizeY16', 'stripSelection16', 'hitPosX16', 'hitPosY16',
+           'pixelHitSizeY16', 'stripSelection16', 'hitPosX16', 'hitPosY16']
 
-    'sumEnergy', 'diffEnergy', 'encodedLayers', 'dz1', 'd01', 'dz2', 'd02', 'dz3', 'd03']
 
 varDict = {}
 for x in range(len(variables)):
@@ -94,16 +93,16 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, train
         myfile = np.load(dataDir+filename, allow_pickle=True)
         if(saveCategories['fake'] == True):
             fakes = np.array(myfile["fake_infos"])
-            if len(fakes) == 0: continue
-            fakes = selectInputs(fakes, inputs)
+            if len(fakes) != 0:
+                fakes = selectInputs(fakes, inputs)
         if(saveCategories['real'] == True):
             reals = np.array(myfile["real_infos"])
-            if len(reals) == 0: continue
-            reals = selectInputs(reals, inputs)
+            if len(reals) != 0: 
+                reals = selectInputs(reals, inputs)
         if(saveCategories['pileup'] == True):
             pileup = np.array(myfile["pileup_infos"])
-            if len(pileup) == 0: continue
-            pileup = selectInputs(pileup, inputs)
+            if len(pileup) != 0:
+                pileup = selectInputs(pileup, inputs)
         if(file_count == 0):
             if(saveCategories['fake'] == True): fakeTracks = fakes
             if(saveCategories['real'] == True): realTracks = reals
@@ -139,8 +138,20 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, train
             valRealTracks = []
             valRealTruth = []
     if(saveCategories['fake'] == True):
-        trainFakeTracks, testFakeTracks, trainFakeTruth, testFakeTruth = train_test_split(fakeTracks, np.ones(len(fakeTracks)), test_size = 1-train_size)
-        testFakeTracks, valFakeTracks, testFakeTruth, valFakeTruth = train_test_split(testFakeTracks, testFakeTruth, test_size = val_size)
+        if(train_size > 0):
+            trainFakeTracks, testFakeTracks, trainFakeTruth, testFakeTruth = train_test_split(fakeTracks, np.ones(len(fakeTracks)), test_size = 1-train_size)
+        if(train_size == 0):
+            trainFakeTracks = fakeTracks
+            testFakeTracks = []
+            trainFakeTruth = np.ones(len(fakeTracks))
+            testFakeTruth = []
+        if(val_size > 0):
+            testFakeTracks, valFakeTracks, testFakeTruth, valFakeTruth = train_test_split(testFakeTracks, testFakeTruth, test_size = val_size)
+        if(val_size == 0):
+            valFakeTracks = []
+            valFakeTruth = []
+        #trainFakeTracks, testFakeTracks, trainFakeTruth, testFakeTruth = train_test_split(fakeTracks, np.ones(len(fakeTracks)), test_size = 1-train_size)
+        #testFakeTracks, valFakeTracks, testFakeTruth, valFakeTruth = train_test_split(testFakeTracks, testFakeTruth, test_size = val_size)
      
     if(saveCategories['pileup'] == True):
         indices = np.arange(len(pileupTracks))
@@ -305,12 +316,4 @@ if __name__ == '__main__':
     print("Test Truth " + str(testTruth.shape))
     print("Val Tracks " + str(valTracks.shape))
     print("Val Truth " + str(valTruth.shape))
-
-
-
-
-
-
-
-
 
