@@ -7,6 +7,8 @@ import ROOT as r
 import numpy as np 
 import math
 
+inputDir = 'outputFiles/'
+
 # round to first sig fig
 def round1(x):
 	if x == 0: return 0
@@ -17,18 +19,18 @@ def findSigFigIndex(x):
 	return -int(math.floor(math.log10(abs(x))))
 
 # load the fiducial map sigmas for each data sample
-ele_fidMap = np.load("ele_fidMap.npy", allow_pickle=True, encoding="bytes")
-h10_fidMap = np.load("h10_fidMap.npy", allow_pickle=True, encoding="bytes")
-h100_fidMap = np.load("h100_fidMap.npy", allow_pickle=True, encoding="bytes")
-h1000_fidMap = np.load("h1000_fidMap.npy", allow_pickle=True, encoding="bytes")
-h10000_fidMap = np.load("h10000_fidMap.npy", allow_pickle=True, encoding="bytes")
+ele_fidMap = np.load(inputDir + "ele_fidMap.npy", allow_pickle=True, encoding="bytes")
+h10_fidMap = np.load(inputDir + "h10_fidMap.npy", allow_pickle=True, encoding="bytes")
+h100_fidMap = np.load(inputDir + "h100_fidMap.npy", allow_pickle=True, encoding="bytes")
+h1000_fidMap = np.load(inputDir + "h1000_fidMap.npy", allow_pickle=True, encoding="bytes")
+h10000_fidMap = np.load(inputDir + "h10000_fidMap.npy", allow_pickle=True, encoding="bytes")
 
 # load the deepSets predictions for each data sample
-ele_preds = np.load("SingleEle_fullSel_preds.npy", allow_pickle=True, encoding="bytes")
-h10_preds = np.load("h10_fullSel_preds.npy", allow_pickle=True, encoding="bytes")
-h100_preds = np.load("h100_fullSel_preds.npy", allow_pickle=True, encoding="bytes")
-h1000_preds = np.load("h1000_fullSel_preds.npy", allow_pickle=True, encoding="bytes")
-h10000_preds = np.load("h10000_fullSel_preds.npy", allow_pickle=True, encoding="bytes")
+ele_preds = np.load(inputDir + "SingleEle_fullSel_preds.npy", allow_pickle=True, encoding="bytes")
+h10_preds = np.load(inputDir + "h10_fullSel_preds.npy", allow_pickle=True, encoding="bytes")
+h100_preds = np.load(inputDir + "h100_fullSel_preds.npy", allow_pickle=True, encoding="bytes")
+h1000_preds = np.load(inputDir + "h1000_fullSel_preds.npy", allow_pickle=True, encoding="bytes")
+h10000_preds = np.load(inputDir + "h10000_fullSel_preds.npy", allow_pickle=True, encoding="bytes")
 
 labels = [r"Tag \& Probe Electrons ",
 		"Higgsino 700 GeV, 10cm",

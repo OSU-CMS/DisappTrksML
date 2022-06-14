@@ -4,7 +4,7 @@ gROOT.SetBatch()
 gStyle.SetOptStat(0)
 gStyle.SetOptTitle(0)
 
-fin = TFile('save_noReco/durp.root', 'read')
+fin = TFile('durp.root', 'read')
 
 h_signal = TH2D('signal', 'signal;chargino mass;log_{10}(chargino lifetime) [cm]', 9, 100, 1000, 2, 3, 5)
 h_bkg = TH2D('bkg', 'signal;chargino mass;log_{10}(chargino lifetime) [cm]', 9, 100, 1000, 2, 3, 5)
@@ -18,8 +18,12 @@ diagonal = TLine(0, 0, 1, 1)
 diagonal.SetLineStyle(2)
 
 for mass in range(100, 1000, 100):
-    for lifetime in [1000, 10000]:
 
+    if mass != 700: continue #temporary
+
+    for lifetime in [1000, 10000]:
+        print(mass, lifetime)
+        
         disc4 = fin.Get('disc_4_higgsino_%d_%d' % (mass, lifetime))
         optimal4 = fin.Get('disc_4_higgsino_%d_%d_optimal' % (mass, lifetime))
         sigma4 = fin.Get('sigma_4_higgsino_%d_%d' % (mass, lifetime))
@@ -32,7 +36,7 @@ for mass in range(100, 1000, 100):
         optimal6 = fin.Get('disc_6_higgsino_%d_%d_optimal' % (mass, lifetime))
         sigma6 = fin.Get('sigma_6_higgsino_%d_%d' % (mass, lifetime))
 
-        if mass != 300 or lifetime != 1000: continue
+        if mass != 700 or lifetime != 1000: continue
 
         disc4.SetLineColor(2)
         disc4.SetLineWidth(3)
