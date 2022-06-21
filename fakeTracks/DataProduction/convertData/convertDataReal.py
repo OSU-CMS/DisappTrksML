@@ -167,7 +167,7 @@ for class_label,tree in zip([0],[realTree]):
 
             passesSelection = signalSelection(track)
             
-            track_info = np.concatenate(([passesSelection], event_info, track_info))
+            track_info = np.concatenate((event_info, [passesSelection], track_info))
             print('track info length', len(track_info))
             
             if(layers == 6 or layers == -1): nLayers = np.zeros((16, 9))

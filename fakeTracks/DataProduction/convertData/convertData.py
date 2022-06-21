@@ -47,9 +47,10 @@ if(len(sys.argv)>2):
         fileNum = int(inarray[fileNum])
         layers = int(sys.argv[4])
 fname = "hist_"+str(fileNum)+".root"
-print "File "+dataDir+fname 
+print("File "+dataDir+fname)
 
-fin = TFile(dataDir+fname, 'read')
+#fin = TFile(dataDir+fname, 'read')
+fin = TFile("../selectData/hist_test.root")
 fakeTree = fin.Get('fakeTree')
 realTree = fin.Get('realTree')
 pileupTree = fin.Get('pileupTree')
@@ -189,7 +190,7 @@ for class_label,tree in zip([0,1,2],[realTree,fakeTree,pileupTree]):
 
             passesSelection = signalSelection(track)
             
-            track_info = np.concatenate(([passesSelection], event_info, track_info))
+            track_info = np.concatenate((event_info, [passesSelection], track_info))
             print('track info length', len(track_info))
             
             if(layers == 6 or layers == -1): nLayers = np.zeros((16, 9))
@@ -266,7 +267,8 @@ print("Fake Tracks: " + str(len(fake_infos)))
 print("Pileup Tracks: " + str(len(pileup_infos)))
 
 
-np.savez_compressed("events_" + str(fileNum) + ".npz", fake_infos = fake_infos, real_infos = real_infos, pileup_infos = pileup_infos)
+#np.savez_compressed("events_" + str(fileNum) + ".npz", fake_infos = fake_infos, real_infos = real_infos, pileup_infos = pileup_infos)
+np.savez_compressed("events_test.npz", fake_infos = fake_infos, real_infos = real_infos, pileup_infos = pileup_infos)
 
 
 

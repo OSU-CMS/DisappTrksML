@@ -96,9 +96,9 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
     bool fullSelection = false;
     double PU_cut = 0.1;
    
-    //TString filename = "images.root";
+    TString filename = "images_test.root";
     //TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
-    TString filename = dataDir + "hist_" + int_tstring(fileNum) + ".root";
+    //TString filename = dataDir + "hist_" + int_tstring(fileNum) + ".root";
     TFile* myFile = TFile::Open(filename, "read");
     if(myFile == nullptr) return;
     TTree * myTree = (TTree*)myFile->Get("trackImageProducer/tree");
@@ -125,7 +125,8 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
     myTree->SetBranchAddress("pileupZPosition", &v_pileupZPosition);
     myTree->SetBranchAddress("vertexInfos", &v_vertexInfos);
 
-    TString newFileName = "hist_" + int_tstring(fileNum) + ".root";
+    //TString newFileName = "hist_" + int_tstring(fileNum) + ".root";
+    TString newFileName = "hist_test.root";
     TFile * newFile = new TFile(newFileName, "recreate");
     TTree * fakeTree = new TTree("fakeTree","fakeTree");
     TTree * realTree = new TTree("realTree","realTree");

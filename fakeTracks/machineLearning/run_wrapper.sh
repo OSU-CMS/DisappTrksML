@@ -3,16 +3,16 @@
 source /cvmfs/cms.cern.ch/cmsset_default.sh
 export SCRAM_ARCH=slc7_amd64_gcc820
 
-scramv1 project CMSSW_11_2_1_patch2
+scramv1 project CMSSW_12_0_3_patch2
 
-cp fakesNN.py CMSSW_11_2_1_patch2/src/fakesNN.py
-cp plotMetrics.py CMSSW_11_2_1_patch2/src/plotMetrics.py
-cp params.npy CMSSW_11_2_1_patch2/src/params.npy
+cp fakesNN.py CMSSW_12_0_3_patch2/src/fakesNN.py
+cp plotMetrics.py CMSSW_12_0_3_patch2/src/plotMetrics.py
+cp params.npy CMSSW_12_0_3_patch2/src/params.npy
 #cp gridSearchParams.npy CMSSW_11_2_1_patch2/src/gridSearchParams.npy
-cp utilities.py CMSSW_11_2_1_patch2/src/utilities.py
-cp fakeClass.py CMSSW_11_2_1_patch2/src/fakeClass.py
+cp utilities.py CMSSW_12_0_3_patch2/src/utilities.py
+cp fakeClass.py CMSSW_12_0_3_patch2/src/fakeClass.py
 
-cd CMSSW_11_2_1_patch2/src/
+cd CMSSW_12_0_3_patch2/src/
 eval `scramv1 runtime -sh`
 
 #python3 fakesNN.py -d $1 -p gridSearchParams.npy -i $2
@@ -41,4 +41,4 @@ fi
 cd ..
 cd ..
 
-rm -r CMSSW_11_2_1_patch2
+rm -r CMSSW_12_0_3_patch2

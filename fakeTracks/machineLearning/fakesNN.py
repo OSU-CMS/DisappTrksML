@@ -103,8 +103,8 @@ if __name__ == "__main__":
     #class_weights = False  
     val_metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
     #delete_elements = ['totalCharge', 'numSatMeasurements', 'stripSelection', 'hitPosX', 'hitPosY', 'numMeasurementsPixel', 'layer', 'subDet']
-    #delete_elements = ['eventNumber', 'layer1', 'subDet1', 'layer2', 'subDet2','layer3', 'subDet3', 'layer4', 'subDet4', 'layer5', 'subDet5', 'layer6', 'subDet6', 'layer7', 'subDet7','layer8', 'subDet8', 'layer9', 'subDet9', 'layer10', 'subDet10', 'layer11', 'subDet11', 'layer12', 'subDet12', 'layer13', 'subDet13', 'layer15', 'subDet14', 'layer15', 'subDet15','layer16', 'subDet16']
-    delete_elements = ['passesSelection', 'eventNumber']
+    #delete_elements = ['passesSelection', 'eventNumber', 'layer1', 'subDet1', 'layer2', 'subDet2','layer3', 'subDet3', 'layer4', 'subDet4', 'layer5', 'subDet5', 'layer6', 'subDet6', 'layer7', 'subDet7','layer8', 'subDet8', 'layer9', 'subDet9', 'layer10', 'subDet10', 'layer11', 'subDet11', 'layer12', 'subDet12', 'layer13', 'subDet13', 'layer15', 'subDet14', 'layer15', 'subDet15','layer16', 'subDet16']
+    delete_elements = ['passesSelection']
     #delete_elements = ['passesSelection', 'eventNumber', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 'layer1', 'charge1', 'subDet1', 'pixelHitSize1', 'pixelHitSizeX1', 'pixelHitSizeY1','stripSelection1', 'hitPosX1', 'hitPosY1', 'layer2', 'charge2', 'subDet2', 'pixelHitSize2', 'pixelHitSizeX2', 'pixelHitSizeY2', 'stripSelection2', 'hitPosX2', 'hitPosY2', 'layer3', 'charge3', 'subDet3', 'pixelHitSize3', 'pixelHitSizeX3', 'pixelHitSizeY3', 'stripSelection3', 'hitPosX3', 'hitPosY3', 'layer4', 'charge4', 'subDet4', 'pixelHitSize4', 'pixelHitSizeX4', 'pixelHitSizeY4', 'stripSelection4', 'hitPosX4', 'hitPosY4', 'layer5', 'charge5', 'subDet5', 'pixelHitSize5', 'pixelHitSizeX5', 'pixelHitSizeY5', 'stripSelection5', 'hitPosX5', 'hitPosY5', 'layer6', 'charge6', 'subDet6', 'pixelHitSize6', 'pixelHitSizeX6', 'pixelHitSizeY6', 'stripSelection6', 'hitPosX6', 'hitPosY6', 'layer7', 'charge7', 'subDet7', 'pixelHitSize7', 'pixelHitSizeX7', 'pixelHitSizeY7', 'stripSelection7', 'hitPosX7', 'hitPosY7', 'layer8', 'charge8', 'subDet8', 'pixelHitSize8', 'pixelHitSizeX8', 'pixelHitSizeY8', 'stripSelection8', 'hitPosX8', 'hitPosY8', 'layer9', 'charge9', 'subDet9', 'pixelHitSize9', 'pixelHitSizeX9', 'pixelHitSizeY9', 'stripSelection9', 'hitPosX9', 'hitPosY9', 'layer10', 'charge10', 'subDet10', 'pixelHitSize10', 'pixelHitSizeX10', 'pixelHitSizeY10', 'stripSelection10', 'hitPosX10', 'hitPosY10', 'layer11', 'charge11', 'subDet11', 'pixelHitSize11', 'pixelHitSizeX11', 'pixelHitSizeY11', 'stripSelection11', 'hitPosX11', 'hitPosY11', 'layer12', 'charge12', 'subDet12', 'pixelHitSize12', 'pixelHitSizeX12','pixelHitSizeY12', 'stripSelection12', 'hitPosX12', 'hitPosY12', 'layer13', 'charge13', 'subDet13', 'pixelHitSize13', 'pixelHitSizeX13', 'pixelHitSizeY13', 'stripSelection13', 'hitPosX13', 'hitPosY13', 'layer14', 'charge14', 'subDet14', 'pixelHitSize14', 'pixelHitSizeX14', 'pixelHitSizeY14', 'stripSelection14', 'hitPosX14', 'hitPosY14', 'layer15', 'charge15', 'subDet15', 'pixelHitSize15', 'pixelHitSizeX15', 'pixelHitSizeY15', 'stripSelection15', 'hitPosX15', 'hitPosY15', 'layer16', 'charge16', 'subDet16', 'pixelHitSize16', 'pixelHitSizeX16', 'pixelHitSizeY16', 'stripSelection16', 'hitPosX16', 'hitPosY16', 'sumEnergy', 'diffEnergy', 'dz1', 'd01', 'dz2', 'd02', 'dz3', 'd03']
     saveCategories = [{'fake':True, 'real':True, 'pileup':False}, {'fake':True, 'real':False, 'pileup':False}]
     trainPCT = 0.7
@@ -126,10 +126,6 @@ if __name__ == "__main__":
         valPCT = params[9]
         loadSplitDataset = params[10]
         dropout = params[11]
-
-    #make sure event number is not input to network
-    if 'eventNumber' not in delete_elements:
-        delete_elements.append('eventNumber')
 
     # create output directories
     if not os.path.isdir(workDir):
@@ -172,18 +168,24 @@ if __name__ == "__main__":
     indices = np.arange(len(trainTracks))
     np.random.shuffle(indices)   
     trainTracks = trainTracks[indices]
+    trainEvents = trainTracks[:, 0] #make array of only eventNumber
+    trainTracks = trainTracks[:, 1:] #removing eventNumber from array
     trainTruth = trainTruth[indices]
-    
+
     indices = np.arange(len(testTracks))
     np.random.shuffle(indices)
     testTracks = testTracks[indices]
+    testEvents = trainTracks[:, 0]
+    testTracks = testTracks[:, 1:]
     testTruth = testTruth[indices]
 
     indices = np.arange(len(valTracks))
     np.random.shuffle(indices)
     valTracks = valTracks[indices]
+    valEvents = valTracks[:, 0]
+    valTracks = valTracks[:, 1:]
     valTruth = valTruth[indices]         
-    
+
     callbacks = [keras.callbacks.EarlyStopping(patience=patience_count), keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5', save_best_only=True, monitor=monitor, mode='auto')]
 
     model = fakeNN(filters, input_dim, batch_norm, val_metrics, dropout)
@@ -224,7 +226,7 @@ if __name__ == "__main__":
     
     inputs = utilities.listVariables(inputs)    
 
-    np.savez_compressed(outputDir + "predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions, predictionScores = predictions_raw, inputs = inputs)
+    np.savez_compressed(outputDir + "predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions, predictionScores = predictions_raw, inputs = inputs, events = testEvents)
 
     fout = open(outputDir + 'networkInfo.txt', 'w')
     fout.write('Datasets: ' + str(dataDir) + '\nFilters: ' + str(filters) + '\nBatch Size: ' + str(batch_size) + '\nBatch Norm: ' + str(batch_norm) +  '\nInput Dim: ' + str(input_dim) + '\nPatience Count: ' + str(patience_count) + '\nMetrics: ' + str(val_metrics) + '\nDeleted Elements: ' + str(delete_elements) + '\nSaved Tracks: ' + str(saveCategories) + '\nTrain Percentage: ' + str(trainPCT) + '\nVal Percentage: ' + str(valPCT) + '\nTotal Epochs: ' + str(max_epoch) + '\nDropout: ' + str(dropout) + '\nMetrics: TP = %d, FP = %d, TN = %d, FN = %d' % (classifications[0], classifications[1], classifications[2], classifications[3]) + '\nPrecision: ' + str(classifications[4]) + '\nRecall: ' + str(classifications[5]))
