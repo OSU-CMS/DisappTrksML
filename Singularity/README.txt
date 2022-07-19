@@ -28,3 +28,5 @@ The option nv is used to include nvidia in the container. Running "nvidia-smi" w
 tf.config.list_physical_devices('GPU')
 
 this will list the available GPUs. 
+
+Note: The build.def script is based on a script from Jean-Roche Vlimant https://urldefense.com/v3/__https://github.com/cmscaltech/gpuservers/blob/master/singularity/cutting_edge.singularity__;!!KGKeukY!3XvK2R0Vy5-JHWiszOTH73SnmRqCVrqJ0mNRZoyGCJxLwmcdHBn3C2LqJE7ZU7urg_Y2rw-9QqL8bDLto7IxjewsK-atYR9sxA$ 
