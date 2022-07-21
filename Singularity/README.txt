@@ -1,9 +1,10 @@
 
 Instructions to build singularity container
 
-1. bash build_container.sh
+1. Have T3 admin add user as "fakeroot" and create user area on /data1
+2. bash build_container.sh
 
-This script will set the TMPDIR and SINGULARITY_CACHEDIR as /data1/tmp a local tmp dir on compute-0-26. Because of user quota there is not enough space on /tmp. 
+This script will set the TMPDIR and SINGULARITY_CACHEDIR as /data1/$USER/tmp a local tmp dir on compute-0-26. Because of user quota there is not enough space on /tmp. 
 
 Option fakeroot is used because users need to be root to build an image. A user can be added to have fakeroot permissions by running
 
