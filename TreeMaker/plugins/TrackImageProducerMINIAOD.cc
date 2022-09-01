@@ -485,7 +485,7 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
 #if CMSSW_VERSION_CODE >= CMSSW_VERSION(12,4,0)
                           isStrip ? deDxTools::shapeSelection(*(hitInfo->stripCluster(iHit))) : false,
 #else
-                          isStrip ? DeDxTools::shapeSelection(*(hitInfo->stripCluster(iHit))) : false,
+                          isStrip ? deDxTools::shapeSelection(*(hitInfo->stripCluster(iHit))) : false,
 #endif
                           hitInfo->pos(iHit).x(),
                           hitInfo->pos(iHit).y(),
