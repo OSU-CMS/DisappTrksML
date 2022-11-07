@@ -48,15 +48,15 @@ if __name__ == "__main__":
 
     ################config parameters################
     #weightsDir = '/data/users/mcarrigan/fakeTracks/networks/input_search/inputRemoval/fakeTracks_4PlusLayer_aMCv9p1_9_29_NGBoost_layerEncoded/fakeTracks_4PlusLayer_aMCv9p1_9_29_NGBoost_layerEncoded_p8/weights/'
-    weightsDir = 'outfakesNN_03_23/weights/'
+    weightsDir = '/data/users/mcarrigan/fakeTracks/networks/dropoutSearch/fakeTracks_4PlusLayer_aMCv9p3_NGBoost_ProducerValidation_3-29_v2/fakeTracks_4PlusLayer_aMCv9p3_NGBoost_ProducerValidation_3-29_v2_p4/weights/'
     plotsName = 'validation_FakeProducer'
     workDir = '/data/users/mcarrigan/fakeTracks/'
-    dataDir = ["data/validateProducer/"]
+    dataDir = ["data/validateProducer/test/"]
     val_metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
     batch_norm = False
     batch_size = 64
     epochs = 1
-    filters = [12, 8]
+    filters = [16, 8]
     input_dim = 178
     undersample = -1
     dropout = 0.1
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     #dummy fit to get estimator compiled
     #history = estimator.fit(testTracks, np.zeros(len(testTracks)))
     
-    model = keras.models.load_model(weightsDir + 'model.5.h5')    
+    model = keras.models.load_model(weightsDir + 'lastEpoch.h5')    
     predictions_raw = model.predict_proba(testTracks)
     predictions = model.predict(testTracks)
     plotMetrics.plotCM(testTruth, predictions, plotDir)
@@ -143,30 +143,40 @@ if __name__ == "__main__":
     d0Index = np.where(inputs == 'd0')
     plotMetrics.backgroundEstimation(testTracks, predictions, d0Index, plotDir)
 
-    np.savez_compressed(outputDir + "predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions, inputs = inputs)
+    np.savez_compressed("predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions, inputs = inputs, events = eventNumbers)
 
-    r_predictions = array('f', [0.])
-    r_truth = array('f', [0.])
-    r_event = array('f', [0.])
-    r_eta = array('f', [0.])
-    r_phi = array('f', [0.])
-    r_pt = array('f', [0.])
-    myfile = TFile("predictions.root", "recreate")
+    r_predictions = array('d', [0.])
+    r_truth = array('d', [0.])
+    r_event = array('d', [0.])
+    r_eta = array('d', [0.])
+    r_phi = array('d', [0.])
+    r_pt = array('d', [0.])
+    r_trackIso = array('d', [0.])
+    myfile = TFile("predictions_test.root", "recreate")
     mytree = TTree("predictions", "Network Predictions")
-    mytree.Branch("predictions", r_predictions, "r_predictions/F")
-    mytree.Branch("truth", r_truth, "r_truth/F")
-    mytree.Branch("event", r_event, "r_event/F")
-    mytree.Branch("eta", r_eta, "r_eta/F")
-    mytree.Branch("phi", r_phi, "r_phi/F")
-    mytree.Branch("pt", r_pt, "r_pt/F")
-
+    mytree.Branch("predictions", r_predictions, "r_predictions/D")
+    mytree.Branch("truth", r_truth, "r_truth/D")
+    mytree.Branch("event", r_event, "r_event/D")
+    mytree.Branch("eta", r_eta, "r_eta/D")
+    mytree.Branch("phi", r_phi, "r_phi/D")
+    mytree.Branch("pt", r_pt, "r_pt/D")
+    mytree.Branch("trackIso", r_trackIso, "r_trackIso/D")
     for i in range(len(predictions)):
         r_predictions[0] = predictions[i]
         r_truth[0] = testTruth[i]
         r_event[0] = eventNumbers[i] #event number
+        r_trackIso[0] = testTracks[i, 1] #trackIso
         r_eta[0] = testTracks[i, 2] #eta
         r_phi[0] = testTracks[i, 3] #phi
         r_pt[0] = testTracks[i, 15] #pt
+        if(r_predictions[0] != predictions[i]): print("problem with prediction in event", eventNumbers[i])
+        if(r_truth[0] != testTruth[i]): print("problem with truth in event", eventNumbers[i])
+        if(r_event[0] != eventNumbers[i]): print("problem with event number in event", eventNumbers[i])
+        if(r_trackIso[0] != testTracks[i, 1]): print("problem with trackIso in event", eventNumbers[i])
+        if(r_eta[0] != testTracks[i, 2]): print("problem with eta in event", eventNumbers[i])
+        if(r_phi[0] != testTracks[i, 3]): print("problem with phi in event", eventNumbers[i])
+        if(r_pt[0] != testTracks[i, 15]): print("problem with pt in event", eventNumbers[i])
+
         mytree.Fill()
 
     mytree.Write()

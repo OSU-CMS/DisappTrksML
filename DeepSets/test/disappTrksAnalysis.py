@@ -2,12 +2,13 @@
 import sys
 
 from DisappTrksML.DeepSets.DisappearingTracksAnalysis import *
+from DisappTrksML.DeepSets.utilities import *
 
 weights_dirs = {
-    'ele_14' : 'lucaWeights/kfold14_noBatchNorm_finalTrainV3',
-    'ele_17' : 'lucaWeights/kfold17_noBatchNorm_finalTrainV3',
-    'ele_19' : 'lucaWeights/kfold19_noBatchNorm_finalTrainV3',
-    'muon'   : 'lucaWeights/train_muons',
+    'ele_14' : 'train_2022-03-30_16.44.25'
+    #'ele_17' : 'lucaWeights/kfold17_noBatchNorm_finalTrainV3',
+    #'ele_19' : 'lucaWeights/kfold19_noBatchNorm_finalTrainV3',
+    #'muon'   : 'lucaWeights/train_muons',
 }
 
 models = { m : ElectronModel() if m.startswith('ele') else MuonModel() for m in weights_dirs }
@@ -41,7 +42,7 @@ datasets.update(
 )
 
 #####################################
-
+'''
 if len(sys.argv) > 2:
     dataset = str(sys.argv[1])
     fileNumber = int(sys.argv[2])
@@ -63,5 +64,5 @@ elif len(sys.argv) > 1:
 else:
     for dataset in datasets:
         processDataset(dataset, datasets[dataset], models, arch, fiducial_maps_mc if dataset.startswith('higgsino_') else fiducial_maps_2017F)
-
-#analyze(datasets, 'save_noReco')
+'''
+analyze(datasets, 'outputFiles')

@@ -94,6 +94,8 @@ def processFile(fileName, models, deep_sets_arch, fiducial_maps, dataset):
     # output: np.array[iEvent] = [discriminant[m] for m in models] + [nLayersWithMeasurement, sigma]
     values = []
 
+    print("Processing file: " + fileName)
+
     inputFile = TFile(fileName, 'read')
     tree = inputFile.Get('trackImageProducer/tree')
 
@@ -114,17 +116,17 @@ def processFile(fileName, models, deep_sets_arch, fiducial_maps, dataset):
 
             sigma = fiducialMapSigma(track, fiducial_maps)
 
-            track_values[4] = track.nLayersWithMeasurement
-            track_values[5] = sigma
+            track_values[-2] = track.nLayersWithMeasurement
+            track_values[-1] = sigma
 
             if dataset in ['electrons', 'muons'] and not trackPassesVeto[iTrack]:
                 values.append(track_values)
                 continue
 
-            track_values[0] = models['ele_14'].evaluate_model(event, track)
-            track_values[1] = models['ele_17'].evaluate_model(event, track)
-            track_values[2] = models['ele_19'].evaluate_model(event, track)
-            track_values[3] = models['muon'].evaluate_model(event, track)
+            if(len(models)>0): track_values[0] = models['ele_14'].evaluate_model(event, track)
+            if(len(models)>1): track_values[1] = models['ele_17'].evaluate_model(event, track)
+            if(len(models)>2): track_values[2] = models['ele_19'].evaluate_model(event, track)
+            if(len(models)>3): track_values[3] = models['muon'].evaluate_model(event, track)
 
             values.append(track_values)
 
@@ -149,11 +151,14 @@ def processDataset(dataset, inputDirs, models, deep_sets_arch, fiducial_maps):
     	if iFile % 10 == 0:
     		print('\tFile', iFile, '/', nFiles, '...')
 
+        #FIXME: just for debugging
+    	if iFile > 2: break
+
     	n, new_results = processFile(inputFile, models, deep_sets_arch, fiducial_maps, dataset)
     	if n > 0:
     		results = np.append(results, new_results, axis=0)
 
-    np.savez_compressed('output_' + dataset + '.npz', results=results)
+    np.savez_compressed('outputFiles/output_' + dataset + '.npz', results=results)
 
 ######################################
 
@@ -298,10 +303,38 @@ def analyze(datasets, inputDir='.'):
 
     canvas = TCanvas("c1", "c1", 800, 800)
 
+    '''
     input_ele = TFile(inputDir + '/output_electrons.root', 'read')
     input_muon = TFile(inputDir + '/output_muons.root', 'read')
     input_fake = TFile(inputDir + '/output_fake.root', 'read')
+    '''
 
+    input_ele = np.load(inputDir + '/output_electrons.npz')['results']
+    input_muon = np.load(inputDir + '/output_muons.npz')['results']
+    input_fake = np.load(inputDir + '/output_fake.npz')['results']
+
+    h_disc_ele  = TH2D('disc_ele', 'disc:discriminant:nLayers', 3000, 0, 1, 3, 4, 7)
+    h_sigma_ele = TH2D('sigma_ele', 'sigma:sigma:nLayers', 3000, 0, 30, 3, 4, 7)
+
+    h_disc_muon  = TH2D('disc_muon', 'disc:discriminant:nLayers', 3000, 0, 1, 3, 4, 7)
+    h_sigma_muon = TH2D('sigma_muon', 'sigma:sigma:nLayers', 3000, 0, 30, 3, 4, 7)
+
+    h_disc_fake  = TH2D('disc_fake', 'disc:discriminant:nLayers', 3000, 0, 1, 3, 4, 7)
+    h_sigma_fake = TH2D('sigma_fake', 'sigma:sigma:nLayers', 3000, 0, 30, 3, 4, 7)
+
+    for disc in input_ele:
+        h_disc_ele.Fill(disc[0], disc[-2]) #note that second to last index is the nLayers
+        h_sigma_ele.Fill(disc[-1], disc[-2]) #last index is currently sigma
+
+    for disc in input_muon:
+        h_disc_muon.Fill(disc[0], disc[-2]) #note that second to last index is the nLayers
+        h_sigma_muon.Fill(disc[-1], disc[-2]) #last index is currently sigma
+
+    for disc in input_fake:
+        h_disc_fake.Fill(disc[0], disc[-2]) #note that second to last index is the nLayers
+        h_sigma_fake.Fill(disc[-1], disc[-2]) #last index is currently sigma
+
+    '''
     h_disc_ele = input_ele.Get('disc')
     h_disc_muon = input_muon.Get('disc')
     h_disc_fake = input_fake.Get('disc')
@@ -309,11 +342,16 @@ def analyze(datasets, inputDir='.'):
     h_sigma_ele = input_ele.Get('sigma')
     h_sigma_muon = input_muon.Get('sigma')
     h_sigma_fake = input_fake.Get('sigma')
+    '''
 
     h_disc_signal = {}
     h_sigma_signal = {}
     for dataset in datasets:
+        print(dataset)
         if not dataset.startswith('higgsino'): continue
+        input_signal = np.load(inputDir + '/output_' + dataset + '.npz')['results']
+     
+        '''
         fin = TFile(inputDir + '/output_' + dataset + '.root', 'read')
 
         h_disc = fin.Get('disc')
@@ -321,11 +359,19 @@ def analyze(datasets, inputDir='.'):
 
         h_disc.SetDirectory(0)
         h_sigma.SetDirectory(0)
+        '''
+
+        h_disc = TH2D('disc_signal', 'disc:discriminant:nLayers', 3000, 0, 1, 3, 4, 7)
+        h_sigma = TH2D('sigma_signal', 'sigma:sigma:nLayers', 3000, 0, 30, 3, 4, 7)
+
+        for disc in input_signal:
+            h_disc.Fill(disc[0], disc[-2])
+            h_sigma.Fill(disc[-1], disc[-2])
 
         h_disc_signal[dataset] = h_disc
         h_sigma_signal[dataset] = h_sigma
 
-        fin.Close()
+        #fin.Close()
 
     roc_curves = { 'disc_%d_%s' % (i, sig) : getROC(h_disc_ele, h_disc_muon, h_disc_fake, h_disc_signal[sig], i) for i in [4, 5, 6] for sig in h_disc_signal }
     roc_curves.update(
@@ -341,8 +387,8 @@ def analyze(datasets, inputDir='.'):
     fout.Close()
 
     for i in [4, 5, 6]:
-        plotStack(h_disc_ele, h_disc_muon, h_disc_fake, h_disc_signal['higgsino_300_1000'], i, 'discriminant', canvas, rebin=5)
-        plotStack(h_sigma_ele, h_sigma_muon, h_sigma_fake, h_sigma_signal['higgsino_300_1000'], i, 'sigma', canvas, rebin=5)
+        plotStack(h_disc_ele, h_disc_muon, h_disc_fake, h_disc_signal['higgsino_700_1000'], i, 'discriminant', canvas, rebin=5)
+        plotStack(h_sigma_ele, h_sigma_muon, h_sigma_fake, h_sigma_signal['higgsino_700_1000'], i, 'sigma', canvas, rebin=5)
 
     for dataset in h_disc_signal:
         for i in [4, 5, 6]:
@@ -374,6 +420,7 @@ def analyze(datasets, inputDir='.'):
     for i in [4, 5, 6]:
         print('NLAYERS: ', i)
         for mass in range(100, 1000, 100):
+            if mass != 700: continue # temporary because we only used 700
             for lifetime in [10, 100, 1000, 10000]:
                 datasetName = 'higgsino_%d_%d' % (mass, lifetime)
                 change_string = printChanges('Higgsino_%dGeV_%dcm_94X' % (mass, lifetime), 

@@ -38,6 +38,7 @@ class ElectronModel(DeepSetsArchitecture):
 			energy = hit.energy if detIndex != 2 else 1
 			hits.append((dEta, dPhi, energy, detIndex))
 
+		'''
 		for hit in event.miniRecHits:
 			dEta, dPhi = imageCoordinates(track, hit)
 			if abs(dEta) >= self.eta_range or abs(dPhi) >= self.phi_range:
@@ -45,7 +46,7 @@ class ElectronModel(DeepSetsArchitecture):
 			detIndex = detectorIndex(hit.detType)
 			energy = hit.energy if detIndex != 2 else 1
 			miniHits.append((dEta, dPhi, energy, detIndex))
-
+		'''
 		if len(hits) > 0:
 			hits = np.reshape(hits, (len(hits), 4))
 			hits = hits[hits[:, 2].argsort()]

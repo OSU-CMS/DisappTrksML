@@ -59,3 +59,5 @@ for i,fname in enumerate(inputFiles):
 		sigmas.append(fiducialMapSigma(track[8], track[9], fiducial_maps_2017F))
 
 np.save("h10000_fidMap.npy", sigmas)
+#np.save("ele_fidMap.npy", sigmas)
+

@@ -11,12 +11,12 @@ import shutil
 
 if __name__=="__main__":
 
-
+    gridSearch = False
     inputDim = 178
-    folder = "fakeTracks_4PlusLayer_aMCv9p3_11_4_NGBoost_dropoutSearch_11_23"
-    logDir = "/data/users/mcarrigan/fakeTracks/networks/dropoutSearch/"
+    folder = "fakeTracks_4PlusLayer_aMCv9p3_NGBoost_GPUBenchmark_compute26V2_6_21_22"
+    logDir = "/data/users/mcarrigan/fakeTracks/networks/GPUBenchmark/"
     dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_v9p3/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_v9p3/"]
-    #delete_elements = ['dEdxPixel', 'pixelHitSize7', 'charge8', 'hitPosY9', 'numSatMeasurements', 'layer13', 'pixelHitSizeX12', 'pixelHitSize15', 'pixelHitSize13']
+    '''
     delete_elements = ['eventNumber', 'layer1', 'subDet1', 'stripSelection1', 'hitPosX1', 'hitPosY1','layer2', 'subDet2', 'stripSelection2', 'hitPosX2', 'hitPosY2',
                        'layer3', 'subDet3', 'stripSelection3', 'hitPosX3', 'hitPosY3', 'layer4', 'subDet4', 'stripSelection4', 'hitPosX4', 'hitPosY4', 
                        'layer5', 'subDet5', 'stripSelection5', 'hitPosX5', 'hitPosY5', 'layer6', 'subDet6', 'stripSelection6', 'hitPosX6', 'hitPosY6',
@@ -25,29 +25,31 @@ if __name__=="__main__":
                        'layer11', 'subDet11', 'stripSelection11', 'hitPosX11', 'hitPosY11', 'layer12', 'subDet12', 'stripSelection12', 'hitPosX12', 'hitPosY12', 
                        'layer13', 'subDet13', 'stripSelection13', 'hitPosX13', 'hitPosY13', 'layer14', 'subDet14', 'stripSelection14', 'hitPosX14', 'hitPosY14', 
                        'layer15', 'subDet15', 'stripSelection15', 'hitPosX15', 'hitPosY15', 'layer16', 'subDet16', 'stripSelection16', 'hitPosX16', 'hitPosY16']
+    '''
+
+    delete_elements = ['passesSelection']
+
     saveCategories = [{'fake':True, 'real':True, 'pileup':False}, {'fake':True, 'real':False, 'pileup':False}]
-    #[filters, batch_norm, undersampling, epochs, dataDir, input_dim, input variables to delete, types of track to use, %of data to train on, % of (1-train) data to validate on]
+
+    #[filters, batch_norm, undersampling, epochs, dataDir, input_dim, delete_elements, saveCategories, trainPCT, valPCT, loadSplitDataset, dropout]
     #InputDim = 55 (4layers), 64 (5layers), 163 (6+ layers)
-
-    #params = np.array([[[32, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5],
-    #          [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5], 
-    #          [[24, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5],
-    #          [[24, 12], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5]], dtype='object')
-
     
-    params = np.array([[[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False],
-              [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False], 
-              [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False],
-              [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False],
-              [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False],
-              [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False],
-              [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False],
-              [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False],
-              [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False],
-              [[16, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False]], dtype='object')
+    params = np.array([[[12, 8], True, -1, 1000, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False, 0.1],
+                       #[[12, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False, 0.1], 
+                       #[[12, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False, 0.1],
+                       #[[12, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False, 0.1],
+                       #[[12, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False, 0.1],
+                       #[[12, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False, 0.1],
+                       #[[12, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False, 0.1],
+                       #[[12, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False, 0.1],
+                       #[[12, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False, 0.1],
+                       #[[12, 8], True, -1, 100, dataDir, inputDim, delete_elements, saveCategories, 0.7, 0.5, False, 0.1]
+                       ], dtype='object')
 
-    #np.save('params.npy',np.array(params, dtype='object'))
-    #njobs = len(params)
+    if not gridSearch:
+        np.save('params.npy',np.array(params, dtype='object'))
+        njobs = len(params)
+        np.save('jobInfo.npy', np.array([1]))
 
     params = np.load('params.npy', allow_pickle=True)
     jobInfo = np.load('jobInfo.npy', allow_pickle=True)
@@ -65,7 +67,7 @@ if __name__=="__main__":
     request_disk = 250MB
     request_memory = 2GB
     request_cpus = 3
-    hold = True
+    hold = False
     executable              = run_wrapper.sh
     arguments               = {0} $(PROCESS) {2} {3}
     log                     = {2}{0}/log_$(PROCESS).log
@@ -81,4 +83,4 @@ if __name__=="__main__":
     f.write(submitLines)
     f.close()
 
-    os.system('condor_submit run.sub')
+    #os.system('condor_submit run.sub')

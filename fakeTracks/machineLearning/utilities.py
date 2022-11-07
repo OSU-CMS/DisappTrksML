@@ -20,8 +20,9 @@ import plotMetrics
 from datetime import date
 from sklearn.preprocessing import MinMaxScaler
 
-
-variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
+#need to rerun convert and then use this updated variables list
+variables = ['eventNumber', 'nPV', 'passesSelection', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
+#variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
     'sumEnergy', 'diffEnergy', 'encodedLayers', 'dz1', 'dz2', 'dz3', 'd01', 'd02', 'd03',
     'layer1', 'charge1', 'subDet1', 'pixelHitSize1', 'pixelHitSizeX1', 
            'pixelHitSizeY1','stripSelection1', 'hitPosX1', 'hitPosY1', 
@@ -56,7 +57,6 @@ variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 
     'layer16', 'charge16', 'subDet16', 'pixelHitSize16', 'pixelHitSizeX16', 
            'pixelHitSizeY16', 'stripSelection16', 'hitPosX16', 'hitPosY16']
 
-
 varDict = {}
 for x in range(len(variables)):
     varDict[variables[x]] = x
@@ -89,7 +89,7 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, train
     for filename in os.listdir(dataDir):
         print("Loading...", dataDir + filename)
         if(DEBUG): 
-            if file_count > 10: break
+            if file_count > 50: break
         myfile = np.load(dataDir+filename, allow_pickle=True)
         if(saveCategories['fake'] == True):
             fakes = np.array(myfile["fake_infos"])
@@ -169,20 +169,21 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, train
 
 
     #combine all data and shuffle
-    if(saveCategories['real'] == True and saveCategories['fake'] == True):
-        trainTracks = np.concatenate((trainFakeTracks, trainRealTracks))
-        testTracks = np.concatenate((testFakeTracks, testRealTracks))
-        trainTruth = np.concatenate((trainFakeTruth, trainRealTruth))
-        testTruth = np.concatenate((testFakeTruth, testRealTruth))
-        valTracks = np.concatenate((valFakeTracks, valRealTracks))
-        valTruth = np.concatenate((valFakeTruth, valRealTruth))
-    elif(saveCategories['real'] == True and saveCategories['fake'] == False):
-        trainTracks = np.array(trainRealTracks)
-        testTracks = np.array(testRealTracks)
-        trainTruth = np.array(trainRealTruth)
-        testTruth = np.array(testRealTruth)
-        valTracks = np.array(valRealTracks)
-        valTruth = np.array(valRealTruth)
+    if(saveCategories['real'] == True):
+        if(saveCategories['fake'] == False or len(trainFakeTracks)==0):
+            trainTracks = np.array(trainRealTracks)
+            testTracks = np.array(testRealTracks)
+            trainTruth = np.array(trainRealTruth)
+            testTruth = np.array(testRealTruth)
+            valTracks = np.array(valRealTracks)
+            valTruth = np.array(valRealTruth)
+        elif(saveCategories['fake'] == True):
+            trainTracks = np.concatenate((trainFakeTracks, trainRealTracks))
+            testTracks = np.concatenate((testFakeTracks, testRealTracks))
+            trainTruth = np.concatenate((trainFakeTruth, trainRealTruth))
+            testTruth = np.concatenate((testFakeTruth, testRealTruth))
+            valTracks = np.concatenate((valFakeTracks, valRealTracks))
+            valTruth = np.concatenate((valFakeTruth, valRealTruth))
     elif(saveCategories['real'] == False and saveCategories['fake'] == True):
         trainTracks = np.array(trainFakeTracks)
         testTracks = np.array(testFakeTracks)
@@ -190,7 +191,6 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, train
         testTruth = np.array(testFakeTruth)
         valTracks = np.array(valFakeTracks)
         valTruth = np.array(valFakeTruth)
-
 
     # Apply min max scale over all data (scale set range [-1,1])
     #scaler = MinMaxScaler(feature_range=(-1,1), copy=False)
@@ -259,12 +259,15 @@ def getInputs(input_dim, delete):
     delete_array = []
     for x in varDict:
         for y in delete:
+            if y == 'eventNumber':
+                print("Not deleting event number, need this for test")
+                continue
             if y in x:
                 print(x, varDict[x])
                 delete_array.append(varDict[x])
     print(delete_array)
     inputs = np.delete(inputs, delete_array)
-    input_dim = len(inputs)
+    input_dim = len(inputs) - 1 #event number is left in array for now
     print(input_dim)
     return inputs, input_dim
 
