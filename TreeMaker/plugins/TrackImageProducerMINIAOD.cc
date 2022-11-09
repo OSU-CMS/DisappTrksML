@@ -13,7 +13,7 @@
 TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cfg) :
   triggers_     (cfg.getParameter<edm::InputTag> ("triggers")),
   trigObjs_     (cfg.getParameter<edm::InputTag> ("triggerObjects")),
-  tracks_       (cfg.getParameter<edm::InputTag> ("tracks")),
+  //tracks_       (cfg.getParameter<edm::InputTag> ("tracks")),
   genParticles_ (cfg.getParameter<edm::InputTag> ("genParticles")),
   met_          (cfg.getParameter<edm::InputTag> ("met")),
   electrons_    (cfg.getParameter<edm::InputTag> ("electrons")),
@@ -29,30 +29,31 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   EERecHits_     (cfg.getParameter<edm::InputTag> ("EERecHits")),
   ESRecHits_     (cfg.getParameter<edm::InputTag> ("ESRecHits")),
   HBHERecHits_   (cfg.getParameter<edm::InputTag> ("HBHERecHits")),
-  cscSegments_   (cfg.getParameter<edm::InputTag> ("CSCSegments")),
-  dtRecSegments_ (cfg.getParameter<edm::InputTag> ("DTRecSegments")),
-  rpcRecHits_    (cfg.getParameter<edm::InputTag> ("RPCRecHits")),
+  //cscSegments_   (cfg.getParameter<edm::InputTag> ("CSCSegments")),
+  //dtRecSegments_ (cfg.getParameter<edm::InputTag> ("DTRecSegments")),
+  //rpcRecHits_    (cfg.getParameter<edm::InputTag> ("RPCRecHits")),
 
   dEdxPixel_ (cfg.getParameter<edm::InputTag> ("dEdxPixel")),
   dEdxStrip_ (cfg.getParameter<edm::InputTag> ("dEdxStrip")),
   isoTrk2dedxHitInfo_ (cfg.getParameter<edm::InputTag> ("isoTrk2dedxHitInfo")),
   isoTracks_ (cfg.getParameter<edm::InputTag> ("isolatedTracks")),  
-  genTracks_(cfg.getParameter<edm::InputTag> ("genTracks")),
+  //genTracks_(cfg.getParameter<edm::InputTag> ("genTracks")),
 
   pileupInfo_   (cfg.getParameter<edm::InputTag>("pileupInfo")),
 
   minGenParticlePt_   (cfg.getParameter<double> ("minGenParticlePt")),
   minTrackPt_         (cfg.getParameter<double> ("minTrackPt")),
   maxRelTrackIso_     (cfg.getParameter<double> ("maxRelTrackIso")),
+  maxTrackEta_        (cfg.getParameter<double> ("maxTrackEta")),
   
   dataTakingPeriod_ (cfg.getParameter<string> ("dataTakingPeriod"))
 {
-  assert(dataTakingPeriod_ == "2017" || dataTakingPeriod_ == "2018");
+  assert(dataTakingPeriod_ == "2017" || dataTakingPeriod_ == "2018" || dataTakingPeriod_ == "2022");
   is2017_ = (dataTakingPeriod_ == "2017");
 
   triggersToken_     = consumes<edm::TriggerResults>           (triggers_);
   trigObjsToken_     = consumes<vector<pat::TriggerObjectStandAlone> > (trigObjs_);
-  tracksToken_       = consumes<vector<CandidateTrack> >       (tracks_);
+  //tracksToken_       = consumes<vector<CandidateTrack> >       (tracks_);
   genParticlesToken_ = consumes<reco::CandidateView>           (genParticles_);
   metToken_          = consumes<vector<pat::MET> >             (met_);
   electronsToken_    = consumes<vector<pat::Electron> >        (electrons_);
@@ -68,16 +69,23 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   EERecHitsToken_     = consumes<EERecHitCollection>       (EERecHits_);
   ESRecHitsToken_     = consumes<ESRecHitCollection>       (ESRecHits_);
   HBHERecHitsToken_   = consumes<HBHERecHitCollection>     (HBHERecHits_);
-  CSCSegmentsToken_   = consumes<CSCSegmentCollection>     (cscSegments_);
-  DTRecSegmentsToken_ = consumes<DTRecSegment4DCollection> (dtRecSegments_);
-  RPCRecHitsToken_    = consumes<RPCRecHitCollection>      (rpcRecHits_);
+  //CSCSegmentsToken_   = consumes<CSCSegmentCollection>     (cscSegments_);
+  //DTRecSegmentsToken_ = consumes<DTRecSegment4DCollection> (dtRecSegments_);
+  //RPCRecHitsToken_    = consumes<RPCRecHitCollection>      (rpcRecHits_);
   
   dEdxPixelToken_ = consumes<edm::ValueMap<reco::DeDxData> > (dEdxPixel_);
   dEdxStripToken_ = consumes<edm::ValueMap<reco::DeDxData> > (dEdxStrip_);
   isoTrk2dedxHitInfoToken_ = consumes<reco::DeDxHitInfoAss> (isoTrk2dedxHitInfo_);
   isoTrackToken_ = consumes<vector<pat::IsolatedTrack> > (isoTracks_);
-  genTracksToken_ = consumes<vector<reco::Track> > (genTracks_);
+  //genTracksToken_ = consumes<vector<reco::Track> > (genTracks_);
   pileupInfoToken_ = consumes<edm::View<PileupSummaryInfo> > (pileupInfo_);
+
+  caloGeometryToken_    = esConsumes<CaloGeometry, CaloGeometryRecord>();
+  //cscGeometryToken_        = esConsumes<CSCGeometry, MuonGeometryRecord>();
+  //dtGeometryToken_        = esConsumes<DTGeometry, MuonGeometryRecord>();
+  //rpcGeometryToken_        = esConsumes<RPCGeometry, MuonGeometryRecord>();
+  ecalStatusToken_         = esConsumes<EcalChannelStatus, EcalChannelStatusRcd>();
+  trackerTopologyToken_    = esConsumes<TrackerTopology, TrackerTopologyRcd>();
 
   signalTriggerNames = cfg.getParameter<vector<string> >("signalTriggerNames");
   metFilterNames = cfg.getParameter<vector<string> >("metFilterNames");
@@ -125,8 +133,8 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   edm::Handle<vector<pat::TriggerObjectStandAlone> > trigObjs;
   event.getByToken (trigObjsToken_, trigObjs);
 
-  edm::Handle<vector<CandidateTrack> > tracks;
-  event.getByToken(tracksToken_, tracks);
+  //edm::Handle<vector<CandidateTrack> > tracks;
+  //event.getByToken(tracksToken_, tracks);
 
   edm::Handle<reco::CandidateView> genParticles;
   event.getByToken(genParticlesToken_, genParticles);
@@ -167,8 +175,8 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   edm::Handle<vector<pat::IsolatedTrack> > isoTracks;
   event.getByToken (isoTrackToken_, isoTracks);
 
-  edm::Handle<vector<reco::Track> > genTracks;
-  event.getByToken (genTracksToken_, genTracks);
+  //edm::Handle<vector<reco::Track> > genTracks;
+  //event.getByToken (genTracksToken_, genTracks);
 
   edm::Handle<edm::View<PileupSummaryInfo> > pileupInfos;
   event.getByToken(pileupInfoToken_, pileupInfos);
@@ -242,7 +250,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
   vector<pat::Electron> tagElectrons = getTagElectrons(event, *triggers, *trigObjs, pv, *electrons);
   vector<pat::Muon> tagMuons = getTagMuons(event, *triggers, *trigObjs, pv, *muons);
 
-  getTracks(tracks, pv, *jets, *electrons, *muons, *taus, tagElectrons, tagMuons, met->at(0), isoTracks, isoTrk2dedxHitInfo, dEdxStrip, dEdxPixel, genTracks);
+  getTracks(pv, *jets, *electrons, *muons, *taus, tagElectrons, tagMuons, met->at(0), isoTracks, isoTrk2dedxHitInfo, dEdxStrip, dEdxPixel);
 
   if(trackInfos_.size() == 0) return; // only fill tree with passing tracks
 
@@ -272,7 +280,7 @@ TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetu
 
 }
 
-void
+/*void
 TrackImageProducerMINIAOD::findMatchedIsolatedTrack (const edm::Handle<vector<pat::IsolatedTrack> > &isolatedTracks, edm::Ref<vector<pat::IsolatedTrack> > &matchedIsolatedTrack, double &dRToMatchedIsolatedTrack, const CandidateTrack &track) const
 {
   dRToMatchedIsolatedTrack = INVALID_VALUE;
@@ -286,10 +294,10 @@ TrackImageProducerMINIAOD::findMatchedIsolatedTrack (const edm::Handle<vector<pa
     }
   }
   return;
-}
+}*/
 
 
-void
+/*void
 TrackImageProducerMINIAOD::findMatchedGenTrack (const edm::Handle<vector<reco::Track> > &genTracks, edm::Ref<vector<reco::Track> > &matchedGenTrack, double &dRToMatchedGenTrack, const CandidateTrack &track) const
 {
   dRToMatchedGenTrack = INVALID_VALUE;
@@ -303,28 +311,30 @@ TrackImageProducerMINIAOD::findMatchedGenTrack (const edm::Handle<vector<reco::T
     }
   }
   return;
-}
+}*/
 
 void
 TrackImageProducerMINIAOD::getGeometries(const edm::EventSetup &setup) {
-  setup.get<CaloGeometryRecord>().get(caloGeometry_);
+  caloGeometry_ = setup.getHandle(caloGeometryToken_);
   if(!caloGeometry_.isValid())
     throw cms::Exception("FatalError") << "Unable to find CaloGeometryRecord in event!\n";
 
-  setup.get<MuonGeometryRecord>().get(cscGeometry_);
+  /*cscGeometry_ = setup.getHandle(cscGeometryToken_);
   if(!cscGeometry_.isValid())
     throw cms::Exception("FatalError") << "Unable to find MuonGeometryRecord (CSC) in event!\n";
 
-  setup.get<MuonGeometryRecord>().get(dtGeometry_);
+  dtGeometry_ = setup.getHandle(dtGeometryToken_);
   if(!dtGeometry_.isValid())
     throw cms::Exception("FatalError") << "Unable to find MuonGeometryRecord (DT) in event!\n";
 
-  setup.get<MuonGeometryRecord>().get(rpcGeometry_);
+  rpcGeometry_ = setup.getHandle(rpcGeometryToken_);
   if(!rpcGeometry_.isValid())
-    throw cms::Exception("FatalError") << "Unable to find MuonGeometryRecord (RPC) in event!\n";
+    throw cms::Exception("FatalError") << "Unable to find MuonGeometryRecord (RPC) in event!\n";*/
 
-  setup.get<EcalChannelStatusRcd>().get(ecalStatus_);
-  setup.get<TrackerTopologyRcd>().get(trackerTopology_);
+  ecalStatus_ = setup.getHandle(ecalStatusToken_);
+  trackerTopology_ = setup.getHandle(trackerTopologyToken_);
+  //setup.get<EcalChannelStatusRcd>().get(ecalStatus_);
+  //setup.get<TrackerTopologyRcd>().get(trackerTopology_);
 }
 
 int
@@ -395,8 +405,7 @@ TrackImageProducerMINIAOD::getLeadingJetMetPhi(const vector<pat::Jet> &jets, con
 }
 
 void
-TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > tracks, 
-                                     const reco::Vertex &pv, 
+TrackImageProducerMINIAOD::getTracks(const reco::Vertex &pv, 
                                      const vector<pat::Jet> &jets,
                                      const vector<pat::Electron> &electrons,
                                      const vector<pat::Muon> &muons,
@@ -404,25 +413,31 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
                                      const vector<pat::Electron> &tagElectrons,
                                      const vector<pat::Muon> &tagMuons,
                                      const pat::MET &met,
-                                     const edm::Handle<vector<pat::IsolatedTrack> > isoTracks, 
+                                     const edm::Handle<vector<pat::IsolatedTrack> > tracks, 
                                      const edm::Handle<reco::DeDxHitInfoAss> isoTrk2dedxHitInfo,
                                      const edm::Handle<edm::ValueMap<reco::DeDxData> > dEdxStrip,
-                                     const edm::Handle<edm::ValueMap<reco::DeDxData> > dEdxPixel,
-                                     const edm::Handle<vector<reco::Track> >genTracks)
+                                     const edm::Handle<edm::ValueMap<reco::DeDxData> > dEdxPixel)
 {
   trackInfos_.clear();
 
 
-  for(const auto &track : *tracks) {
+  //for(const auto &track : *tracks) {
+  //for(auto track = std::begin(tracks); track != std::endl(tracks); track++) {
+  for(vector<pat::IsolatedTrack>::const_iterator it_track = tracks->begin(); it_track != tracks->end(); it_track++) {
+
     
     TrackInfo info;
+    pat::IsolatedTrack track = *it_track;
     
     //apply track pt cut
     if(minTrackPt_ > 0 && track.pt() <= minTrackPt_) continue;
+    if(maxTrackEta_ > 0 && abs(track.eta()) > maxTrackEta_) continue;
 
     info.trackIso = 0.0;
     for(const auto &t : *tracks) {
-      if(fabs(track.dz(t.vertex())) > 3.0 * hypot(track.dzError(), t.dzError())) continue;
+      const auto theptinv2 = 1 / pow(track.pt(),2);
+      float dz_track = (track.vz() - t.vz()) - ((track.vx() - t.vx()) * track.px() + (track.vy() - t.vy()) * track.py()) * track.pz() * theptinv2;
+      if(fabs(dz_track) > 3.0 * hypot(track.dzError(), t.dzError())) continue;
       double dR = deltaR(track, t);
       if(dR < 0.3 && dR > 1.0e-12) info.trackIso += t.pt();
     }
@@ -436,69 +451,71 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
     info.vx = track.vx();
     info.vy = track.vy();
     info.vz = track.vz();
+    std::cout << "Track vertex: " << track.vx() << ", " << track.vy() <<", " << track.vz() << std::endl;
     info.eta = track.eta();
     info.pt = track.pt();
-    info.ptError = track.ptError();
+    //info.ptError = track.ptError();
     info.phi = track.phi();
     info.charge = track.charge();
 
     info.dEdxInfo.clear();
 
-    edm::Ref<vector<pat::IsolatedTrack> > matchedIsolatedTrack;
-    double dRToMatchedIsolatedTrack;
-    findMatchedIsolatedTrack(isoTracks, matchedIsolatedTrack, dRToMatchedIsolatedTrack, track);
+    edm::Ref<vector<pat::IsolatedTrack> > matchedIsolatedTrack = edm::Ref<vector<pat::IsolatedTrack> >(tracks, it_track - tracks->begin());
 
-    if(dRToMatchedIsolatedTrack == INVALID_VALUE) {
-      info.dEdxInfo.push_back(TrackDeDxInfo());
-    }
-    else {
-      if(isoTrk2dedxHitInfo->contains(matchedIsolatedTrack.id())) {
-        const reco::DeDxHitInfo * hitInfo = (*isoTrk2dedxHitInfo)[matchedIsolatedTrack].get();
-        if(hitInfo == nullptr) {
-          //edm::LogWarning ("disappTrks_DeDxHitInfoVarProducer") << "Encountered a null DeDxHitInfo object from a pat::IsolatedTrack? Skipping this track...";
-          continue;
-        }
+    //double dRToMatchedIsolatedTrack;
+    //findMatchedIsolatedTrack(isoTracks, matchedIsolatedTrack, dRToMatchedIsolatedTrack, track);
 
-        for(unsigned int iHit = 0; iHit < hitInfo->size(); iHit++) {
-          bool isPixel = (hitInfo->pixelCluster(iHit) != nullptr);
-          bool isStrip = (hitInfo->stripCluster(iHit) != nullptr);
-          if(!isPixel && !isStrip) continue; // probably shouldn't happen
-          if(isPixel && isStrip) continue;
-          
-          //subdet Id = {1, pbx}, {2, pxf}, {3, tib}, {4, tid}, {5, tob}, {6, tec}
-          int subDet = hitInfo->detId(iHit).subdetId();
-          if(subDet == PixelSubdetector::PixelBarrel) subDet = 1;
-          else if (subDet == PixelSubdetector::PixelEndcap) subDet = 2;
-          else if(subDet == StripSubdetector::TIB) subDet = 3;  //N.B. in CMSSW_11 StripSubdetector -> SiStripSubdetector
-          else if (subDet == StripSubdetector::TID) subDet = 4;
-          else if (subDet == StripSubdetector::TOB) subDet = 5;
-          else if (subDet == StripSubdetector::TEC) subDet = 6;
+    //if(dRToMatchedIsolatedTrack == INVALID_VALUE) {
+    //  info.dEdxInfo.push_back(TrackDeDxInfo());
+    //}      
+    
 
-          float norm = isPixel ? 3.61e-06 : 3.61e-06 * 265;
-
-          info.dEdxInfo.push_back(
-            TrackDeDxInfo(subDet,
-                          norm * hitInfo->charge(iHit) / hitInfo->pathlength(iHit),
-                          isPixel ? hitInfo->pixelCluster(iHit)->size()  : -1,
-                          isPixel ? hitInfo->pixelCluster(iHit)->sizeX() : -1,
-                          isPixel ? hitInfo->pixelCluster(iHit)->sizeY() : -1,
-#if CMSSW_VERSION_CODE >= CMSSW_VERSION(12,4,0)
-                          isStrip ? deDxTools::shapeSelection(*(hitInfo->stripCluster(iHit))) : false,
-#else
-                          isStrip ? deDxTools::shapeSelection(*(hitInfo->stripCluster(iHit))) : false,
-#endif
-                          hitInfo->pos(iHit).x(),
-                          hitInfo->pos(iHit).y(),
-                          hitInfo->pos(iHit).z(),
-                          trackerTopology_->layer(hitInfo->detId(iHit)))); // gives layer within sub detector
-        }
-      } // if isoTrk in association map
-      else {
-        info.dEdxInfo.push_back(TrackDeDxInfo()); // if somehow the matched isoTrk isn't in the hitInfo?
+    if(isoTrk2dedxHitInfo->contains(matchedIsolatedTrack.id())) {
+      const reco::DeDxHitInfo * hitInfo = (*isoTrk2dedxHitInfo)[matchedIsolatedTrack].get();
+      if(hitInfo == nullptr) {
+        //edm::LogWarning ("disappTrks_DeDxHitInfoVarProducer") << "Encountered a null DeDxHitInfo object from a pat::IsolatedTrack? Skipping this track...";
+        continue;
       }
-    } //if dRToMatchedIsoTrk != invalid
 
-    edm::Ref<vector<reco::Track> > matchedGenTrack;
+      for(unsigned int iHit = 0; iHit < hitInfo->size(); iHit++) {
+        bool isPixel = (hitInfo->pixelCluster(iHit) != nullptr);
+        bool isStrip = (hitInfo->stripCluster(iHit) != nullptr);
+        if(!isPixel && !isStrip) continue; // probably shouldn't happen
+        if(isPixel && isStrip) continue;
+        
+        //subdet Id = {1, pbx}, {2, pxf}, {3, tib}, {4, tid}, {5, tob}, {6, tec}
+        int subDet = hitInfo->detId(iHit).subdetId();
+        if(subDet == PixelSubdetector::PixelBarrel) subDet = 1;
+        else if (subDet == PixelSubdetector::PixelEndcap) subDet = 2;
+        else if(subDet == StripSubdetector::TIB) subDet = 3;  //N.B. in CMSSW_11 StripSubdetector -> SiStripSubdetector
+        else if (subDet == StripSubdetector::TID) subDet = 4;
+        else if (subDet == StripSubdetector::TOB) subDet = 5;
+        else if (subDet == StripSubdetector::TEC) subDet = 6;
+
+        float norm = isPixel ? 3.61e-06 : 3.61e-06 * 265;
+
+        info.dEdxInfo.push_back(
+          TrackDeDxInfo(subDet,
+                        norm * hitInfo->charge(iHit) / hitInfo->pathlength(iHit),
+                        isPixel ? hitInfo->pixelCluster(iHit)->size()  : -1,
+                        isPixel ? hitInfo->pixelCluster(iHit)->sizeX() : -1,
+                        isPixel ? hitInfo->pixelCluster(iHit)->sizeY() : -1,
+#if CMSSW_VERSION_CODE >= CMSSW_VERSION(12,4,0)
+                        isStrip ? deDxTools::shapeSelection(*(hitInfo->stripCluster(iHit))) : false,
+#else
+                        isStrip ? deDxTools::shapeSelection(*(hitInfo->stripCluster(iHit))) : false,
+#endif
+                        hitInfo->pos(iHit).x(),
+                        hitInfo->pos(iHit).y(),
+                        hitInfo->pos(iHit).z(),
+                        trackerTopology_->layer(hitInfo->detId(iHit)))); // gives layer within sub detector
+      }
+    } // if isoTrk in association map
+    else {
+      info.dEdxInfo.push_back(TrackDeDxInfo()); // if somehow the matched isoTrk isn't in the hitInfo?
+    }
+
+    /*edm::Ref<vector<reco::Track> > matchedGenTrack;
     double dRToMatchedGenTrack;
     findMatchedGenTrack(genTracks, matchedGenTrack, dRToMatchedGenTrack, track);
     if(dRToMatchedGenTrack == INVALID_VALUE){
@@ -519,7 +536,16 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
       info.dEdxStrip = dEdxDataStrip.dEdx();
       info.numMeasurementsStrip = dEdxDataStrip.numberOfMeasurements();
       info.numSatMeasurementsStrip = dEdxDataStrip.numberOfSaturatedMeasurements();
-    }
+    }*/
+
+    info.dEdxPixel = track.dEdxPixel();
+    info.dEdxStrip = track.dEdxStrip();
+
+    //FIXME get these values from HitMap
+    info.numMeasurementsPixel = -10;
+    info.numSatMeasurementsPixel = -10;
+    info.numMeasurementsStrip = -10;
+    info.numSatMeasurementsStrip = -10;
 
 
     info.dRMinJet = -1;
@@ -557,10 +583,11 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
     info.dz = track.vz() - pv.z() -
       ((track.vx() - pv.x()) * track.px() + (track.vy() - pv.y()) * track.py()) * track.pz() / track.pt() / track.pt();
 
-    info.normalizedChi2 = track.normalizedChi2();
-    info.highPurityFlag = track.quality(reco::TrackBase::highPurity);
+    //info.normalizedChi2 = track.normalizedChi2();
+    info.highPurityFlag = track.isHighPurityTrack();
 
     info.deltaRToClosestElectron = -1;
+    std::cout << "Number of electrons: " << electrons.size() << ", number of muons: " << muons.size() << std::endl;
     for(const auto &electron : electrons) {
       double thisDR = deltaR(electron, track);
       if(info.deltaRToClosestElectron < 0 || thisDR < info.deltaRToClosestElectron) info.deltaRToClosestElectron = thisDR;
@@ -630,7 +657,7 @@ TrackImageProducerMINIAOD::getTracks(const edm::Handle<vector<CandidateTrack> > 
     info.ecalo = 0; // calculated in getRecHits
 
     trackInfos_.push_back(info);
-  }
+  } //end of track loop
 
   return;
 }
@@ -683,7 +710,7 @@ TrackImageProducerMINIAOD::getRecHits(const edm::Event &event)
     }
   }
 
-  edm::Handle<CSCSegmentCollection> CSCSegments;
+  /*edm::Handle<CSCSegmentCollection> CSCSegments;
   event.getByToken(CSCSegmentsToken_, CSCSegments);
   for(const auto &seg : *CSCSegments) {
     vector<CSCRecHitInfo> CSCRecHits;
@@ -744,7 +771,7 @@ TrackImageProducerMINIAOD::getRecHits(const edm::Event &event)
   for(const auto &hit : *RPCRecHits) {
     math::XYZVector pos = getPosition(hit);
     recHitInfos_.push_back(RecHitInfo(pos.eta(), pos.phi(), -1, -999., DetType::RPC));
-  }
+  }*/
 
 }
 
@@ -824,7 +851,7 @@ TrackImageProducerMINIAOD::getPosition(const DetId& id) const
    return idPositionRoot;
 }
 
-const math::XYZVector
+/*const math::XYZVector
 TrackImageProducerMINIAOD::getPosition(const CSCSegment& seg) const
 {
   const LocalPoint localPos = seg.localPosition();
@@ -872,7 +899,7 @@ TrackImageProducerMINIAOD::getPosition(const RPCRecHit& seg) const
   const GlobalPoint idPosition = roll->toGlobal(seg.localPosition());
   math::XYZVector idPositionRoot(idPosition.x(), idPosition.y(), idPosition.z());
   return idPositionRoot;
-}
+}*/
 
 vector<pat::Electron>
 TrackImageProducerMINIAOD::getTagElectrons(const edm::Event &event,
@@ -970,7 +997,7 @@ TrackImageProducerMINIAOD::isProbeTrack(const TrackInfo info) const
 }
 
 const unsigned int
-TrackImageProducerMINIAOD::isTagProbeElePair(const CandidateTrack &probe, const pat::Electron &tag) const 
+TrackImageProducerMINIAOD::isTagProbeElePair(const pat::IsolatedTrack &probe, const pat::Electron &tag) const 
 {
   TLorentzVector t(tag.px(), tag.py(), tag.pz(), tag.energy());
   TLorentzVector p(probe.px(), 
@@ -986,7 +1013,7 @@ TrackImageProducerMINIAOD::isTagProbeElePair(const CandidateTrack &probe, const 
 }
 
 const unsigned int
-TrackImageProducerMINIAOD::isTagProbeTauToElePair(const CandidateTrack &probe, 
+TrackImageProducerMINIAOD::isTagProbeTauToElePair(const pat::IsolatedTrack &probe, 
                                                   const pat::Electron &tag, 
                                                   const pat::MET &met) const 
 {
@@ -1009,7 +1036,7 @@ TrackImageProducerMINIAOD::isTagProbeTauToElePair(const CandidateTrack &probe,
 }
 
 const unsigned int
-TrackImageProducerMINIAOD::isTagProbeMuonPair(const CandidateTrack &probe, const pat::Muon &tag) const 
+TrackImageProducerMINIAOD::isTagProbeMuonPair(const pat::IsolatedTrack &probe, const pat::Muon &tag) const 
 {
   TLorentzVector t(tag.px(), tag.py(), tag.pz(), tag.energy());
   TLorentzVector p(probe.px(), 
@@ -1025,7 +1052,7 @@ TrackImageProducerMINIAOD::isTagProbeMuonPair(const CandidateTrack &probe, const
 }
 
 const unsigned int
-TrackImageProducerMINIAOD::isTagProbeTauToMuonPair(const CandidateTrack &probe, 
+TrackImageProducerMINIAOD::isTagProbeTauToMuonPair(const pat::IsolatedTrack &probe, 
                                                    const pat::Muon &tag, 
                                                    const pat::MET &met) const 
 {
@@ -1048,7 +1075,7 @@ TrackImageProducerMINIAOD::isTagProbeTauToMuonPair(const CandidateTrack &probe,
 }
 
 const double
-TrackImageProducerMINIAOD::minDRBadEcalChannel(const CandidateTrack &track) const
+TrackImageProducerMINIAOD::minDRBadEcalChannel(const pat::IsolatedTrack &track) const
 {
    double trackEta = track.eta(), trackPhi = track.phi();
 
