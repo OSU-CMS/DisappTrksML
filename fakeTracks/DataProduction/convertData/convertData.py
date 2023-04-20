@@ -14,7 +14,7 @@ import time
 fileNum = 1
 #dataDir = '/store/user/mcarrigan/fakeTracks/selection_v8_aMCNLO/'
 #dataDir = "/store/user/mcarrigan/fakeTracks/selection_Z2MuMu_v1/"
-dataDir = "/store/user/mcarrigan/fakeTracks/selection_v9_DYJets_aMCNLO/"
+dataDir = "/store/user/mcarrigan/fakeTracks/selection_v1_DYJets-MC2022/"
 #dataDir = ''
 
 layers = -1
@@ -49,8 +49,8 @@ if(len(sys.argv)>2):
 fname = "hist_"+str(fileNum)+".root"
 print("File "+dataDir+fname)
 
-#fin = TFile(dataDir+fname, 'read')
-fin = TFile("../selectData/hist_test.root")
+fin = TFile(dataDir+fname, 'read')
+#fin = TFile("../selectData/hist_test.root")
 fakeTree = fin.Get('fakeTree')
 realTree = fin.Get('realTree')
 pileupTree = fin.Get('pileupTree')
@@ -62,7 +62,8 @@ print("Pileup Tree Events: " + str(pileupTree.GetEntries()))
 def layersEncode(layer, subdet, encodedHits):
     #number of layers in each subdetector (pbx, pex, TIB, TOB, TID, TEC) 
     numLayers = [4, 3, 4, 6, 3, 9]
-    bit = layer-1
+    #bit = layer-1
+    bit = layer
     if(subdet > 1): 
         for sub in range(subdet-1):    
             bit += numLayers[sub]
@@ -267,8 +268,8 @@ print("Fake Tracks: " + str(len(fake_infos)))
 print("Pileup Tracks: " + str(len(pileup_infos)))
 
 
-#np.savez_compressed("events_" + str(fileNum) + ".npz", fake_infos = fake_infos, real_infos = real_infos, pileup_infos = pileup_infos)
-np.savez_compressed("events_test.npz", fake_infos = fake_infos, real_infos = real_infos, pileup_infos = pileup_infos)
+np.savez_compressed("events_" + str(fileNum) + ".npz", fake_infos = fake_infos, real_infos = real_infos, pileup_infos = pileup_infos)
+#np.savez_compressed("events_test.npz", fake_infos = fake_infos, real_infos = real_infos, pileup_infos = pileup_infos)
 
 
 
