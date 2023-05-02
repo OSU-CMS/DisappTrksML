@@ -73,7 +73,7 @@ double pileupMatching(TrackInfo track, vector<double> pileupZPosition){
 }
 
 
-void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v8-NeutrinoGun-MC2017-ext/", TString filelist = ""){
+void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v1-DYJets-MC2022/", TString filelist = ""){
     
     if(filelist.Length()>0){
         string line;
@@ -96,8 +96,8 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
     bool fullSelection = false;
     double PU_cut = 0.1;
    
-    TString filename = "images_test.root";
-    //TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
+    //TString filename = "images_1.root";
+    TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
     //TString filename = dataDir + "hist_" + int_tstring(fileNum) + ".root";
     TFile* myFile = TFile::Open(filename, "read");
     if(myFile == nullptr) return;
@@ -125,8 +125,8 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
     myTree->SetBranchAddress("pileupZPosition", &v_pileupZPosition);
     myTree->SetBranchAddress("vertexInfos", &v_vertexInfos);
 
-    //TString newFileName = "hist_" + int_tstring(fileNum) + ".root";
-    TString newFileName = "hist_test.root";
+    TString newFileName = "hist_" + int_tstring(fileNum) + ".root";
+    //TString newFileName = "hist_test.root";
     TFile * newFile = new TFile(newFileName, "recreate");
     TTree * fakeTree = new TTree("fakeTree","fakeTree");
     TTree * realTree = new TTree("realTree","realTree");

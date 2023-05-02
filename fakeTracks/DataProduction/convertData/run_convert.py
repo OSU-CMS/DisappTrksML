@@ -11,11 +11,11 @@ if __name__=="__main__":
 
     layers = -1
     #dataDir = '/store/user/mcarrigan/fakeTracks/selection_v9_DYJets_aMCNLO/'
-    dataDir = '/store/user/mcarrigan/fakeTracks/selection_v9_NeutrinoGun_ext/'
+    dataDir = '/store/user/mcarrigan/fakeTracks/selection_v1_DYJets-MC2022/'
     #dataDir = '/store/user/mcarrigan/fakeTracks/selection_higgsino_700_10_v7p1/'
     # v2 means only saving pileup with dR > 0.1, v3 includes binary string of detector/subdetectors hit 
-    outDir = '/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_v9p3/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_NeutrinoGun_ext_v9p3/'
+    outDir = '/store/user/mcarrigan/fakeTracks/converted_DYJets-MC2022_v1/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_DYJets-MC2022_v1/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
