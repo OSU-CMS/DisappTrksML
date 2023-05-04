@@ -20,6 +20,16 @@ import plotMetrics
 from datetime import date
 from sklearn.preprocessing import MinMaxScaler
 
+class bcolors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 #need to rerun convert and then use this updated variables list
 variables = ['eventNumber', 'nPV', 'passesSelection', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
 #variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
@@ -60,6 +70,28 @@ variables = ['eventNumber', 'nPV', 'passesSelection', 'trackIso', 'eta', 'phi', 
 varDict = {}
 for x in range(len(variables)):
     varDict[variables[x]] = x
+
+class Model():
+
+    def __init__(self, filters, input_dim, batch_norm, metrics):
+        self.filters = filters
+        self.input_dim = input_dim
+        self.batch_norm = batch_norm
+        self.metrics = metrics
+
+    def buildModel(self, filters = [16, 8], input_dim = 55, batch_norm = False, metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
+        #begin NN model
+        model = Sequential()
+        model.add(Dense(filters[0], input_dim=input_dim, activation='relu'))
+        for i in range(len(filters)-1):
+            model.add(Dense(filters[i+1], activation='relu'))
+            if(batch_norm): model.add(BatchNormalization())
+            model.add(Dropout(0.2))
+        model.add(Dense(1, activation='sigmoid'))
+
+    def callModel(self):
+        model = buildModel(self.filters, self.input_dim, self.batch_norm)
+        return model
 
 def buildModel(filters = [16, 8], input_dim = 55, batch_norm = False, metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
     #begin NN model
@@ -120,9 +152,9 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, train
         file_count += 1
 
 
-    print("Number of fake tracks:", len(fakeTracks))
+    print(bcolors.BLUE + "Number of fake tracks:", len(fakeTracks))
     print("Number of real tracks:", len(realTracks))
-    print("Number of pileup tracks:", len(pileupTracks))
+    print("Number of pileup tracks:", len(pileupTracks), bcolors.ENDC)
 
     if(saveCategories['real'] == True):
         if(train_size > 0):
@@ -263,12 +295,10 @@ def getInputs(input_dim, delete):
                 print("Not deleting event number, need this for test")
                 continue
             if y in x:
-                print(x, varDict[x])
+                #print(x, varDict[x])
                 delete_array.append(varDict[x])
-    print(delete_array)
     inputs = np.delete(inputs, delete_array)
     input_dim = len(inputs) - 1 #event number is left in array for now
-    print(input_dim)
     return inputs, input_dim
 
 def createDict(variables):

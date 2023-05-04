@@ -13,20 +13,12 @@ import sys
 import ROOT as r
 from ROOT.TMath import Gaus
 import utilities
-
-class bcolors:
-    HEADER = '\033[95m'
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+from array import array
 
 saveDir = "images/"
 
 r.gROOT.SetBatch(1)
+r.gErrorIgnoreLevel = r.kWarning
 
 #if len(sys.argv) > 1:
 #    inputFile = sys.argv[1]
@@ -60,12 +52,13 @@ labels = ['trackIso', 'eta', 'phi', 'nPV', 'dRMinJet', 'Ecalo', 'Pt', 'd0', 'dZ'
 def plotCM(truth, predictions, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
     labels = ["real", "fake"]
-    c1 = r.TCanvas("c1", "Confusion Matrix", 800, 800)
+    c_plotCM = r.TCanvas("c_plotCM", "Confusion Matrix", 800, 800)
     h_cm = r.TH2F("h_cm", "Confusion Matrix", 2, 0, 2, 2, 0, 2)
     for i in range(len(truth)):
         h_cm.Fill(truth[i], predictions[i])
-    c1.cd()
-    c1.SetLogz()
+
+    c_plotCM.cd()
+    c_plotCM.SetLogz()
     h_cm.Draw("colz text")
     h_cm.GetXaxis().SetTitle("Truth")
     h_cm.GetYaxis().SetTitle("Prediction")
@@ -75,21 +68,21 @@ def plotCM(truth, predictions, plotDir, outputfile = 'metricPlots.root'):
     h_cm.GetYaxis().SetBinLabel(2, labels[1])
     r.gStyle.SetOptStat(0000)
     h_cm.SetTitle("Confusion Matrix" + " Events: " + str(len(truth)))
-    c1.SaveAs(plotDir + "ConfusionMatrix.png")
-    c1.Write("c_ConfusionMatrix")
+    c_plotCM.SaveAs(plotDir + "ConfusionMatrix.png")
+    c_plotCM.Write("c_ConfusionMatrix")
     h_cm.Write("h_confusionMatrix")
     out.Close()
 
 def plotCM3(predictions, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
     labels = ["real", "pileup", "fake"]
-    c1 = r.TCanvas("c1", "Confusion Matrix", 800, 800)
+    c_plotCM3 = r.TCanvas("c_plotCM3", "Confusion Matrix", 800, 800)
     h_cm = r.TH2F("h_cm", "Confusion Matrix", 3, 0, 3, 3, 0, 3)
     for i in range(3):
         for j in range(3):
             h_cm.Fill(j, i, predictions[j][i])
-    c1.cd()
-    c1.SetLogz()
+    c_plotCM3.cd()
+    c_plotCM3.SetLogz()
     h_cm.Draw("colz text")
     h_cm.GetXaxis().SetTitle("Truth")
     h_cm.GetYaxis().SetTitle("Prediction")
@@ -101,11 +94,10 @@ def plotCM3(predictions, plotDir, outputfile = 'metricPlots.root'):
     h_cm.GetYaxis().SetBinLabel(3, labels[2])
     r.gStyle.SetOptStat(0000)
     h_cm.SetTitle("Confusion Matrix" + " Events: " + str(np.sum(predictions)))
-    c1.SaveAs(plotDir + "ConfusionMatrix.png")
-    c1.Write("c_ConfusionMatrix")
+    c_plotCM3.SaveAs(plotDir + "ConfusionMatrix.png")
+    c_plotCM3.Write("c_ConfusionMatrix")
     h_cm.Write("h_confusionMatrix")
     out.Close()
-
 
 def getStats(truth, predictions, plotDir, plot = False, threshold = 0.5, outputfile = 'metricPlots.root'):
 
@@ -122,8 +114,8 @@ def getStats(truth, predictions, plotDir, plot = False, threshold = 0.5, outputf
         P = 0
         R = 0
     if(threshold == 0.5): 
-        print("Precision (TP/(TP+FP)): " + str(P) + " Recall (TP/(TP+FN)): " + str(R))
-        print("TP: " + str(TP) + ", FP: " + str(FP) + ", TN: " + str(TN) + ", FN: " + str(FN))       
+        print(utilities.bcolors.BLUE + "Precision (TP/(TP+FP)): " + str(P) + " Recall (TP/(TP+FN)): " + str(R))
+        print("TP: " + str(TP) + ", FP: " + str(FP) + ", TN: " + str(TN) + ", FN: " + str(FN) + utilities.bcolors.ENDC)       
 
     if(plot):
         out = r.TFile(plotDir + outputfile, "update")
@@ -157,7 +149,7 @@ def plotHistory(history, variables, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
     for var in variables:
         pltName = "c_" + str(var)
-        c1 = r.TCanvas(pltName, pltName, 800, 800)
+        c_plotHistory = r.TCanvas(pltName, pltName, 800, 800)
         metric = history.history[var]
         g1 = r.TGraph(len(metric), np.arange(len(metric)).astype('float64'), np.array(metric).astype('float64'))
         g1.Draw()
@@ -172,7 +164,7 @@ def plotHistory(history, variables, plotDir, outputfile = 'metricPlots.root'):
         l1.AddEntry(g1, var, "l")
         l1.AddEntry(g2, "val_" + str(var), "l")
         l1.Draw()
-        c1.Write(pltName)
+        c_plotHistory.Write(pltName)
         g1.Write(var)
         g2.Write("val_"+str(var))
     out.Close()
@@ -226,7 +218,7 @@ def permutationImportance(model, tracks, truth, plotDir, outputfile = 'metricPlo
 
 def predictionCorrelation(predictions, variable, bins, min_bin, max_bin, name, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
-    c1 = r.TCanvas("c1", name, 800, 800)
+    c_predictionCorrelation = r.TCanvas("c_predictionCorrelation", name, 800, 800)
     fake_indices = np.argwhere(predictions >= 0.5)
     fakes = variable[fake_indices[:,0]]
     print(fakes[:10])
@@ -234,7 +226,7 @@ def predictionCorrelation(predictions, variable, bins, min_bin, max_bin, name, p
     for fake in fakes:
         h1.Fill(fake)
     h1.Write(name)
-    c1.cd()
+    c_predictionCorrelation.cd()
     h1.SetMarkerStyle(8)
     h1.Draw("P")
     f1 = r.TF1("f1", "[0]*TMath::Gaus(x, 0, [1])+[2]", -1, 1)
@@ -242,12 +234,12 @@ def predictionCorrelation(predictions, variable, bins, min_bin, max_bin, name, p
     h1.Fit(f1, "LQMR", "", 0.1, 1)
     f1.Draw()
     h1.Draw("same p")
-    c1.Write('c_' + name)
+    c_predictionCorrelation.Write('c_' + name)
     out.Close()
 
 def comparePredictions(predictions, variable, bins, min_bin, max_bin, name, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
-    c1 = r.TCanvas("c1", name, 800, 800)
+    c_comparePredictions = r.TCanvas("c_comparePredictions", name, 800, 800)
     fake_indices = np.argwhere(predictions >= 0.5)
     fakes = variable[fake_indices[:,0]]
     real_indices = np.argwhere(predictions < 0.5)
@@ -263,7 +255,7 @@ def comparePredictions(predictions, variable, bins, min_bin, max_bin, name, plot
         h_total.Fill(i)
 
     h_eff = r.TEfficiency(h_real, h_total)
-    c1.cd()
+    c_comparePredictions.cd()
     h_fake.Draw()
     h_real.SetLineColor(2)
     h_real.Draw("same")
@@ -272,7 +264,7 @@ def comparePredictions(predictions, variable, bins, min_bin, max_bin, name, plot
     l1.AddEntry(h_fake, "Fake: " + str(len(fakes)), "l")
     l1.Draw()
     r.gStyle.SetOptStat(0000)
-    c1.Write("c_" + name)
+    c_comparePredictions.Write("c_" + name)
     h_fake.Write("fake_"+name)
     h_real.Write("real_"+name)
     h_eff.Write("efficiency_" + name)
@@ -280,33 +272,33 @@ def comparePredictions(predictions, variable, bins, min_bin, max_bin, name, plot
 
 def plotScores(predictions, truth, name, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
-    h_predReal = r.TH1F("h_predReal", "Prediction Scores Real" + name, 100, 0, 1)
-    h_predFake = r.TH1F("h_predFake", "Prediction Scores Fake" + name, 100, 0, 1)
+    h_predReal = r.TH1F("h_predReal", "Prediction Scores Real " + name, 100, 0, 1)
+    h_predFake = r.TH1F("h_predFake", "Prediction Scores Fake " + name, 100, 0, 1)
     for pred, truth in zip(predictions, truth):
         if truth == 0: h_predReal.Fill(pred)
         if truth == 1: h_predFake.Fill(pred)
     h_predReal.Write("Real_Scores_"+name)
     h_predFake.Write("Fake_Scores_"+name)
 
-    c1 = r.TCanvas("c1", "c1", 800, 800)
+    c_plotScores = r.TCanvas("c_plotScores", "Scores", 800, 800)
     l1 = r.TLegend(0.7, 0.7, 0.8, 0.8)
     l1.AddEntry(h_predReal, "Real Tracks", "l")
     l1.AddEntry(h_predFake, "Fake Tracks", "l")
-    c1.cd()
-    c1.SetLogy()
+    c_plotScores.cd()
+    c_plotScores.SetLogy()
     h_predReal.SetLineColor(2)
     h_predReal.Draw()
     h_predFake.Draw("sames")
     l1.Draw("same")
     out.cd()
-    c1.Write("PredictionScores")
+    c_plotScores.Write("PredictionScores")
     out.Close()
 
 def predictionThreshold(predictions, truth, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
     h_precision = r.TH1F("h_precision", "Precision", 20, 0, 1)
     h_recall = r.TH1F("h_recall", "Recall", 20, 0, 1)
-    c1 = r.TCanvas("c1", "c1", 800, 800)
+    c_predictionThreshold = r.TCanvas("c_predictionThreshold", "Predictions", 800, 800)
 
     bins = [x*0.05 for x in range(20)]
 
@@ -317,7 +309,7 @@ def predictionThreshold(predictions, truth, plotDir, outputfile = 'metricPlots.r
         h_precision.SetBinContent(iBin+1, metrics[4])
         h_recall.SetBinContent(iBin+1, metrics[5])
     
-    c1.cd()
+    c_predictionThreshold.cd()
     l1 = r.TLegend(0.5, 0.7, 0.6, 0.8)
     h_precision.GetYaxis().SetRangeUser(0,1)
     h_precision.SetTitle("Prediction Threshold vs Metrics")
@@ -333,7 +325,7 @@ def predictionThreshold(predictions, truth, plotDir, outputfile = 'metricPlots.r
     out.cd()
     h_precision.Write("PrecisionVsThreshold")
     h_recall.Write("RecallVsThreshold")
-    c1.Write("PredictionThresholdScores")
+    c_predictionThreshold.Write("PredictionThresholdScores")
     out.Close()
 
 def backgroundEstimation(tracks, predictions, d0Index, plotDir, outputfile = 'metricPlots.root'):
@@ -341,7 +333,7 @@ def backgroundEstimation(tracks, predictions, d0Index, plotDir, outputfile = 'me
     out = r.TFile(plotDir + outputfile, "update")
     h_d0Bkg = r.TH1F("h_d0Bkg", "d0 of Tracks Labeled Real", 100, -0.1, 0.1)
     h_d0Fake = r.TH1F("h_d0Fake" ,"d0 of Tracks Labeled Fake", 100, -0.1, 0.1)
-    c1 = r.TCanvas("c1", "c1", 600, 800)
+    c_backgroundEstimation = r.TCanvas("c_backgroundEstimation", "Background Estimation", 600, 800)
 
     fake, background = 0, 0
 
@@ -355,7 +347,7 @@ def backgroundEstimation(tracks, predictions, d0Index, plotDir, outputfile = 'me
                 h_d0Bkg.Fill(tracks[itrack, d0Index])
 
     
-    c1.cd()
+    c_backgroundEstimation.cd()
     h_d0Bkg.Draw()
     h_d0Fake.SetLineColor(2)
     h_d0Fake.Draw("same")
@@ -366,9 +358,47 @@ def backgroundEstimation(tracks, predictions, d0Index, plotDir, outputfile = 'me
     out.cd()
     h_d0Bkg.Write()
     h_d0Fake.Write()
-    c1.Draw("PredictedD0")
+    c_backgroundEstimation.Draw("PredictedD0")
     out.Close()
-    print("Predicted background is %d out of %d events" % (fake, background+fake))
+    print(utilities.bcolors.BLUE + "Predicted background is {0} out of {1} events".format(fake, background+fake) + utilities.bcolors.ENDC)
+
+def makeSkim(tracks, predictions, truth, eventNumbers, plotDir, outputfile = 'metricPlots.root'):
+    r_predictions = array('d', [0.])
+    r_truth = array('d', [0.])
+    r_event = array('d', [0.])
+    r_eta = array('d', [0.])
+    r_phi = array('d', [0.])
+    r_pt = array('d', [0.])
+    r_trackIso = array('d', [0.])
+    myfile = r.TFile(plotDir+outputfile, "update")
+    mytree = r.TTree("predictions", "Network Predictions")
+    mytree.Branch("predictions", r_predictions, "r_predictions/D")
+    mytree.Branch("truth", r_truth, "r_truth/D")
+    mytree.Branch("event", r_event, "r_event/D")
+    mytree.Branch("eta", r_eta, "r_eta/D")
+    mytree.Branch("phi", r_phi, "r_phi/D")
+    mytree.Branch("pt", r_pt, "r_pt/D")
+    mytree.Branch("trackIso", r_trackIso, "r_trackIso/D")
+    for i in range(len(predictions)):
+        r_predictions[0] = predictions[i]
+        r_truth[0] = truth[i]
+        r_event[0] = eventNumbers[i] #event number
+        r_trackIso[0] = tracks[i, 1] #trackIso
+        r_eta[0] = tracks[i, 2] #eta
+        r_phi[0] = tracks[i, 3] #phi
+        r_pt[0] = tracks[i, 15] #pt
+        if(r_predictions[0] != predictions[i]): print("problem with prediction in event", eventNumbers[i])
+        if(r_truth[0] != truth[i]): print("problem with truth in event", eventNumbers[i])
+        if(r_event[0] != eventNumbers[i]): print("problem with event number in event", eventNumbers[i])
+        if(r_trackIso[0] != tracks[i, 1]): print("problem with trackIso in event", eventNumbers[i])
+        if(r_eta[0] != tracks[i, 2]): print("problem with eta in event", eventNumbers[i])
+        if(r_phi[0] != tracks[i, 3]): print("problem with phi in event", eventNumbers[i])
+        if(r_pt[0] != tracks[i, 15]): print("problem with pt in event", eventNumbers[i])
+
+        mytree.Fill()
+
+    mytree.Write()
+    myfile.Close()
 
 if __name__ == "__main__":
 
