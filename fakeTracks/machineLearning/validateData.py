@@ -68,10 +68,10 @@ class Validator:
         print('\t Threshold: {}'.format(self.config['threshold']))
         print('\t Debugging: {}'.format(self.config['DEBUG']) + utilities.bcolors.ENDC)
 
-    def loadModel(self):
+    def loadModel(self, name='lastEpoch.h5'):
         weights = Validator.weightsDir
         if not Validator.weightsDir.endswith('h5'):
-            weights += 'lastEpoch.h5'
+            weights += name
         self.model = keras.models.load_model(weights)    
 
     def gatherData(self):
@@ -102,17 +102,24 @@ class Validator:
         self.eventNumbers = testTracks[:, 0]
         self.testTracks = testTracks[:, 1:]
 
-    def makePredictions(self, save=True):
+    def passData(self, tracks, events, truth):
+        self.testTracks = tracks
+        self.eventNumbers = events
+        self.testTruth = truth
+
+    def makePredictions(self, inputs=None, save=True):
+        if inputs is None:
+            inputs = self.inputs
         self.predictions = self.model.predict(self.testTracks)
         pred_fakes = np.argwhere(self.predictions >= self.config['threshold'])
         pred_reals = np.argwhere(self.predictions < self.config['threshold'])
         self.predictionsBinary = [1 if x >= self.config['threshold'] else 0 for x in self.predictions]
-        self.input_variables = utilities.listVariables(self.inputs)
+        self.input_variables = utilities.listVariables(inputs)
 
         print(utilities.bcolors.BLUE + "Number of predicted fakes: " + str(len(pred_fakes)) + ", Number of predicted Reals: " + str(len(pred_reals)) + utilities.bcolors.ENDC)
         if save:
             np.savez_compressed(Validator.outputDir + "predictions.npz", tracks = self.testTracks, truth = self.testTruth, 
-                                predictions = self.predictions, inputs = self.inputs, events = self.eventNumbers)
+                                predictions = self.predictions, inputs = inputs, events = self.eventNumbers)
 
 
     def makePlots(self):
@@ -138,22 +145,14 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def saveConfig(inputDict, filename):
-    configs = json.dumbs(inputDict)
-    with open(filename, 'w') as outfile:
-        outfile.write(configs)
 
-def readConfig(configFile):
-    with open(configFile, 'r') as openfile:
-        config = json.load(openfile)
-    return config
 
 if __name__ == "__main__":
 
     args = parse_args()
 
     ################default config parameters################
-    weightsDir = '/data/users/mcarrigan/fakeTracks/networks/dropoutSearch/fakeTracks_4PlusLayer_aMCv9p3_NGBoost_ProducerValidation_3-29_v2/fakeTracks_4PlusLayer_aMCv9p3_NGBoost_ProducerValidation_3-29_v2_p4/weights/'
+    weightsDir = '/data/users/mcarrigan/fakeTracks/networks/dropoutSearch/fakeTracks_4PlusLayer_aMCv9p3_NGBoost_ProducerValidation_3-29_v2/fakeTracks_4PlusLayer_aMCv9p3_NGBoost_ProducerValidation_3-29_v2_p7/weights/'
     plotsName = 'validation_FakeProducer'
     workDir = '/data/users/mcarrigan/fakeTracks/'
     dataDir = ['/store/user/mcarrigan/fakeTracks/converted_DYJets-MC2022_v1/']
@@ -174,7 +173,7 @@ if __name__ == "__main__":
 
     config_dict = {}
 
-    if args.config: config_dict = readConfig(configFile)
+    if args.config: config_dict = utilities.readConfig(configFile)
     else:
         config_dict = {'weightsDir': weightsDir, 
                     'plotsName' : plotsName,

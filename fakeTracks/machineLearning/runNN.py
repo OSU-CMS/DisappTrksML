@@ -13,9 +13,9 @@ if __name__=="__main__":
 
     gridSearch = False
     inputDim = 178
-    folder = "fakeTracks_4PlusLayer_aMCv9p3_NGBoost_GPUBenchmark_compute26V2_6_21_22"
-    logDir = "/data/users/mcarrigan/fakeTracks/networks/GPUBenchmark/"
-    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_v9p3/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_v9p3/"]
+    folder = "fakeTracks_4PlusLayer_DYOnly_v1_May15"
+    logDir = "/data/users/mcarrigan/log/disappTrks/fakeTrackNN/Run3/"
+    dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets-MC2022_v1/"]
     '''
     delete_elements = ['eventNumber', 'layer1', 'subDet1', 'stripSelection1', 'hitPosX1', 'hitPosY1','layer2', 'subDet2', 'stripSelection2', 'hitPosX2', 'hitPosY2',
                        'layer3', 'subDet3', 'stripSelection3', 'hitPosX3', 'hitPosY3', 'layer4', 'subDet4', 'stripSelection4', 'hitPosX4', 'hitPosY4', 
@@ -77,10 +77,12 @@ if __name__=="__main__":
     when_to_transfer_output = ON_EXIT
     transfer_input_files = run_wrapper.sh, fakesNN.py, plotMetrics.py, params.npy, utilities.py, fakeClass.py
     getenv = true
+    GPU = true
+    requirements = ((Target.machine == "compute-26.local"))
     queue {1}
     """.format(folder, njobs, logDir, repeatSearches)
 
     f.write(submitLines)
     f.close()
 
-    #os.system('condor_submit run.sub')
+    os.system('condor_submit run.sub')

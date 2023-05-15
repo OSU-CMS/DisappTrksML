@@ -17,16 +17,21 @@ config.JobType.allowUndistributedCMSSW = True
 
 config.JobType.numCores = 4
 config.JobType.maxMemoryMB = 2500
-config.Data.inputDataset = '/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/Run3Summer22EEMiniAODv3-Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/MINIAODSIM'
-config.Data.secondaryInputDataset = '/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/Run3Summer22EEDR-Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/AODSIM'
+config.Data.inputDataset = '/DYJetsToLL_M-50_TuneCP5_13p6TeV-madgraphMLM-pythia8/Run3Summer22MiniAODv3-forPOG_124X_mcRun3_2022_realistic_v12-v4/MINIAODSIM'
+config.Data.secondaryInputDataset = '/DYJetsToLL_M-50_TuneCP5_13p6TeV-madgraphMLM-pythia8/Run3Summer22DRPremix-forPOG_124X_mcRun3_2022_realistic_v12-v4/AODSIM'
 config.Data.useParent = False
 config.Data.inputDBS = 'global'
 config.Data.splitting = 'LumiBased' # for both MC and data
 config.Data.outLFNDirBase = '/store/user/micarrig/'
 config.Data.publication = True
 config.Data.outputDatasetTag = ''
+#config.Data.lumiMask = 'crab/crab_20230511_111457/results/notFinishedLumis.json'
 
-config.Site.storageSite = 'T3_US_FNALLPC'
+config.Site.storageSite = 'T2_US_Purdue'
+
+config.Data.outputDatasetTag = 'Images-v1p2-DYJets-madgraph-MC2022'
+config.Data.unitsPerJob = 100 # 61275 lumis
+config.General.requestName = 'treeMakerNN_DYJetsToLL_M-50_madgraph_v1p2_MC2022'
 
 if __name__ == '__main__':
 
@@ -57,10 +62,10 @@ if __name__ == '__main__':
 
     # Run2017F-v1
 
-    config.Data.outputDatasetTag = 'Images-v1-DYJets-MC2022'
-    config.Data.unitsPerJob = 50 # 61275 lumis
+    config.Data.outputDatasetTag = 'Images-v1p3-DYJets-madgraph-MC2022'
+    config.Data.unitsPerJob = 100 # 61275 lumis
 
-    config.General.requestName = 'treeMakerNN_DYJetsToLL_M-50_MC2022'
+    config.General.requestName = 'treeMakerNN_DYJetsToLL_M-50_madgraph_v1p3_MC2022'
     #config.Data.inputDataset   = '/DYJetsToLL_M-50_TuneCP5_13TeV-madgraphMLM-pythia8/RunIIFall17DRPremix-RECOSIMstep_94X_mc2017_realistic_v10-v1/AODSIM'
     #config.JobType.psetName    = 'treeMaker_MC2017_cfg.py'
     forkAndSubmit(config)
