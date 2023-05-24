@@ -41,7 +41,8 @@ class networkController:
         self.initialize()
 
     def initialize(self):
-        self.cpu_settings()
+        #self.cpu_settings()
+        self.gpu_settings()
 
         if self.args.outputDir: networkController.outputDir = self.args.outputDir
         if self.args.paramsFile: networkController.paramsFile = self.args.paramsFile
@@ -67,7 +68,7 @@ class networkController:
         print(utilities.bcolors.YELLOW+"Output directory: "+networkController.outputDir+utilities.bcolors.ENDC)
         if(len(networkController.params) > 0): 
             print(utilities.bcolors.YELLOW+"Using params"+utilities.bcolors.ENDC, networkController.params, ' ')
-            print(utilities.bcolors.YELLOW+"from file "+utilities+plotMetrics.bcolors.ENDC)
+            print(utilities.bcolors.YELLOW+"from file "+utilities.bcolors.ENDC)
         
         self.plotDir = networkController.outputDir + '/plots/'
         self.weightsDir = networkController.outputDir + '/weights/'
@@ -83,6 +84,7 @@ class networkController:
             os.mkdir(self.filesDir)
 
     def cpu_settings(self):
+        os.environ["CUDA_VISIBLE_DEVICES"]="-1"
         config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
                                         intra_op_parallelism_threads = 4,
                                         allow_soft_placement = True,
@@ -91,6 +93,11 @@ class networkController:
 
         # suppress warnings
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+
+    def gpu_settings(self):
+        config=tf.compat.v1.ConfigProto(log_device_placement=True)
+        sess = tf.compat.v1.Session(config=config)
+        print(sess.run(c))
 
     def configInfo(self):
         print(utilities.bcolors.BLUE + "Using the following config options:")

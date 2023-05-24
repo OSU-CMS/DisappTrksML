@@ -13,7 +13,7 @@ if __name__=="__main__":
 
     gridSearch = False
     inputDim = 178
-    folder = "fakeTracks_4PlusLayer_DYOnly_v1_May15"
+    folder = "fakeTracks_4PlusLayer_DYOnly_v1_May16"
     logDir = "/data/users/mcarrigan/log/disappTrks/fakeTrackNN/Run3/"
     dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets-MC2022_v1/"]
     '''
@@ -75,10 +75,10 @@ if __name__=="__main__":
     error                   = {2}{0}/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = run_wrapper.sh, fakesNN.py, plotMetrics.py, params.npy, utilities.py, fakeClass.py
+    transfer_input_files = run_wrapper.sh, fakesNN.py, plotMetrics.py, params.npy, utilities.py, fakeClass.py, validateData.py
     getenv = true
-    GPU = true
-    requirements = ((Target.machine == "compute-26.local"))
+    +IsGPUJob = true
+    requirements = ((Target.IsGPUSlot == True))
     queue {1}
     """.format(folder, njobs, logDir, repeatSearches)
 
