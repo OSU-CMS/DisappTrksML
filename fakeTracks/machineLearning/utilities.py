@@ -19,6 +19,7 @@ import getopt
 import plotMetrics
 from datetime import date
 from sklearn.preprocessing import MinMaxScaler
+import decimal
 
 class bcolors:
     HEADER = '\033[95m'
@@ -71,6 +72,13 @@ varDict = {}
 for x in range(len(variables)):
     varDict[variables[x]] = x
 
+class validatorArgs:
+
+    def __init__(self, outputDir, dataDir, weightsDir):
+        self.outputDir = outputDir
+        self.dataDir = dataDir
+        self.weightsDir = weightsDir
+
 class Model():
 
     def __init__(self, filters, input_dim, batch_norm, metrics):
@@ -93,6 +101,23 @@ class Model():
         model = buildModel(self.filters, self.input_dim, self.batch_norm)
         return model
 
+def saveConfig(inputDict, filename):
+    out_config = {}
+    for key, value in inputDict.items():
+       if key == 'val_metrics':
+           out_config['val_metrics'] = [str(x) for x in value]
+       else:
+           out_config[key] = value 
+
+    configs = json.dumps(out_config)
+    with open(filename, 'w') as outfile:
+        outfile.write(configs)
+
+def readConfig(configFile):
+    with open(configFile, 'r') as openfile:
+        config = json.load(openfile)
+    return config
+    
 def buildModel(filters = [16, 8], input_dim = 55, batch_norm = False, metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
     #begin NN model
     model = Sequential()

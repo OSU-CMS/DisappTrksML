@@ -9,9 +9,9 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/mcarrigan/Images-v1-DYJets-MC2022/'
-    outDir = '/store/user/mcarrigan/fakeTracks/selection_v1_DYJets-MC2022/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/selection_v1_DYJets-MC2022/'
+    dataDir = '/store/user/mcarrigan/Images-v1-DYJets-madgraph-MC2022/'
+    outDir = '/store/user/mcarrigan/fakeTracks/selection_v1_DYJets-madgraph-MC2022/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/selection_v1_DYJets-madgraph-MC2022/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
@@ -41,9 +41,9 @@ if __name__=="__main__":
     Universe = vanilla
     +IsLocalJob = true
     Rank = TARGET.IsLocalSlot
-    request_disk = 500MB
-    request_memory = 2048MB
-    request_cpus = 1
+    request_disk = 2000MB
+    request_memory = 300MB
+    request_cpus = 4
     executable              = wrapper.sh
     arguments               = $(PROCESS) {1} {2} {3}
     log                     = {4}log_$(PROCESS).log

@@ -23,211 +23,350 @@ from sklearn.preprocessing import MinMaxScaler
 import utilities
 from fakeClass import fakeNN
 import cmsml
+import argparse
+from validateData import Validator
 
-if __name__ == "__main__":
+class networkController:
 
-    # limit CPU usage
-    config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
-                                      intra_op_parallelism_threads = 4,
-                                      allow_soft_placement = True,
-                                      device_count={'CPU': 4})
-    tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
-
-    # suppress warnings
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
-
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "d:p:i:g:", ["dir=","params=","index=", "grid="])
-    except getopt.GetoptError:
-        print(plotMetrics.bcolors.RED+"USAGE: fakesNN.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index -g/--grid= grid_search"+plotMetrics.bcolors.ENDC)
-        sys.exit(2)
-
-    workDir = 'outfakesNN_' + date.today().strftime('%m_%d')
-    print("workDir", workDir)
+    outputDir = 'outfakesNN_' + date.today().strftime('%m_%d')
     paramsFile = ""
     params = []
     paramsIndex = 0
     gridSearch = -1
-    for opt, arg in opts:
-        if(opt in ('-d','--dir')):
-            workDir = str(arg)
-        elif(opt in ('-p','--params')):
-            paramsFile = str(arg)
-        elif(opt in ('-i','--index')):
-            paramsIndex = int(arg)
-        elif(opt in ('-g', '--grid')):
-            gridSearch = int(arg)
 
-    if(len(paramsFile)>0):
-        try:
-            params = np.load(str(paramsFile), allow_pickle=True)[paramsIndex]
-        except:
-            print(plotMetrics.bcolors.RED+"ERROR: Index outside range or no parameter list passed"+plotMetrics.bcolors.ENDC)
-            print(plotMetrics.bcolors.RED+"USAGE: fakesNN.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+plotMetrics.bcolors.ENDC)
-            sys.exit(2)
-        if(gridSearch > 0):
-            workDir = workDir + "_g" + str(gridSearch) + "_p" + str(paramsIndex)
-        else:
-            workDir = workDir + "_p" + str(paramsIndex)
-    cnt=0
-    while(os.path.isdir(workDir)):
-        cnt+=1
-        if(cnt==1): workDir = workDir+"_"+str(cnt)
-        else: workDir = workDir[:-1] + str(cnt)
-    print(plotMetrics.bcolors.YELLOW+"Output directory: "+workDir+plotMetrics.bcolors.ENDC)
-    if(len(params) > 0): 
-        print(plotMetrics.bcolors.YELLOW+"Using params"+plotMetrics.bcolors.ENDC, params, ' ')
-        print(plotMetrics.bcolors.YELLOW+"from file "+paramsFile+plotMetrics.bcolors.ENDC)
-	
-    plotDir = workDir + '/plots/'
-    weightsDir = workDir + '/weights/'
-    outputDir = workDir + '/outputFiles/'
+    def __init__(self, config, args):
+        self.config = config
+        self.args = args
+
+        self.initialize()
+
+    def initialize(self):
+        #self.cpu_settings()
+        self.gpu_settings()
+
+        if self.args.outputDir: networkController.outputDir = self.args.outputDir
+        if self.args.paramsFile: networkController.paramsFile = self.args.paramsFile
+        if self.args.index: networkController.paramsIndex = self.args.index
+        if self.args.grid: networkController.gridSearch = self.args.grid
+
+        if(len(networkController.paramsFile)>0):
+            try:
+                networkController.params = np.load(str(networkController.paramsFile), allow_pickle=True)[networkController.paramsIndex]
+            except:
+                print(utilities.bcolors.RED+"ERROR: Index outside range or no parameter list passed"+utilities.bcolors.ENDC)
+                print(utilities.bcolors.RED+"USAGE: fakesNN.py -d/--dir= output_directory -p/--params= parameters.npy -i/--index= parameter_index"+utilities.bcolors.ENDC)
+                sys.exit(2)
+            if(networkController.gridSearch > 0):
+                networkController.outputDir = networkController.outputDir + "_g" + str(networkController.gridSearch) + "_p" + str(networkController.paramsIndex)
+            else:
+                networkController.outputDir = networkController.outputDir + "_p" + str(networkController.paramsIndex)
+        cnt=0
+        while(os.path.isdir(networkController.outputDir)):
+            cnt+=1
+            if(cnt==1): networkController.outputDir = networkController.outputDir+"_"+str(cnt)
+            else: networkController.outputDir = networkController.outputDir[:-1] + str(cnt)
+        print(utilities.bcolors.YELLOW+"Output directory: "+networkController.outputDir+utilities.bcolors.ENDC)
+        if(len(networkController.params) > 0): 
+            print(utilities.bcolors.YELLOW+"Using params"+utilities.bcolors.ENDC, networkController.params, ' ')
+            print(utilities.bcolors.YELLOW+"from file "+utilities.bcolors.ENDC)
+        
+        self.plotDir = networkController.outputDir + '/plots/'
+        self.weightsDir = networkController.outputDir + '/weights/'
+        self.filesDir = networkController.outputDir + '/outputFiles/'
+
+        if not os.path.exists(networkController.outputDir):
+            os.mkdir(networkController.outputDir)
+        if not os.path.exists(self.plotDir):
+            os.mkdir(self.plotDir)
+        if not os.path.exists(self.weightsDir):
+            os.mkdir(self.weightsDir)
+        if not os.path.exists(self.filesDir):
+            os.mkdir(self.filesDir)
+
+    def cpu_settings(self):
+        os.environ["CUDA_VISIBLE_DEVICES"]="-1"
+        config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,   
+                                        intra_op_parallelism_threads = 4,
+                                        allow_soft_placement = True,
+                                        device_count={'CPU': 4})
+        tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
+
+        # suppress warnings
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+
+    def gpu_settings(self):
+        config=tf.compat.v1.ConfigProto(log_device_placement=True)
+        sess = tf.compat.v1.Session(config=config)
+
+        # suppress warnings
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+
+    def configInfo(self):
+        print(utilities.bcolors.BLUE + "Using the following config options:")
+        print('\t Weights Directory: \n \t \t{}'.format(self.config['weightsDir']))
+        print('\t Data Directory: {}'.format(self.config['dataDir']))
+        print('\t Plot Name: {}'.format(self.config['plotsName']))
+        print('\t Validation Metrics: {}'.format(self.config['val_metrics']))
+        print('\t Batch Normalization: {}'.format(self.config['batch_norm']))
+        print('\t Epochs: {}'.format(self.config['epochs']))
+        print('\t Filters: {}'.format(self.config['filters']))
+        print('\t Input Dimension: {}'.format(self.config['input_dim']))
+        print('\t Undersampling: {}'.format(self.config['undersample']))
+        print('\t Dropout: {}'.format(self.config['dropout']))
+        print('\t Deleted Elements: {}'.format(self.config['delete_elements']))
+        print('\t Categories Used: {}'.format(self.config['saveCategories']))
+        print('\t Data Normalization: {}'.format(self.config['normalize_data']))
+        print('\t Threshold: {}'.format(self.config['threshold']))
+        print('\t Debugging: {}'.format(self.config['DEBUG']) + utilities.bcolors.ENDC)
+
+    def getInputs(self):
+        self.inputs, self.input_dim = utilities.getInputs(self.config['input_dim'], self.config['delete_elements'])
+
+    def loadData(self):
+        for i, dataSet in enumerate(self.config['dataDir']):
+            if i == 0:
+                if(self.config['loadSplitDataset']):
+                    trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = utilities.loadSplitDataset(str(dataSet), self.inputs)
+                else:
+                    trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = utilities.loadData(str(dataSet), 
+                                                                                                            self.config['undersample'], 
+                                                                                                            self.inputs, 
+                                                                                                            self.config['normalize_data'], 
+                                                                                                            self.config['saveCategories'][i], 
+                                                                                                            self.config['trainPCT'], 
+                                                                                                            self.config['valPCT'], 
+                                                                                                            self.args.test)
+            else:
+                if(self.config['loadSplitDataset']):
+                    trainTracks2, testTracks2, valTracks2, trainTruth2, testTruth2, valTruth2 = utilities.loadSplitDataset(str(dataSet), self.inputs)
+                else:
+                    trainTracks2, testTracks2, valTracks2, trainTruth2, testTruth2, valTruth2 = utilities.loadData(str(dataSet), 
+                                                                                                                self.config['undersample'], 
+                                                                                                                self.inputs,
+                                                                                                                self.config['normalize_data'], 
+                                                                                                                self.config['saveCategories'][i], 
+                                                                                                                self.config['trainPCT'], 
+                                                                                                                self.config['valPCT'], 
+                                                                                                                self.args.test)
+                trainTracks = np.concatenate((trainTracks, trainTracks2))
+                trainTruth = np.concatenate((trainTruth, trainTruth2))
+                testTracks = np.concatenate((testTracks, testTracks2))
+                testTruth = np.concatenate((testTruth, testTruth2))
+                valTracks = np.concatenate((valTracks, valTracks2))
+                valTruth = np.concatenate((valTruth, valTruth2))
+        
+        self.trainTracks = trainTracks
+        self.trainTruth = trainTruth
+        self.testTracks = testTracks
+        self.testTruth = testTruth
+        self.valTracks = valTracks
+        self.valTruth = valTruth
+
+        print("Train Tracks " + str(trainTracks.shape))
+        print("Train Truth " + str(trainTruth.shape))
+        print("Test Tracks " + str(testTracks.shape))
+        print("Test Truth " + str(testTruth.shape))
+        print("Val Tracks " + str(valTracks.shape))
+        print("Val Truth " + str(valTruth.shape))
+
+    def randomizeData(self):
+        indices = np.arange(len(self.trainTracks))
+        np.random.shuffle(indices)   
+        trainTracks = self.trainTracks[indices]
+        self.trainEvents = trainTracks[:, 0] #make array of only eventNumber
+        self.trainTracks = trainTracks[:, 1:] #removing eventNumber from array
+        self.trainTruth = self.trainTruth[indices]
+
+        indices = np.arange(len(self.testTracks))
+        np.random.shuffle(indices)
+        testTracks = self.testTracks[indices]
+        self.testEvents = trainTracks[:, 0]
+        self.testTracks = testTracks[:, 1:]
+        self.testTruth = self.testTruth[indices]
+
+        indices = np.arange(len(self.valTracks))
+        np.random.shuffle(indices)
+        valTracks = self.valTracks[indices]
+        self.valEvents = valTracks[:, 0]
+        self.valTracks = valTracks[:, 1:]
+        self.valTruth = self.valTruth[indices] 
+
+    def setCallbacks(self):
+        self.callbacks = [keras.callbacks.EarlyStopping(patience=self.config['patience_count']), 
+                        keras.callbacks.ModelCheckpoint(filepath=self.weightsDir+'model.{epoch}.h5', 
+                            save_best_only=self.config['save_best_only'], 
+                            monitor=self.config['monitor'], 
+                            mode=self.config['mode'])]
+
+
+    def createModel(self):
+        self.model = fakeNN(self.config['filters'],
+                            self.input_dim,
+                            self.config['batch_norm'],
+                            self.config['val_metrics'],
+                            self.config['dropout'])
+
+        self.estimator = KerasClassifier(build_fn=self.model, 
+                                        epochs=self.config['epochs'], 
+                                        batch_size=self.config['batch_size'],
+                                        verbose=1)
+
+    def fitModel(self):
+        self.history = self.estimator.fit(self.trainTracks, 
+                                        self.trainTruth,
+                                        validation_data=(self.valTracks, self.valTruth),
+                                        callbacks=self.callbacks)
+
+    def saveModel(self):
+        cmsml.tensorflow.save_graph(self.filesDir+"graph.pb", self.estimator.model, variables_to_constants=True)
+        cmsml.tensorflow.save_graph(self.filesDir+'graph.tb.txt', self.estimator.model, variables_to_constants=True)
+        self.estimator.model.save(self.weightsDir+'lastEpoch.h5')
+
+    def getFinalWeights(self):
+        max_epoch = -1
+        final_weights = 'lastEpoch.h5'
+        for filename in os.listdir(self.weightsDir):
+            if ".h5" and "model" in filename:
+                this_epoch = filename.split(".")[1]
+                if int(this_epoch) > max_epoch: 
+                    final_weights = 'model.' + this_epoch + '.h5'
+                    max_epoch = int(this_epoch)
+        self.final_weights = final_weights
+        self.max_epoch = max_epoch
+        print("Final weights are from file {0} created after {1} epochs".format(self.final_weights, self.max_epoch))
+
+    def trainNetwork(self):
+        #get the inputs for the network and set the callbacks
+        self.getInputs()
+        self.setCallbacks()
+
+        #load the data for the network and randomize it
+        self.loadData()
+        self.randomizeData()
+
+        #create the model, train and save it
+        self.createModel()
+        self.fitModel()
+        self.saveModel()
+        self.getFinalWeights()
+
+    def saveTrainInfo(self):
+        plotMetrics.plotHistory(self.history, self.config['history_keys'], self.plotDir)
+        self.config['input_dim'] = self.input_dim
+        fout = open(self.filesDir + 'networkInfo.txt', 'w')
+        fout.write('Datasets: ' + str(self.config['dataDir']) + 
+                '\nFilters: ' + str(self.config['filters']) + 
+                '\nBatch Size: ' + str(self.config['batch_size']) + 
+                '\nBatch Norm: ' + str(self.config['batch_norm']) +  
+                '\nInput Dim: ' + str(self.input_dim) + 
+                '\nPatience Count: ' + str(self.config['patience_count']) + 
+                '\nMetrics: ' + str(self.config['val_metrics']) + 
+                '\nDeleted Elements: ' + str(self.config['delete_elements']) + 
+                '\nSaved Tracks: ' + str(self.config['saveCategories']) + 
+                '\nTrain Percentage: ' + str(self.config['trainPCT']) + 
+                '\nVal Percentage: ' + str(self.config['valPCT']) + 
+                '\nTotal Epochs: ' + str(self.max_epoch) + 
+                '\nDropout: ' + str(self.config['dropout']) + 
+                '\nMetrics: TP = %d, FP = %d, TN = %d, FN = %d' % (self.validator.classifications[0], self.validator.classifications[1], self.validator.classifications[2], self.validator.classifications[3]) + 
+                '\nPrecision: ' + str(self.validator.classifications[4]) + 
+                '\nRecall: ' + str(self.validator.classifications[5]))
+        fout.close()
+
+        utilities.saveConfig(self.config, self.filesDir+"config.json")
+
+    def defineValidator(self):
+        val_config = self.config
+        val_config['weightsDir'] = self.weightsDir
+        val_config['plotsName'] = 'validation_FakeProducer'
+        val_args = utilities.validatorArgs(self.plotDir, '', self.weightsDir)
+
+        self.validator = Validator(val_config, args=val_args)
+        self.validator.loadModel(name=self.final_weights)
+
+    def validateModel(self):
+        self.defineValidator()
+        self.validator.passData(self.testTracks, self.testEvents, self.testTruth)
+        self.validator.makePredictions(inputs=self.inputs)
+        self.validator.makePlots()
+
+def parse_args():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('-o', '--outputDir', type=str, default='', help='Output directory to save output files and plots')
+    parser.add_argument('-d', '--dataDir', type=str, default='', help='Input data directory')
+    parser.add_argument('-c', '--config', type=str, default='', help='Config file of inputs for network (json)')
+    parser.add_argument('-p', '--paramsFile', type=str, help='Parameters file') #TODO fix the help descriptions
+    parser.add_argument('-i', '--index', type=int, help='Index for parameter')
+    parser.add_argument('-g', '--grid', type=int, help='Number in grid search')
+    parser.add_argument('-t', '--test', action='store_true', help='Run in debug mode')
+    args = parser.parse_args()
+    return args
+
+if __name__ == "__main__":
+
+    args = parse_args()
 
     ################config parameters################
-
-    DEBUG = False
-
     dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_v9p3/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_v9p3/"]
-    #dataDir = ['fakeNNInputDataset_DYJets.npz', 'fakeNNInputDataset_NG.npz']
-    normalize_data = False
+    val_metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
+    batch_size = 64
+    batch_norm = False
+    epochs = 10
+    filters=[12,8]
+    input_dim = 178
     undersample = -1
     oversample = -1   
-    filters=[12,8]
-    batch_norm = False
-    batch_size = 64
-    epochs = 10
-    input_dim = 178
     dropout = 0.1
+    delete_elements = ['passesSelection']
+    saveCategories = [{'fake':True, 'real':True, 'pileup':False}, {'fake':True, 'real':False, 'pileup':False}]
+    normalize_data = False
     patience_count = 20
     monitor = 'val_loss'
-    #class_weights = False  
-    val_metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]
-    #delete_elements = ['totalCharge', 'numSatMeasurements', 'stripSelection', 'hitPosX', 'hitPosY', 'numMeasurementsPixel', 'layer', 'subDet']
-    #delete_elements = ['passesSelection', 'eventNumber', 'layer1', 'subDet1', 'layer2', 'subDet2','layer3', 'subDet3', 'layer4', 'subDet4', 'layer5', 'subDet5', 'layer6', 'subDet6', 'layer7', 'subDet7','layer8', 'subDet8', 'layer9', 'subDet9', 'layer10', 'subDet10', 'layer11', 'subDet11', 'layer12', 'subDet12', 'layer13', 'subDet13', 'layer15', 'subDet14', 'layer15', 'subDet15','layer16', 'subDet16']
-    delete_elements = ['passesSelection']
-    #delete_elements = ['passesSelection', 'eventNumber', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 'layer1', 'charge1', 'subDet1', 'pixelHitSize1', 'pixelHitSizeX1', 'pixelHitSizeY1','stripSelection1', 'hitPosX1', 'hitPosY1', 'layer2', 'charge2', 'subDet2', 'pixelHitSize2', 'pixelHitSizeX2', 'pixelHitSizeY2', 'stripSelection2', 'hitPosX2', 'hitPosY2', 'layer3', 'charge3', 'subDet3', 'pixelHitSize3', 'pixelHitSizeX3', 'pixelHitSizeY3', 'stripSelection3', 'hitPosX3', 'hitPosY3', 'layer4', 'charge4', 'subDet4', 'pixelHitSize4', 'pixelHitSizeX4', 'pixelHitSizeY4', 'stripSelection4', 'hitPosX4', 'hitPosY4', 'layer5', 'charge5', 'subDet5', 'pixelHitSize5', 'pixelHitSizeX5', 'pixelHitSizeY5', 'stripSelection5', 'hitPosX5', 'hitPosY5', 'layer6', 'charge6', 'subDet6', 'pixelHitSize6', 'pixelHitSizeX6', 'pixelHitSizeY6', 'stripSelection6', 'hitPosX6', 'hitPosY6', 'layer7', 'charge7', 'subDet7', 'pixelHitSize7', 'pixelHitSizeX7', 'pixelHitSizeY7', 'stripSelection7', 'hitPosX7', 'hitPosY7', 'layer8', 'charge8', 'subDet8', 'pixelHitSize8', 'pixelHitSizeX8', 'pixelHitSizeY8', 'stripSelection8', 'hitPosX8', 'hitPosY8', 'layer9', 'charge9', 'subDet9', 'pixelHitSize9', 'pixelHitSizeX9', 'pixelHitSizeY9', 'stripSelection9', 'hitPosX9', 'hitPosY9', 'layer10', 'charge10', 'subDet10', 'pixelHitSize10', 'pixelHitSizeX10', 'pixelHitSizeY10', 'stripSelection10', 'hitPosX10', 'hitPosY10', 'layer11', 'charge11', 'subDet11', 'pixelHitSize11', 'pixelHitSizeX11', 'pixelHitSizeY11', 'stripSelection11', 'hitPosX11', 'hitPosY11', 'layer12', 'charge12', 'subDet12', 'pixelHitSize12', 'pixelHitSizeX12','pixelHitSizeY12', 'stripSelection12', 'hitPosX12', 'hitPosY12', 'layer13', 'charge13', 'subDet13', 'pixelHitSize13', 'pixelHitSizeX13', 'pixelHitSizeY13', 'stripSelection13', 'hitPosX13', 'hitPosY13', 'layer14', 'charge14', 'subDet14', 'pixelHitSize14', 'pixelHitSizeX14', 'pixelHitSizeY14', 'stripSelection14', 'hitPosX14', 'hitPosY14', 'layer15', 'charge15', 'subDet15', 'pixelHitSize15', 'pixelHitSizeX15', 'pixelHitSizeY15', 'stripSelection15', 'hitPosX15', 'hitPosY15', 'layer16', 'charge16', 'subDet16', 'pixelHitSize16', 'pixelHitSizeX16', 'pixelHitSizeY16', 'stripSelection16', 'hitPosX16', 'hitPosY16', 'sumEnergy', 'diffEnergy', 'dz1', 'd01', 'dz2', 'd02', 'dz3', 'd03']
-    saveCategories = [{'fake':True, 'real':True, 'pileup':False}, {'fake':True, 'real':False, 'pileup':False}]
     trainPCT = 0.7
     valPCT = 0.5
     loadSplitDataset = False
+    save_best_only = True
+    mode = 'auto'
+    threshold = 0.5
+    history_keys = ['loss', 'auc_2', 'recall_2', 'precision_2']
+    DEBUG = False
 
+    #class_weights = False  
     #################################################
 
-    if(len(params) > 0):
-        filters = params[0]
-        batch_norm = bool(params[1])
-        undersample = float(params[2])
-        epochs = int(params[3])
-        dataDir = params[4]
-        input_dim = params[5]
-        delete_elements = params[6]
-        saveCategories = params[7]
-        trainPCT = params[8]
-        valPCT = params[9]
-        loadSplitDataset = params[10]
-        dropout = params[11]
+    config_dict = {}
 
-    # create output directories
-    if not os.path.isdir(workDir):
-        os.system('mkdir '+str(workDir))
-    if not os.path.isdir(plotDir):
-        os.system('mkdir '+str(plotDir))
-    if not os.path.isdir(weightsDir):
-        os.system('mkdir '+str(weightsDir))
-    if not os.path.isdir(outputDir):
-        os.system('mkdir '+str(outputDir))
-   
-    inputs, input_dim = utilities.getInputs(input_dim, delete_elements)
- 
-    for i, dataSet in enumerate(dataDir):
-        if i == 0:
-            if(loadSplitDataset):
-                trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = utilities.loadSplitDataset(str(dataSet), inputs)
-            else:
-                trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], trainPCT, valPCT, DEBUG)
-
-        else:
-            if(loadSplitDataset):
-                trainTracks2, testTracks2, valTracks2, trainTruth2, testTruth2, valTruth2 = utilities.loadSplitDataset(str(dataSet), inputs)
-            else:
-                trainTracks2, testTracks2, valTracks2, trainTruth2, testTruth2, valTruth2 = utilities.loadData(str(dataSet), undersample, inputs, normalize_data, saveCategories[i], trainPCT, valPCT, DEBUG)
-            trainTracks = np.concatenate((trainTracks, trainTracks2))
-            trainTruth = np.concatenate((trainTruth, trainTruth2))
-            testTracks = np.concatenate((testTracks, testTracks2))
-            testTruth = np.concatenate((testTruth, testTruth2))
-            valTracks = np.concatenate((valTracks, valTracks2))
-            valTruth = np.concatenate((valTruth, valTruth2))
-
-    print("Train Tracks " + str(trainTracks.shape))
-    print("Train Truth " + str(trainTruth.shape))
-    print("Test Tracks " + str(testTracks.shape))
-    print("Test Truth " + str(testTruth.shape))
-    print("Val Tracks " + str(valTracks.shape))
-    print("Val Truth " + str(valTruth.shape))
-
-    indices = np.arange(len(trainTracks))
-    np.random.shuffle(indices)   
-    trainTracks = trainTracks[indices]
-    trainEvents = trainTracks[:, 0] #make array of only eventNumber
-    trainTracks = trainTracks[:, 1:] #removing eventNumber from array
-    trainTruth = trainTruth[indices]
-
-    indices = np.arange(len(testTracks))
-    np.random.shuffle(indices)
-    testTracks = testTracks[indices]
-    testEvents = trainTracks[:, 0]
-    testTracks = testTracks[:, 1:]
-    testTruth = testTruth[indices]
-
-    indices = np.arange(len(valTracks))
-    np.random.shuffle(indices)
-    valTracks = valTracks[indices]
-    valEvents = valTracks[:, 0]
-    valTracks = valTracks[:, 1:]
-    valTruth = valTruth[indices]         
-
-    callbacks = [keras.callbacks.EarlyStopping(patience=patience_count), keras.callbacks.ModelCheckpoint(filepath=weightsDir+'model.{epoch}.h5', save_best_only=True, monitor=monitor, mode='auto')]
-
-    model = fakeNN(filters, input_dim, batch_norm, val_metrics, dropout)
-
-    estimator = KerasClassifier(build_fn=model, epochs=epochs, batch_size=batch_size, verbose=1)
-    history = estimator.fit(trainTracks, trainTruth, validation_data=(valTracks, valTruth), callbacks = callbacks)
- 
-    cmsml.tensorflow.save_graph("graph.pb", estimator.model, variables_to_constants=True)
-
-    cmsml.tensorflow.save_graph("graph.pb.txt", estimator.model, variables_to_constants=True)
-
-    print(history.history.keys())
-
-    #estimator.model.save_weights(weightsDir+'lastEpoch.h5')
-    estimator.model.save(weightsDir+'lastEpoch.h5')
-
-    max_epoch = -1
-    final_weights = 'lastEpoch.h5'
-    for filename in os.listdir(weightsDir):
-        if ".h5" and "model" in filename:
-            this_epoch = filename.split(".")[1]
-            if int(this_epoch) > max_epoch: 
-                final_weights = 'model.' + this_epoch + '.h5'
-                max_epoch = int(this_epoch)
+    if args.config: config_dict = utilities.readConfig(configFile)
+    else:
+        config_dict = {'dataDir' : dataDir,
+                    'val_metrics' : val_metrics,
+                    'batch_size' : batch_size,
+                    'batch_norm' : batch_norm,
+                    'epochs' : epochs,
+                    'filters' : filters,
+                    'input_dim' : input_dim,
+                    'undersample' : undersample,
+                    'oversample' : oversample,
+                    'dropout' : dropout,
+                    'delete_elements' : delete_elements,
+                    'saveCategories' : saveCategories,
+                    'normalize_data' : normalize_data,
+                    'patience_count' : patience_count,
+                    'monitor' : monitor,
+                    'trainPCT' : trainPCT,
+                    'valPCT' : valPCT,
+                    'loadSplitDataset' : loadSplitDataset,
+                    'save_best_only' : save_best_only,
+                    'mode' : mode,
+                    'threshold' : threshold,
+                    'history_keys' : history_keys,
+                    'DEBUG' : DEBUG}
     
-    print('Loading weights...' + final_weights)
-    estimator.model.load_weights(weightsDir + final_weights)
-    predictions_raw = estimator.predict_proba(testTracks)
-    predictions = estimator.predict(testTracks)
-    predictions_raw = predictions_raw[:, 1]
-    #predictions = [1 if x >= 0.5 else 0 for x in predictions_raw]
-    plotMetrics.plotCM(testTruth, predictions, plotDir)
-    classifications = plotMetrics.getStats(testTruth, predictions, plotDir, plot=True)
-    plotMetrics.plotHistory(history, ['loss', 'auc_1', 'recall_1', 'precision_1'], plotDir)
-    plotMetrics.plotScores(predictions_raw, testTruth, 'fakeNN', plotDir)
-    plotMetrics.predictionThreshold(predictions_raw, testTruth, plotDir)
-    #plotMetrics.permutationImportance(estimator, testTracks, testTruth, plotDir)
-    
-    inputs = utilities.listVariables(inputs)    
+    myController = networkController(config_dict, args)
+    myController.trainNetwork()
+    myController.validateModel()
+    myController.saveTrainInfo()
 
-    np.savez_compressed(outputDir + "predictions.npz", tracks = testTracks, truth = testTruth, predictions = predictions, predictionScores = predictions_raw, inputs = inputs, events = testEvents)
+#####################################################
+#####################################################
 
-    fout = open(outputDir + 'networkInfo.txt', 'w')
-    fout.write('Datasets: ' + str(dataDir) + '\nFilters: ' + str(filters) + '\nBatch Size: ' + str(batch_size) + '\nBatch Norm: ' + str(batch_norm) +  '\nInput Dim: ' + str(input_dim) + '\nPatience Count: ' + str(patience_count) + '\nMetrics: ' + str(val_metrics) + '\nDeleted Elements: ' + str(delete_elements) + '\nSaved Tracks: ' + str(saveCategories) + '\nTrain Percentage: ' + str(trainPCT) + '\nVal Percentage: ' + str(valPCT) + '\nTotal Epochs: ' + str(max_epoch) + '\nDropout: ' + str(dropout) + '\nMetrics: TP = %d, FP = %d, TN = %d, FN = %d' % (classifications[0], classifications[1], classifications[2], classifications[3]) + '\nPrecision: ' + str(classifications[4]) + '\nRecall: ' + str(classifications[5]))
-    fout.close()
+

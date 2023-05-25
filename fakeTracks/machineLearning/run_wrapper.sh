@@ -1,44 +1,58 @@
-#!/bin/bash
+#!/usr/bin/bash
 
-source /cvmfs/cms.cern.ch/cmsset_default.sh
-export SCRAM_ARCH=slc7_amd64_gcc820
+localMachine=$(hostname)
 
-scramv1 project CMSSW_12_0_3_patch2
+echo "Running on computer $localMachine"
 
-cp fakesNN.py CMSSW_12_0_3_patch2/src/fakesNN.py
-cp plotMetrics.py CMSSW_12_0_3_patch2/src/plotMetrics.py
-cp params.npy CMSSW_12_0_3_patch2/src/params.npy
-#cp gridSearchParams.npy CMSSW_11_2_1_patch2/src/gridSearchParams.npy
-cp utilities.py CMSSW_12_0_3_patch2/src/utilities.py
-cp fakeClass.py CMSSW_12_0_3_patch2/src/fakeClass.py
+if [ $5 ]; then
+  echo "Running on GPU"
+  cp /mnt/driveB/Singularity/disapp_trks.sif .
+  outDir=$3$1/output_$2
+  singularity exec -B $PWD,/store,/data disapp_trks.sif bash $PWD/singularity_wrapper.sh $outDir
+  rm disapp_trks.sif
+  
+else
+  CMSSW_VERSION_LOCAL=CMSSW_12_4_11_patch3
 
-cd CMSSW_12_0_3_patch2/src/
-eval `scramv1 runtime -sh`
+  source /cvmfs/cms.cern.ch/cmsset_default.sh
+  export SCRAM_ARCH=slc7_amd64_gcc820
 
-#python3 fakesNN.py -d $1 -p gridSearchParams.npy -i $2
-if [[$4 -gt 0]]
-then
+  scramv1 project $CMSSW_VERSION_LOCAL
+
+  cp fakesNN.py $CMSSW_VERSION_LOCAL/src/fakesNN.py
+  cp plotMetrics.py $CMSSW_VERSION_LOCAL/src/plotMetrics.py
+  cp params.npy $CMSSW_VERSION_LOCAL/src/params.npy
+  cp validateData.py $CMSSW_VERSION_LOCAL/src/validateData.py
+  #cp gridSearchParams.npy CMSSW_11_2_1_patch2/src/gridSearchParams.npy
+  cp utilities.py $CMSSW_VERSION_LOCAL/src/utilities.py
+  cp fakeClass.py $CMSSW_VERSION_LOCAL/src/fakeClass.py
+
+  cd $CMSSW_VERSION_LOCAL/src/
+  eval `scramv1 runtime -sh`
+
+  #python3 fakesNN.py -d $1 -p gridSearchParams.npy -i $2
+  if [[$4 -gt 0]]
+  then
     python3 fakesNN.py -d $1 -p params.npy -i $2 -g $((1/4))
-else
+  else
     python3 fakesNN.py -d $1 -p params.npy -i $2
-fi
+  fi
 
-echo $((1/4))
+  echo $((1/4))
 
-rm *.py
-rm *.npy
+  rm *.py
+  rm *.npy
 
-echo $3/$1
+  echo $3/$1
 
-if [ -d "$3/$1" ]
-then 
+  if [ -d "$3/$1" ]; then 
     mv * $3/$1/
-else
+  else
     mkdir $3/$1/
     mv * $3/$1/
+  fi
+
+  cd ../..
+
+  rm -r $CMSSW_VERSION_LOCAL
 fi
-
-cd ..
-cd ..
-
-rm -r CMSSW_12_0_3_patch2
