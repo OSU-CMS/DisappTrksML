@@ -15,9 +15,9 @@ def cpuScript():
     Universe = vanilla
     +IsLocalJob = true
     Rank = TARGET.IsLocalSlot
-    request_disk = 250MB
+    request_disk = 2000MB
     request_memory = 2GB
-    request_cpus = 1
+    request_cpus = 2
     hold = False
     executable              = run_wrapper.sh
     arguments               = {0} $(PROCESS) {2} {3} {4}
@@ -40,9 +40,9 @@ def gpuScript():
     Universe = vanilla
     +IsLocalJob = true
     Rank = TARGET.IsLocalSlot
-    request_disk = 250MB
+    request_disk = 2000MB
     request_memory = 2GB
-    request_cpus = 1
+    request_cpus = 2
     hold = False
     executable              = run_wrapper.sh
     arguments               = {0} $(PROCESS) {2} {3} {4}
