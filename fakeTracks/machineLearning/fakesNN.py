@@ -97,7 +97,9 @@ class networkController:
     def gpu_settings(self):
         config=tf.compat.v1.ConfigProto(log_device_placement=True)
         sess = tf.compat.v1.Session(config=config)
-        print(sess.run(c))
+
+        # suppress warnings
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
     def configInfo(self):
         print(utilities.bcolors.BLUE + "Using the following config options:")
