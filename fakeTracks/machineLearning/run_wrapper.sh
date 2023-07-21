@@ -8,7 +8,7 @@ if [ $5 ]; then
   echo "Running on GPU"
   cp /mnt/driveB/Singularity/disapp_trks.sif .
   outDir=$3$1/output_$2
-  singularity exec -B $PWD,/store,/data disapp_trks.sif bash $PWD/singularity_wrapper.sh $outDir
+  singularity exec -B $PWD,/store,/data disapp_trks.sif bash $PWD/singularity_wrapper.sh $outDir $6
   rm disapp_trks.sif
   
 else
@@ -33,9 +33,9 @@ else
   #python3 fakesNN.py -d $1 -p gridSearchParams.npy -i $2
   if [[$4 -gt 0]]
   then
-    python3 fakesNN.py -d $1 -p params.npy -i $2 -g $((1/4))
+    python3 fakesNN.py -d $1 -p params.npy -i $2 -g $((1/4)) -c $6
   else
-    python3 fakesNN.py -d $1 -p params.npy -i $2
+    python3 fakesNN.py -d $1 -p params.npy -i $2 -c $6
   fi
 
   echo $((1/4))

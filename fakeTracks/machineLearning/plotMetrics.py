@@ -145,9 +145,10 @@ def getStats(truth, predictions, plotDir, plot = False, threshold = 0.5, outputf
 
     return [TP, FP, TN, FN, P, R]
 
-def plotHistory(history, variables, plotDir, outputfile = 'metricPlots.root'):
+def plotHistory(history, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
-    for var in variables:
+    for var in history.history.keys():
+        if "val" in var: continue
         pltName = "c_" + str(var)
         c_plotHistory = r.TCanvas(pltName, pltName, 800, 800)
         metric = history.history[var]

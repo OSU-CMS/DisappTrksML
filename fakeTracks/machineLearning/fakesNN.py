@@ -162,12 +162,12 @@ class networkController:
         self.valTracks = valTracks
         self.valTruth = valTruth
 
-        print("Train Tracks " + str(trainTracks.shape))
-        print("Train Truth " + str(trainTruth.shape))
-        print("Test Tracks " + str(testTracks.shape))
-        print("Test Truth " + str(testTruth.shape))
-        print("Val Tracks " + str(valTracks.shape))
-        print("Val Truth " + str(valTruth.shape))
+        #print("Train Tracks " + str(trainTracks.shape))
+        #print("Train Truth " + str(trainTruth.shape))
+        #print("Test Tracks " + str(testTracks.shape))
+        #print("Test Truth " + str(testTruth.shape))
+        #print("Val Tracks " + str(valTracks.shape))
+        #print("Val Truth " + str(valTruth.shape))
 
     def randomizeData(self):
         indices = np.arange(len(self.trainTracks))
@@ -203,7 +203,7 @@ class networkController:
         self.model = fakeNN(self.config['filters'],
                             self.input_dim,
                             self.config['batch_norm'],
-                            self.config['val_metrics'],
+                            [eval(x) for x in self.config['val_metrics']],
                             self.config['dropout'])
 
         self.estimator = KerasClassifier(build_fn=self.model, 
@@ -251,7 +251,7 @@ class networkController:
         self.getFinalWeights()
 
     def saveTrainInfo(self):
-        plotMetrics.plotHistory(self.history, self.config['history_keys'], self.plotDir)
+        plotMetrics.plotHistory(self.history, self.plotDir)
         self.config['input_dim'] = self.input_dim
         fout = open(self.filesDir + 'networkInfo.txt', 'w')
         fout.write('Datasets: ' + str(self.config['dataDir']) + 
@@ -335,7 +335,7 @@ if __name__ == "__main__":
 
     config_dict = {}
 
-    if args.config: config_dict = utilities.readConfig(configFile)
+    if args.config: config_dict = utilities.readConfig(args.config)
     else:
         config_dict = {'dataDir' : dataDir,
                     'val_metrics' : val_metrics,
