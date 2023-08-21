@@ -116,6 +116,11 @@ TrackImageProducerMINIAOD::TrackImageProducerMINIAOD(const edm::ParameterSet &cf
   tree_->Branch("numGoodJets", &numGoodJets_);
   tree_->Branch("dijetDeltaPhiMax", &dijetDeltaPhiMax_);
   tree_->Branch("leadingJetMetPhi", &leadingJetMetPhi_);
+
+  // get collections, setup objects
+  edm::Service<TFileService> fs;
+
+  h_CutFlow = fs->make<TH1F>("h_CutFlow", "Cut Flow", 10, 0, 10);
 }
 
 TrackImageProducerMINIAOD::~TrackImageProducerMINIAOD()
@@ -125,7 +130,6 @@ TrackImageProducerMINIAOD::~TrackImageProducerMINIAOD()
 void
 TrackImageProducerMINIAOD::analyze(const edm::Event &event, const edm::EventSetup &setup)
 {
-  // get collections, setup objects
 
   edm::Handle<edm::TriggerResults> triggers;
   event.getByToken (triggersToken_, triggers);
@@ -424,15 +428,17 @@ TrackImageProducerMINIAOD::getTracks(const reco::Vertex &pv,
   //for(const auto &track : *tracks) {
   //for(auto track = std::begin(tracks); track != std::endl(tracks); track++) {
   for(vector<pat::IsolatedTrack>::const_iterator it_track = tracks->begin(); it_track != tracks->end(); it_track++) {
-
+    h_CutFlow->Fill(0., 1.);
     
     TrackInfo info;
     pat::IsolatedTrack track = *it_track;
     
     //apply track pt cut
     if(minTrackPt_ > 0 && track.pt() <= minTrackPt_) continue;
+    h_CutFlow->Fill(1., 1.);
     if(maxTrackEta_ > 0 && abs(track.eta()) > maxTrackEta_) continue;
-
+    h_CutFlow->Fill(2., 1.);
+    
     info.trackIso = 0.0;
     for(const auto &t : *tracks) {
       const auto theptinv2 = 1 / pow(track.pt(),2);
@@ -444,6 +450,7 @@ TrackImageProducerMINIAOD::getTracks(const reco::Vertex &pv,
 
     // apply relative track isolation cut
     if(maxRelTrackIso_ > 0 && info.trackIso / track.pt() >= maxRelTrackIso_) continue;
+    h_CutFlow->Fill(3.,1.);
 
     info.px = track.px();
     info.py = track.py();
@@ -451,7 +458,6 @@ TrackImageProducerMINIAOD::getTracks(const reco::Vertex &pv,
     info.vx = track.vx();
     info.vy = track.vy();
     info.vz = track.vz();
-    std::cout << "Track vertex: " << track.vx() << ", " << track.vy() <<", " << track.vz() << std::endl;
     info.eta = track.eta();
     info.pt = track.pt();
     //info.ptError = track.ptError();
@@ -473,7 +479,7 @@ TrackImageProducerMINIAOD::getTracks(const reco::Vertex &pv,
     if(isoTrk2dedxHitInfo->contains(matchedIsolatedTrack.id())) {
       const reco::DeDxHitInfo * hitInfo = (*isoTrk2dedxHitInfo)[matchedIsolatedTrack].get();
       if(hitInfo == nullptr) {
-        //edm::LogWarning ("disappTrks_DeDxHitInfoVarProducer") << "Encountered a null DeDxHitInfo object from a pat::IsolatedTrack? Skipping this track...";
+        edm::LogWarning ("disappTrks_DeDxHitInfoVarProducer") << "Encountered a null DeDxHitInfo object from a pat::IsolatedTrack? Skipping this track...";
         continue;
       }
 
@@ -587,7 +593,6 @@ TrackImageProducerMINIAOD::getTracks(const reco::Vertex &pv,
     info.highPurityFlag = track.isHighPurityTrack();
 
     info.deltaRToClosestElectron = -1;
-    std::cout << "Number of electrons: " << electrons.size() << ", number of muons: " << muons.size() << std::endl;
     for(const auto &electron : electrons) {
       double thisDR = deltaR(electron, track);
       if(info.deltaRToClosestElectron < 0 || thisDR < info.deltaRToClosestElectron) info.deltaRToClosestElectron = thisDR;
@@ -655,6 +660,8 @@ TrackImageProducerMINIAOD::getTracks(const reco::Vertex &pv,
     }
 
     info.ecalo = 0; // calculated in getRecHits
+    
+    h_CutFlow->Fill(4., 1.);
 
     trackInfos_.push_back(info);
   } //end of track loop

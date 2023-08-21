@@ -73,7 +73,7 @@ double pileupMatching(TrackInfo track, vector<double> pileupZPosition){
 }
 
 
-void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v1-DYJets-MC2022/", TString filelist = ""){
+void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images-v1-SingleNeutrino_E-10-gun-2022/", TString filelist = ""){
     
     if(filelist.Length()>0){
         string line;
@@ -96,8 +96,10 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
     bool fullSelection = false;
     double PU_cut = 0.1;
    
-    //TString filename = "images_1.root";
-    TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
+    TString filename = "/share/scratch0/mcarrigan/disTracksML/CMSSW_12_4_11_patch3/src/DisappTrksML/TreeMaker/test/images.root";
+    //TString filename = "/store/user/mcarrigan/Images-v8-NeutrinoGun-MC2017-ext/hist_10.root";
+    //TString filename = "/store/user/mcarrigan/Images-v1-SingleNeutrino_E-10-gun-2022/images_20.root";
+    //TString filename = dataDir + "images_" + int_tstring(fileNum) + ".root";
     //TString filename = dataDir + "hist_" + int_tstring(fileNum) + ".root";
     TFile* myFile = TFile::Open(filename, "read");
     if(myFile == nullptr) return;
@@ -180,8 +182,6 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
         myTree->GetEvent(ievent);
         
         for(const auto &track : *v_tracks){
-            
-            //look to see if track passes general selections
             if(!trackSelection(track)) continue;
             if(signalMC) if(!signalSelection(track)) continue;
             if(fullSelection) if(!signalSelection(track)) continue;
@@ -189,8 +189,7 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
             float genMatchedDR(-1);
             int genMatchedId(0);
             //check to see if track is gen matched
-            for(const auto &genParticle : *v_genParticles){
-            
+            for(const auto &genParticle : *v_genParticles){ 
                 if(genParticle.pt < 10) continue;
                 float thisDR = deltaR(genParticle.eta, genParticle.phi, track.eta, track.phi);
                 if(genMatchedDR == -1 || thisDR < genMatchedDR){
@@ -201,10 +200,8 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
             }//end of gen particle loop
             
             double pu_dz = pileupMatching(track, *v_pileupZPosition);
-
             if(signalMC) if(genMatchedId != 1000024 && genMatchedId != 1000022) continue;
-            if(genMatchedDR > 0.1){
-                //cout << genMatchedDR << " " << pu_dz << endl;
+            if(genMatchedDR > 0.1 || genMatchedDR == -1){
                 if(pu_dz > PU_cut) v_tracks_fake->push_back(track);
                 else if(pu_dz <= PU_cut) v_tracks_pileup->push_back(track);
             }
@@ -222,7 +219,6 @@ void selectData(int fileNum = 1, TString dataDir = "/store/user/mcarrigan/Images
     if(v_tracks_pileup->size() > 0) pileupTree->Fill();
 
     }//end of event loop
-
 
     cout << "Saving file " << newFileName << " with" << endl;
     cout << fakeTree->GetEntries() << " fake tracks and" << endl;
