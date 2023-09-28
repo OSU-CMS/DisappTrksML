@@ -1,5 +1,17 @@
 # DisappTrksML
 
+## Recipie for 2022 data
+
+```
+cmsrel CMSSW_12_4_11_patch3
+cd CMSSW_12_4_11_patch3/src
+cmsenv
+git-cms-init
+git clone https://github.com/OSU-CMS/DisappTrksML.git
+scramv1 b -j 9
+cd DisappTrksML/TreeMaker/test
+cmsRun treeMaker_MC2022_cfg.py
+
 ## Recipe for 2017 data
 
 ```
