@@ -11,6 +11,7 @@ git clone https://github.com/OSU-CMS/DisappTrksML.git
 scramv1 b -j 9
 cd DisappTrksML/TreeMaker/test
 cmsRun treeMaker_MC2022_cfg.py
+```
 
 ## Recipe for 2017 data
 
