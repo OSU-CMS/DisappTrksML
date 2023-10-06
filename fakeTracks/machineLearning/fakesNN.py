@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, BatchNormalization, Dropout
 from sklearn.model_selection import train_test_split
-from keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
 import json
 import random
 import sys
@@ -200,16 +199,38 @@ class networkController:
 
 
     def createModel(self):
-        self.model = fakeNN(self.config['filters'],
-                            self.input_dim,
-                            self.config['batch_norm'],
-                            [eval(x) for x in self.config['val_metrics']],
-                            self.config['dropout'])
 
-        self.estimator = KerasClassifier(build_fn=self.model, 
-                                        epochs=self.config['epochs'], 
-                                        batch_size=self.config['batch_size'],
-                                        verbose=1)
+        if(args.scikeras):
+            self.model = fakeNN(self.config['filters'],
+                                self.input_dim,
+                                self.config['batch_norm'],
+                                [eval(x) for x in self.config['val_metrics']],
+                                self.config['dropout'],
+                                self.config['learning_rate'],
+                                self.config['batch_size']).getter()
+
+            self.estimator = KerasClassifier(model=self.model, 
+                                epochs=self.config['epochs'], 
+                                batch_size=self.config['batch_size'],
+                                verbose=1,
+                                optimizer=keras.optimizers.Adam(lr=self.config['learning_rate']),
+                                loss=keras.losses.binary_crossentropy,
+                                metrics=[eval(x) for x in self.config['val_metrics']],
+                                callbacks=self.callbacks)
+
+        else:
+            self.model = fakeNN(self.config['filters'],
+                                self.input_dim,
+                                self.config['batch_norm'],
+                                [eval(x) for x in self.config['val_metrics']],
+                                self.config['dropout'],
+                                self.config['learning_rate'],
+                                self.config['batch_size'])
+
+            self.estimator = KerasClassifier(build_fn=self.model, 
+                                            epochs=self.config['epochs'], 
+                                            batch_size=self.config['batch_size'],
+                                            verbose=1)
 
     def fitModel(self):
         self.history = self.estimator.fit(self.trainTracks, 
@@ -251,7 +272,11 @@ class networkController:
         self.getFinalWeights()
 
     def saveTrainInfo(self):
-        plotMetrics.plotHistory(self.history, self.plotDir)
+        if args.scikeras:
+            plotMetrics.plotHistory(self.history.history_, self.plotDir)
+        else:
+            plotMetrics.plotHistory(self.history.history, self.plotDir) 
+
         self.config['input_dim'] = self.input_dim
         fout = open(self.filesDir + 'networkInfo.txt', 'w')
         fout.write('Datasets: ' + str(self.config['dataDir']) + 
@@ -298,6 +323,7 @@ def parse_args():
     parser.add_argument('-i', '--index', type=int, help='Index for parameter')
     parser.add_argument('-g', '--grid', type=int, help='Number in grid search')
     parser.add_argument('-t', '--test', action='store_true', help='Run in debug mode')
+    parser.add_argument('--scikeras', action='store_true', help='Option to run with scikeras KerasClassifier')
     args = parser.parse_args()
     return args
 
@@ -360,6 +386,12 @@ if __name__ == "__main__":
                     'threshold' : threshold,
                     'history_keys' : history_keys,
                     'DEBUG' : DEBUG}
+
+    if args.scikeras:
+        from scikeras.wrappers import KerasClassifier 
+    else:
+        from keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
+
     
     myController = networkController(config_dict, args)
     myController.trainNetwork()

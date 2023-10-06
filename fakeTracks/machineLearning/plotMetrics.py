@@ -147,17 +147,17 @@ def getStats(truth, predictions, plotDir, plot = False, threshold = 0.5, outputf
 
 def plotHistory(history, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
-    for var in history.history.keys():
+    for var in history.keys():
         if "val" in var: continue
         pltName = "c_" + str(var)
         c_plotHistory = r.TCanvas(pltName, pltName, 800, 800)
-        metric = history.history[var]
+        metric = history[var]
         g1 = r.TGraph(len(metric), np.arange(len(metric)).astype('float64'), np.array(metric).astype('float64'))
         g1.Draw()
         g1.SetTitle(var)
         g1.GetXaxis().SetTitle("Epochs")
         g1.GetYaxis().SetTitle(var)
-        metricVal = history.history["val_" + var]
+        metricVal = history["val_" + var]
         g2 = r.TGraph(len(metric), np.arange(len(metricVal)).astype('float64'), np.array(metricVal).astype('float64'))
         g2.Draw("SAME")
         g2.SetLineColor(2)
