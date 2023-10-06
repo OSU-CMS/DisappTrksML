@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, BatchNormalization, Dropout
 from sklearn.model_selection import train_test_split
-from keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
+#from keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
 import json
 import random
 import pickle
@@ -32,8 +32,8 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 #need to rerun convert and then use this updated variables list
-#variables = ['eventNumber', 'nPV', 'passesSelection', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
-variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
+variables = ['eventNumber', 'nPV', 'passesSelection', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
+#variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
     'sumEnergy', 'diffEnergy', 'encodedLayers', 'dz1', 'dz2', 'dz3', 'd01', 'd02', 'd03',
     'layer1', 'charge1', 'subDet1', 'pixelHitSize1', 'pixelHitSizeX1', 
            'pixelHitSizeY1','stripSelection1', 'hitPosX1', 'hitPosY1', 

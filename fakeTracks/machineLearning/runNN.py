@@ -66,7 +66,7 @@ if __name__=="__main__":
     useGPU = True
     gridSearch = False
     inputDim = 178
-    folder = "fakeTracks_4PlusLayer_DYOnly_v1_Jul21_v1"
+    folder = "fakeTracks_oct5-23-undersample0p4_normalized"
     logDir = "/data/users/mcarrigan/log/disappTrks/fakeTrackNN/Run3/"
 
     config = 'test.json'

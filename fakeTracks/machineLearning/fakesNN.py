@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, BatchNormalization, Dropout
 from sklearn.model_selection import train_test_split
-from keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
 import json
 import random
 import sys
@@ -33,6 +32,8 @@ class networkController:
     params = []
     paramsIndex = 0
     gridSearch = -1
+
+    log_folder = 'logs'
 
     def __init__(self, config, args):
         self.config = config
@@ -192,24 +193,49 @@ class networkController:
         self.valTruth = self.valTruth[indices] 
 
     def setCallbacks(self):
-        self.callbacks = [keras.callbacks.EarlyStopping(patience=self.config['patience_count']), 
-                        keras.callbacks.ModelCheckpoint(filepath=self.weightsDir+'model.{epoch}.h5', 
+        #self.callbacks = [keras.callbacks.TensorBoard(log_dir='log', histogram_freq=0, write_graph=True, write_images=True),
+        self.callbacks =  [keras.callbacks.EarlyStopping(patience=self.config['patience_count']), 
+                            keras.callbacks.ModelCheckpoint(filepath=self.weightsDir+'model.{epoch}.h5', 
                             save_best_only=self.config['save_best_only'], 
                             monitor=self.config['monitor'], 
                             mode=self.config['mode'])]
 
 
     def createModel(self):
-        self.model = fakeNN(self.config['filters'],
+
+        if(args.scikeras):
+            self.model = fakeNN(self.config['filters'],
                             self.input_dim,
                             self.config['batch_norm'],
                             [eval(x) for x in self.config['val_metrics']],
-                            self.config['dropout'])
+                            self.config['dropout'],
+                            self.config['learning_rate'],
+                            self.config['batch_size']).getter()
 
-        self.estimator = KerasClassifier(build_fn=self.model, 
-                                        epochs=self.config['epochs'], 
-                                        batch_size=self.config['batch_size'],
-                                        verbose=1)
+            self.estimator = KerasClassifier(model=self.model, 
+                                epochs=self.config['epochs'], 
+                                batch_size=self.config['batch_size'],
+                                verbose=1,
+                                optimizer=keras.optimizers.Adam(lr=self.config['learning_rate']),
+                                loss=keras.losses.binary_crossentropy,
+                                metrics=[eval(x) for x in self.config['val_metrics']],
+                                callbacks=self.callbacks)
+        else:
+            self.model = fakeNN(self.config['filters'],
+                            self.input_dim,
+                            self.config['batch_norm'],
+                            [eval(x) for x in self.config['val_metrics']],
+                            self.config['dropout'],
+                            self.config['learning_rate'],
+                            self.config['batch_size'])
+
+            self.model.compile()
+
+            self.estimator = KerasClassifier(model=self.model,
+                                            epochs=self.config['epochs'], 
+                                            batch_size=self.config['batch_size'],
+                                            verbose=1)
+
 
     def fitModel(self):
         self.history = self.estimator.fit(self.trainTracks, 
@@ -242,13 +268,14 @@ class networkController:
 
         #load the data for the network and randomize it
         self.loadData()
+        print("Total train tracks:", len(np.where(self.trainTruth == 0)[0]), "Total train fakes:", len(np.where(self.trainTruth == 1)[0]))
         self.randomizeData()
 
         #create the model, train and save it
         self.createModel()
         self.fitModel()
-        self.saveModel()
-        self.getFinalWeights()
+        #self.saveModel()
+        #self.getFinalWeights()
 
     def saveTrainInfo(self):
         plotMetrics.plotHistory(self.history, self.plotDir)
@@ -298,6 +325,7 @@ def parse_args():
     parser.add_argument('-i', '--index', type=int, help='Index for parameter')
     parser.add_argument('-g', '--grid', type=int, help='Number in grid search')
     parser.add_argument('-t', '--test', action='store_true', help='Run in debug mode')
+    parser.add_argument('--scikeras', action='store_true', help="Option when running with scikeras package, newer KerasClassifier version")
     args = parser.parse_args()
     return args
 
@@ -360,11 +388,17 @@ if __name__ == "__main__":
                     'threshold' : threshold,
                     'history_keys' : history_keys,
                     'DEBUG' : DEBUG}
+
+    if args.scikeras:
+        from scikeras.wrappers import KerasClassifier 
+    else: 
+        from keras.wrappers.scikit_learn import KerasClassifier
+
     
     myController = networkController(config_dict, args)
     myController.trainNetwork()
-    myController.validateModel()
-    myController.saveTrainInfo()
+    #myController.validateModel()
+    #myController.saveTrainInfo()
 
 #####################################################
 #####################################################
