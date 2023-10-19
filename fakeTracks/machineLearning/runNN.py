@@ -36,7 +36,6 @@ def cpuScript(container='false'):
     getenv = true
     queue {1}
     """.format(folder, njobs, logDir, repeatSearches, 'false', config, container, containerName, tune)
-
     f.write(submitLines)
     f.close()
 
@@ -63,7 +62,6 @@ def gpuScript(container='true'):
     requirements = ((Target.IsGPUSlot == True))
     queue {1}
     """.format(folder, njobs, logDir, repeatSearches, 'true', config, container, tune)
-
     f.write(submitLines)
     f.close()
 

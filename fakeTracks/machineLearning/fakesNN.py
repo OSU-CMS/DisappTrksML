@@ -38,7 +38,7 @@ class networkController:
     params = []
     paramsIndex = 0
     gridSearch = -1
-
+    
     def __init__(self, config, args):
         self.config = config
         self.args = args
@@ -479,6 +479,7 @@ def parse_args():
     parser.add_argument('--scikeras', action='store_true', help='Option to run with scikeras KerasClassifier')
     parser.add_argument('-T', '--tune', action='store_true', help='Option to turn on hyperparameter tuning')
     parser.add_argument('--tensorboard', action='store_true', help='Option to use tensorboard')
+
     args = parser.parse_args()
     return args
 
