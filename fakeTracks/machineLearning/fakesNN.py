@@ -251,22 +251,30 @@ class networkController:
 
     def setCallbacks(self):
 
-        logdir = "log/test2"
-        self.file_writer_cm = tf.summary.create_file_writer(logdir)
+        if(args.tensorboard):
+            logdir = "log/test2"
+            #self.file_writer_cm = tf.summary.create_file_writer(logdir)
 
-        self.callbacks = [keras.callbacks.TensorBoard(log_dir='log',
-                            histogram_freq=1,
-                            write_graph=True,
-                            write_images=True,
-                            update_freq='epoch',
-                            profile_batch=2,
-                            embeddings_freq=1),
-                            keras.callbacks.LambdaCallback(on_epoch_end=self.log_confusion_matrix),
-                            keras.callbacks.EarlyStopping(patience=self.config['patience_count']), 
-                            keras.callbacks.ModelCheckpoint(filepath=self.weightsDir+'model.{epoch}.h5', 
-                            save_best_only=self.config['save_best_only'], 
-                            monitor=self.config['monitor'], 
-                            mode=self.config['mode'])]
+            self.callbacks = [#keras.callbacks.TensorBoard(log_dir='log',
+                            #  histogram_freq=1,
+                            #  write_graph=True,
+                            #  write_images=True,
+                            #  update_freq='epoch',
+                            #  profile_batch=2,
+                            #  embeddings_freq=1),
+                            #  keras.callbacks.LambdaCallback(on_epoch_end=self.log_confusion_matrix),
+                                keras.callbacks.EarlyStopping(patience=self.config['patience_count']), 
+                                keras.callbacks.ModelCheckpoint(filepath=self.weightsDir+'model.{epoch}.h5', 
+                                save_best_only=self.config['save_best_only'], 
+                                monitor=self.config['monitor'], 
+                                mode=self.config['mode'])]
+        else:
+            self.callbacks = [keras.callbacks.EarlyStopping(patience=self.config['patience_count']), 
+                                keras.callbacks.ModelCheckpoint(filepath=self.weightsDir+'model.{epoch}.h5', 
+                                save_best_only=self.config['save_best_only'], 
+                                monitor=self.config['monitor'], 
+                                mode=self.config['mode'])]
+
 
 
     def createModel(self):
@@ -470,6 +478,7 @@ def parse_args():
     parser.add_argument('--gpu', action='store_true', help='Option to run on GPUs')
     parser.add_argument('--scikeras', action='store_true', help='Option to run with scikeras KerasClassifier')
     parser.add_argument('-T', '--tune', action='store_true', help='Option to turn on hyperparameter tuning')
+    parser.add_argument('--tensorboard', action='store_true', help='Option to use tensorboard')
     args = parser.parse_args()
     return args
 
