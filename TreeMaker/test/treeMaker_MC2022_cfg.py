@@ -24,25 +24,21 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(100)
+    input = cms.untracked.int32(-1)
 )
 
 # Input source
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
-      'root://cmsxrootd.fnal.gov:///store/mc/Run3Summer22EEMiniAODv3/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/MINIAODSIM/Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/2560000/0143a7e0-a7ca-4667-b3e2-33b322f2e6cc.root'
+      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22MiniAODv3/SingleNeutrino_E-10_gun/MINIAODSIM/SNB_124X_mcRun3_2022_realistic_v12-v2/70000/2e72569a-ed24-48fb-b632-0f4fdd3dc4e5.root',
     ),
     secondaryFileNames = cms.untracked.vstring(
-      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22EEDR/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/AODSIM/Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/2560000/01eee9fb-a66a-452a-95ec-1062ed94640b.root',
-      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22EEDR/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/AODSIM/Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/2560000/185cc6fd-68cc-4b8d-89ad-e67ca8b10914.root',
-      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22EEDR/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/AODSIM/Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/2560000/52155bde-4fbd-42d7-a7eb-399c3836d553.root',
-      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22EEDR/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/AODSIM/Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/2560000/61c2356c-2f7c-4c20-a777-25c59990e61b.root',
-      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22EEDR/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/AODSIM/Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/2560000/85fdfb16-ce76-4b4b-b81b-c81d91d1eca6.root',
-      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22EEDR/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/AODSIM/Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/2560000/b5c830cd-82c4-462b-9dd1-a23ceb4c83ce.root',
-      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22EEDR/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/AODSIM/Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/2560000/c035571b-650e-4f09-aaaa-aae6ac1ba30a.root',
-      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22EEDR/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/AODSIM/Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/2560000/db93f101-423e-4ad7-bfe3-67731c4979a8.root',
-      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22EEDR/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/AODSIM/Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/2560000/ea0bf351-9ce1-4548-a385-dce72855d42e.root',
-      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22EEDR/DYToLL_M-50_TuneCP5_13p6TeV-pythia8/AODSIM/Poisson60KeepRAW_124X_mcRun3_2022_realistic_postEE_v1-v2/2560000/6a95414b-7c14-4262-875a-7749ee59561b.root',    ),
+      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22DRPremix/SingleNeutrino_E-10_gun/AODSIM/SNB_124X_mcRun3_2022_realistic_v12-v2/70000/09ba7969-5522-42bb-bc5a-61543ace1af3.root',
+      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22DRPremix/SingleNeutrino_E-10_gun/AODSIM/SNB_124X_mcRun3_2022_realistic_v12-v2/70000/2bf876e3-8d28-4b91-8b62-798eefa13299.root',
+      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22DRPremix/SingleNeutrino_E-10_gun/AODSIM/SNB_124X_mcRun3_2022_realistic_v12-v2/70000/9864bcee-5a45-405d-b37a-6cfeb723347c.root',
+      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22DRPremix/SingleNeutrino_E-10_gun/AODSIM/SNB_124X_mcRun3_2022_realistic_v12-v2/70000/9a2e9f0a-bd66-4c88-9487-1e0193db12de.root',
+      'root://cmsxrootd.fnal.gov://store/mc/Run3Summer22DRPremix/SingleNeutrino_E-10_gun/AODSIM/SNB_124X_mcRun3_2022_realistic_v12-v2/70000/e7581597-7164-44ee-af54-67daff5157e5.root',
+    ),
 )
 
 
@@ -141,7 +137,7 @@ process.GlobalTag = GlobalTag(process.GlobalTag, '124X_dataRun3_Prompt_v4', '')
 process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducerMINIAOD",
     triggers	   = cms.InputTag("TriggerResults", "", "HLT"),
     triggerObjects = cms.InputTag("slimmedPatTrigger"),
-    tracks         = cms.InputTag("candidateTrackProducer"),
+    tracks         = cms.InputTag("isolatedTracks"),
     genParticles   = cms.InputTag("prunedGenParticles", ""),
     met            = cms.InputTag("slimmedMETs"),
     electrons	   = cms.InputTag("slimmedElectrons", ""),
@@ -181,7 +177,19 @@ process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducerMINIAOD",
         'HLT_PFMETNoMu130_PFMHTNoMu130_IDTight_v',
         'HLT_PFMETNoMu140_PFMHTNoMu140_IDTight_v',
         'HLT_PFMET250_HBHECleaned_v',
-        'HLT_PFMET300_HBHECleaned_v']),
+        'HLT_PFMET300_HBHECleaned_v',
+        "HLT_PFMET*_PFMHT*_IDTight_v*",
+        "HLT_PFMETTypeOne*_PFMHT*_IDTight_v*",
+        "HLT_PFMETNoMu*_PFMHTNoMu*_IDTight_v*",
+        "HLT_MET*_IsoTrk*_v*",
+        "HLT_PFMET*_*Cleaned_v*",
+        "HLT_Ele*_WPTight_Gsf_v*",
+        "HLT_Ele*_WPLoose_Gsf_v*",
+        "HLT_IsoMu*_v*",
+        "HLT_MediumChargedIsoPFTau*HighPtRelaxedIso_Trk50_eta2p1_v*",
+        "HLT_VBF_DoubleMediumDeepTauPFTauHPS20_eta2p1_v*",
+        "HLT_DoubleMediumDeepTauPFTauHPS*_L2NN_eta2p1_*",
+        "HLT_LooseDeepTauPFTauHPS*_L2NN_eta2p1_v*"]),
 
     metFilterNames = cms.vstring([
         "Flag_goodVertices",
@@ -193,10 +201,10 @@ process.trackImageProducer = cms.EDAnalyzer ("TrackImageProducerMINIAOD",
 	"Flag_globalTightHalo2016Filter",
 	"Flag_globalSuperTightHalo2016Filter"]),
 
-    minGenParticlePt = cms.double(10),
-    minTrackPt       = cms.double(25.0),
+    minGenParticlePt = cms.double(-1.0), #10
+    minTrackPt       = cms.double(20.0), #25.0
     maxRelTrackIso   = cms.double(-1.0),
-    maxTrackEta = cms.double(2.1),
+    maxTrackEta = cms.double(4.0), #2.1
 
     dataTakingPeriod = cms.string("2022")
 )
@@ -236,43 +244,6 @@ process.Flag_muonBadTrackFilter = cms.Path(process.muonBadTrackFilter)
 process.Flag_CSCTightHalo2015Filter = cms.Path(process.CSCTightHalo2015Filter)
 process.endjob_step = cms.EndPath(process.endOfProcess)
 process.MINIAODSIMoutput_step = cms.EndPath(process.MINIAODSIMoutput)
-
-# Schedule definition
-'''process.schedule = cms.Schedule(
-    process.Flag_HBHENoiseFilter,
-    process.Flag_HBHENoiseIsoFilter,
-    process.Flag_CSCTightHaloFilter,
-    process.Flag_CSCTightHaloTrkMuUnvetoFilter,
-    process.Flag_CSCTightHalo2015Filter,
-    process.Flag_globalTightHalo2016Filter,
-    process.Flag_globalSuperTightHalo2016Filter,
-    process.Flag_HcalStripHaloFilter,
-    process.Flag_hcalLaserEventFilter,
-    process.Flag_EcalDeadCellTriggerPrimitiveFilter,
-    process.Flag_EcalDeadCellBoundaryEnergyFilter,
-    process.Flag_ecalBadCalibFilter,
-    process.Flag_goodVertices,
-    process.Flag_eeBadScFilter,
-    process.Flag_ecalLaserCorrFilter,
-    process.Flag_trkPOGFilters,
-    process.Flag_chargedHadronTrackResolutionFilter,
-    process.Flag_muonBadTrackFilter,
-    process.Flag_BadChargedCandidateFilter,
-    process.Flag_BadPFMuonFilter,
-    process.Flag_BadChargedCandidateSummer16Filter,
-    process.Flag_BadPFMuonSummer16Filter,
-    process.Flag_trkPOG_manystripclus53X,
-    process.Flag_trkPOG_toomanystripclus53X,
-    process.Flag_trkPOG_logErrorTooManyClusters,
-    process.Flag_METFilters,
-    process.candidateTracks,
-    process.trackImageProducerPath,
-    process.endjob_step,
-    process.MINIAODSIMoutput_step)
-process.schedule.associate(process.patTask)
-from PhysicsTools.PatAlgos.tools.helpers import associatePatAlgosToolsTask
-associatePatAlgosToolsTask(process)
-'''
 
 process.schedule = cms.Schedule(process.trackImageProducerPath)
 

@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, BatchNormalization, Dropout
 from sklearn.model_selection import train_test_split
-from keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
 import json
 import random
 import sys
@@ -25,6 +24,12 @@ from fakeClass import fakeNN
 import cmsml
 import argparse
 from validateData import Validator
+import itertools
+from sklearn import metrics
+import io
+from matplotlib import colors
+import optuna
+
 
 class networkController:
 
@@ -33,7 +38,7 @@ class networkController:
     params = []
     paramsIndex = 0
     gridSearch = -1
-
+    
     def __init__(self, config, args):
         self.config = config
         self.args = args
@@ -41,8 +46,10 @@ class networkController:
         self.initialize()
 
     def initialize(self):
-        #self.cpu_settings()
-        self.gpu_settings()
+        if args.gpu:
+            self.gpu_settings()
+        else:    
+            self.cpu_settings()
 
         if self.args.outputDir: networkController.outputDir = self.args.outputDir
         if self.args.paramsFile: networkController.paramsFile = self.args.paramsFile
@@ -62,6 +69,7 @@ class networkController:
                 networkController.outputDir = networkController.outputDir + "_p" + str(networkController.paramsIndex)
         cnt=0
         while(os.path.isdir(networkController.outputDir)):
+            print("testing output directory name", networkController.outputDir)
             cnt+=1
             if(cnt==1): networkController.outputDir = networkController.outputDir+"_"+str(cnt)
             else: networkController.outputDir = networkController.outputDir[:-1] + str(cnt)
@@ -123,6 +131,9 @@ class networkController:
         self.inputs, self.input_dim = utilities.getInputs(self.config['input_dim'], self.config['delete_elements'])
 
     def loadData(self):
+
+        self.getInputs()
+
         for i, dataSet in enumerate(self.config['dataDir']):
             if i == 0:
                 if(self.config['loadSplitDataset']):
@@ -162,12 +173,14 @@ class networkController:
         self.valTracks = valTracks
         self.valTruth = valTruth
 
-        print("Train Tracks " + str(trainTracks.shape))
-        print("Train Truth " + str(trainTruth.shape))
-        print("Test Tracks " + str(testTracks.shape))
-        print("Test Truth " + str(testTruth.shape))
-        print("Val Tracks " + str(valTracks.shape))
-        print("Val Truth " + str(valTruth.shape))
+        #print("Train Tracks " + str(trainTracks.shape))
+        #print("Train Truth " + str(trainTruth.shape))
+        #print("Test Tracks " + str(testTracks.shape))
+        #print("Test Truth " + str(testTruth.shape))
+        #print("Val Tracks " + str(valTracks.shape))
+        #print("Val Truth " + str(valTruth.shape))
+
+        self.randomizeData()
 
     def randomizeData(self):
         indices = np.arange(len(self.trainTracks))
@@ -190,26 +203,114 @@ class networkController:
         self.valEvents = valTracks[:, 0]
         self.valTracks = valTracks[:, 1:]
         self.valTruth = self.valTruth[indices] 
+    
+    def plot_to_image(self, figure):
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        plt.close(figure)
+        buf.seek(0)
+
+        digit = tf.image.decode_png(buf.getvalue(), channels=4)
+        digit = tf.expand_dims(digit, 0)
+
+        return digit
+
+    def log_confusion_matrix(self, epoch, logs):
+        predictions = self.estimator.predict(self.valTracks)
+        predictions = [1 if x >= self.config['threshold'] else 0 for x in predictions]
+
+        cm = metrics.confusion_matrix(self.valTruth, predictions)
+        print(cm)
+        figure = self.plot_confusion_matrix(cm, class_names=['real track', 'fake track'])
+        cm_image = self.plot_to_image(figure)
+
+        with self.file_writer_cm.as_default():
+            tf.summary.image("Confusion Matrix", cm_image, step=epoch)
+
+    def plot_confusion_matrix(self, cm, class_names):
+        figure = plt.figure(figsize=(8, 8))
+        plt.imshow(cm, interpolation='nearest', cmap=plt.cm.viridis, norm=colors.LogNorm())
+        plt.title("Confusion matrix")
+        plt.colorbar()
+        tick_marks = np.arange(len(class_names))
+        plt.xticks(tick_marks, class_names, rotation=45)
+        plt.yticks(tick_marks, class_names)
+
+        cm = np.around(cm.astype('float') / cm.sum(axis=1)[:, np.newaxis], decimals=2)
+        threshold = cm.max() / 2.
+
+        for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+            color = "white" if cm[i, j] > threshold else "black"
+            plt.text(j, i, cm[i, j], horizontalalignment="center", color=color)
+
+        plt.tight_layout()
+        plt.ylabel('True label')
+        plt.xlabel('Predicted label')
+
+        return figure
 
     def setCallbacks(self):
-        self.callbacks = [keras.callbacks.EarlyStopping(patience=self.config['patience_count']), 
-                        keras.callbacks.ModelCheckpoint(filepath=self.weightsDir+'model.{epoch}.h5', 
-                            save_best_only=self.config['save_best_only'], 
-                            monitor=self.config['monitor'], 
-                            mode=self.config['mode'])]
+
+        if(args.tensorboard):
+            logdir = "log/test2"
+            #self.file_writer_cm = tf.summary.create_file_writer(logdir)
+
+            self.callbacks = [#keras.callbacks.TensorBoard(log_dir='log',
+                            #  histogram_freq=1,
+                            #  write_graph=True,
+                            #  write_images=True,
+                            #  update_freq='epoch',
+                            #  profile_batch=2,
+                            #  embeddings_freq=1),
+                            #  keras.callbacks.LambdaCallback(on_epoch_end=self.log_confusion_matrix),
+                                keras.callbacks.EarlyStopping(patience=self.config['patience_count']), 
+                                keras.callbacks.ModelCheckpoint(filepath=self.weightsDir+'model.{epoch}.h5', 
+                                save_best_only=self.config['save_best_only'], 
+                                monitor=self.config['monitor'], 
+                                mode=self.config['mode'])]
+        else:
+            self.callbacks = [keras.callbacks.EarlyStopping(patience=self.config['patience_count']), 
+                                keras.callbacks.ModelCheckpoint(filepath=self.weightsDir+'model.{epoch}.h5', 
+                                save_best_only=self.config['save_best_only'], 
+                                monitor=self.config['monitor'], 
+                                mode=self.config['mode'])]
+
 
 
     def createModel(self):
-        self.model = fakeNN(self.config['filters'],
-                            self.input_dim,
-                            self.config['batch_norm'],
-                            self.config['val_metrics'],
-                            self.config['dropout'])
 
-        self.estimator = KerasClassifier(build_fn=self.model, 
-                                        epochs=self.config['epochs'], 
-                                        batch_size=self.config['batch_size'],
-                                        verbose=1)
+        print("Testing, batch size is", self.config['batch_size'])
+        if(args.scikeras):
+            self.model = fakeNN(self.config['filters'],
+                                self.input_dim,
+                                self.config['batch_norm'],
+                                [eval(x) for x in self.config['val_metrics']],
+                                self.config['dropout'],
+                                self.config['learning_rate'],
+                                self.config['batch_size']).getter()
+
+            self.estimator = KerasClassifier(model=self.model, 
+                                epochs=self.config['epochs'], 
+                                batch_size=self.config['batch_size'],
+                                verbose=1,
+                                optimizer=keras.optimizers.Adam(lr=self.config['learning_rate']),
+                                loss=keras.losses.binary_crossentropy,
+                                metrics=[eval(x) for x in self.config['val_metrics']],
+                                callbacks=self.callbacks)
+
+        else:
+            self.model = fakeNN(self.config['filters'],
+                                self.input_dim,
+                                self.config['batch_norm'],
+                                [eval(x) for x in self.config['val_metrics']],
+                                self.config['dropout'],
+                                self.config['learning_rate'],
+                                self.config['batch_size'])
+
+            self.estimator = KerasClassifier(build_fn=self.model, 
+                                            epochs=self.config['epochs'], 
+                                            batch_size=self.config['batch_size'],
+                                            verbose=1)
 
     def fitModel(self):
         self.history = self.estimator.fit(self.trainTracks, 
@@ -235,14 +336,16 @@ class networkController:
         self.max_epoch = max_epoch
         print("Final weights are from file {0} created after {1} epochs".format(self.final_weights, self.max_epoch))
 
-    def trainNetwork(self):
+    '''def trainNetwork(self):
         #get the inputs for the network and set the callbacks
         self.getInputs()
         self.setCallbacks()
 
         #load the data for the network and randomize it
-        self.loadData()
-        self.randomizeData()
+        self.loadData()'''
+    def trainNetwork(self):
+        #set the callbacks for the model
+        self.setCallbacks()
 
         #create the model, train and save it
         self.createModel()
@@ -250,8 +353,58 @@ class networkController:
         self.saveModel()
         self.getFinalWeights()
 
+    def runTrial(self, trial):
+        self.setDirectories(trial.number)
+        self.setTrialParams(trial)
+        self.setCallbacks()
+        self.createModel()
+        self.fitModel()
+        self.saveModel()
+        self.getFinalWeights()
+        f1score = self.validateModelSlim()
+        self.saveTrainInfo()
+        return f1score
+
+    def setDirectories(self, trialNum):
+        if trialNum == 0:
+            networkController.outputDir = "{0}/trial_{1}".format(networkController.outputDir, trialNum)
+        else:
+            networkController.outputDir = networkController.outputDir.split("trial")[0] + "trial_" + str(trialNum)
+        self.plotDir = networkController.outputDir + '/plots/'
+        self.weightsDir = networkController.outputDir + '/weights/'
+        self.filesDir = networkController.outputDir + '/outputFiles/'
+
+        if not os.path.exists(networkController.outputDir):
+            os.mkdir(networkController.outputDir)
+        if not os.path.exists(self.plotDir):
+            os.mkdir(self.plotDir)
+        if not os.path.exists(self.weightsDir):
+            os.mkdir(self.weightsDir)
+        if not os.path.exists(self.filesDir):
+            os.mkdir(self.filesDir)
+
+    def setTrialParams(self, trial):
+        for key, item in self.config['tuning_parameters'].items():
+            if item[0] == 'int':
+                this_key = trial.suggest_int(str(key), item[1][0], item[1][1])
+            elif item[0] == 'float':
+                this_key = trial.suggest_float(str(key), item[1][0], item[1][1])
+            elif item[0] == 'categorical':
+                this_key = trial.suggest_categorical(str(key), item[1])
+            else:
+                print("The tuning parameter {0} is neither an int or a float, exiting...".format(key))
+                sys.exit(1)
+            print("Chaning key {0}, to {1}".format(key, this_key))
+            self.config[key] = this_key
+
     def saveTrainInfo(self):
-        plotMetrics.plotHistory(self.history, self.config['history_keys'], self.plotDir)
+
+        print("Output directory is ", networkController.outputDir)
+        if args.scikeras:
+            plotMetrics.plotHistory(self.history.history_, self.plotDir)
+        else:
+            plotMetrics.plotHistory(self.history.history, self.plotDir) 
+
         self.config['input_dim'] = self.input_dim
         fout = open(self.filesDir + 'networkInfo.txt', 'w')
         fout.write('Datasets: ' + str(self.config['dataDir']) + 
@@ -289,6 +442,30 @@ class networkController:
         self.validator.makePredictions(inputs=self.inputs)
         self.validator.makePlots()
 
+    def validateModelSlim(self):
+        self.defineValidator()
+        self.validator.passData(self.testTracks, self.testEvents, self.testTruth)
+        test_classifications = self.validator.makePredictions(inputs=self.inputs)
+        print("F1 Score is ", test_classifications[-1])
+        return test_classifications[-1]
+
+
+    def makeStudy(self):
+
+        self.study = optuna.create_study(direction="maximize")
+        self.study.optimize(self.runTrial, n_trials=self.config['trials'], timeout=600)
+
+        print("Number of finished trials: ", len(self.study.trials))
+
+        print("Best trial:")
+        trial = self.study.best_trial
+
+        print("  Value: ", trial.value)
+
+        print("  Params: ")
+        for key, value in trial.params.items():
+            print("    {}: {}".format(key, value))
+
 def parse_args():
     parser=argparse.ArgumentParser()
     parser.add_argument('-o', '--outputDir', type=str, default='', help='Output directory to save output files and plots')
@@ -298,6 +475,11 @@ def parse_args():
     parser.add_argument('-i', '--index', type=int, help='Index for parameter')
     parser.add_argument('-g', '--grid', type=int, help='Number in grid search')
     parser.add_argument('-t', '--test', action='store_true', help='Run in debug mode')
+    parser.add_argument('--gpu', action='store_true', help='Option to run on GPUs')
+    parser.add_argument('--scikeras', action='store_true', help='Option to run with scikeras KerasClassifier')
+    parser.add_argument('-T', '--tune', action='store_true', help='Option to turn on hyperparameter tuning')
+    parser.add_argument('--tensorboard', action='store_true', help='Option to use tensorboard')
+
     args = parser.parse_args()
     return args
 
@@ -335,7 +517,7 @@ if __name__ == "__main__":
 
     config_dict = {}
 
-    if args.config: config_dict = utilities.readConfig(configFile)
+    if args.config: config_dict = utilities.readConfig(args.config)
     else:
         config_dict = {'dataDir' : dataDir,
                     'val_metrics' : val_metrics,
@@ -360,11 +542,26 @@ if __name__ == "__main__":
                     'threshold' : threshold,
                     'history_keys' : history_keys,
                     'DEBUG' : DEBUG}
+
+    if args.scikeras:
+        from scikeras.wrappers import KerasClassifier 
+    else:
+        from keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
+
     
     myController = networkController(config_dict, args)
-    myController.trainNetwork()
-    myController.validateModel()
-    myController.saveTrainInfo()
+    myController.loadData()
+    if args.tune:
+        myController.makeStudy()
+    else:
+        myController.trainNetwork()
+        myController.validateModel()
+        myController.saveTrainInfo()
+    #myController.trial()
+    #myController.validateModelSlim()
+    #myController.trainNetwork()
+    #myController.validateModel()
+    #myController.saveTrainInfo()
 
 #####################################################
 #####################################################

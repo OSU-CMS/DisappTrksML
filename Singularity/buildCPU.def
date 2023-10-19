@@ -1,0 +1,26 @@
+BootStrap: docker
+From: tensorflow/tensorflow:2.12.0-jupyter
+
+%post
+
+	#packages for ROOT
+        apt -y update
+	apt -y install dpkg-dev
+	apt -y install cmake
+	apt -y install g++
+	apt -y install gcc
+	apt -y install binutils
+	apt -y install libx11-dev
+	apt -y install libxpm-dev
+	apt -y install libxft-dev
+	apt -y install libxext-dev
+	apt -y install python
+	apt -y install libssl-dev
+
+        python3 -m pip install --upgrade pip
+        python3 -m pip install numpy
+        python3 -m pip install awkward
+        python3 -m pip install pandas
+        python3 -m pip install uproot
+        python3 -m pip install optuna
+        python3 -m pip install matplotlib

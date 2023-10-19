@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, BatchNormalization, Dropout
 from sklearn.model_selection import train_test_split
-from keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
 import json
 import random
 import sys
@@ -120,19 +119,23 @@ class Validator:
         if save:
             np.savez_compressed(Validator.outputDir + "predictions.npz", tracks = self.testTracks, truth = self.testTruth, 
                                 predictions = self.predictions, inputs = inputs, events = self.eventNumbers)
-
+        if os.path.exists(Validator.outputDir + 'validateOutput.root'): 
+            os.remove(Validator.outputDir + 'validateOutput.root')
+        self.classifications = plotMetrics.getStats(self.testTruth, self.predictions, Validator.outputDir, outputfile='validateOutput.root')
+        return self.classifications
 
     def makePlots(self):
 
-        if os.path.exists(Validator.outputDir + 'validateOutput.root'): 
-            os.remove(Validator.outputDir + 'validateOutput.root')
+        #if os.path.exists(Validator.outputDir + 'validateOutput.root'): 
+        #    os.remove(Validator.outputDir + 'validateOutput.root')
         plotMetrics.plotCM(self.testTruth, self.predictionsBinary, Validator.outputDir, outputfile='validateOutput.root')
         plotMetrics.plotScores(self.predictions, self.testTruth, self.config['plotsName'], Validator.outputDir, outputfile='validateOutput.root')
-        self.classifications = plotMetrics.getStats(self.testTruth, self.predictions, Validator.outputDir, plot=True, outputfile='validateOutput.root')
+        #self.classifications = plotMetrics.getStats(self.testTruth, self.predictions, Validator.outputDir, plot=True, outputfile='validateOutput.root')
 
         d0Index = np.where(self.input_variables.astype(str) == 'd0')
         plotMetrics.backgroundEstimation(self.testTracks, self.predictions, d0Index, Validator.outputDir, outputfile='validateOutput.root')
         plotMetrics.makeSkim(self.testTracks, self.predictions, self.testTruth, self.eventNumbers, Validator.outputDir, outputfile='validateOutput.root')
+
 
 def parse_args():
     parser=argparse.ArgumentParser()

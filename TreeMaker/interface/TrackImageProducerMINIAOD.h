@@ -257,6 +257,9 @@ class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
       map<DetId, vector<int> >    EcalAllDeadChannelsBitMap_;
 
       vector<string> signalTriggerNames, metFilterNames;
+
+      TH1F* h_CutFlow;
+
 };
 
 #endif
