@@ -10,12 +10,9 @@ import numpy as np
 if __name__=="__main__":
 
     layers = -1
-    #dataDir = '/store/user/mcarrigan/fakeTracks/selection_v9_DYJets_aMCNLO/'
-    dataDir = '/store/user/mcarrigan/fakeTracks/selection_v1_DYJets-MC2022/'
-    #dataDir = '/store/user/mcarrigan/fakeTracks/selection_higgsino_700_10_v7p1/'
-    # v2 means only saving pileup with dR > 0.1, v3 includes binary string of detector/subdetectors hit 
-    outDir = '/store/user/mcarrigan/fakeTracks/converted_DYJets-MC2022_v1/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_DYJets-MC2022_v1/'
+    dataDir = '/store/user/mcarrigan/fakeTracks/selection_v1_madgraphEE-DYJetsToLL/'
+    outDir = '/store/user/mcarrigan/fakeTracks/converted_v1_madgraphEE-DYJetsToLL/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/converted_v1_madgraphEE-DYJetsToLL/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
@@ -55,6 +52,7 @@ if __name__=="__main__":
     error                   = {5}error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
+    +IsSmallJob = true
     transfer_input_files = {2}, wrapper.sh, convertData.py, Infos.h
     getenv = true
     queue {0}

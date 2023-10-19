@@ -1,4 +1,4 @@
-import pickle
+#import pickle
 import os,re
 import sys
 import time
@@ -9,9 +9,9 @@ import numpy as np
 
 if __name__=="__main__":
 
-    dataDir = '/store/user/mcarrigan/Images-v1-DYJets-madgraph-MC2022/'
-    outDir = '/store/user/mcarrigan/fakeTracks/selection_v1_DYJets-madgraph-MC2022/'
-    logDir = '/data/users/mcarrigan/Logs/fakeTracks/selection_v1_DYJets-madgraph-MC2022/'
+    dataDir = '/store/user/mcarrigan/Images-v1-madgraphEE-DYJetsToLL/'
+    outDir = '/store/user/mcarrigan/fakeTracks/selection_v1_madgraphEE-DYJetsToLL/'
+    logDir = '/data/users/mcarrigan/Logs/fakeTracks/selection_v1_madgraphEE-DYJetsToLL/'
     reprocessAllFiles = True
 
     if(not os.path.isdir(outDir)): os.mkdir(outDir)
@@ -43,7 +43,7 @@ if __name__=="__main__":
     Rank = TARGET.IsLocalSlot
     request_disk = 2000MB
     request_memory = 300MB
-    request_cpus = 4
+    request_cpus = 1
     executable              = wrapper.sh
     arguments               = $(PROCESS) {1} {2} {3}
     log                     = {4}log_$(PROCESS).log
@@ -52,6 +52,7 @@ if __name__=="__main__":
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
     transfer_input_files = {2}, wrapper.sh, selectData.cpp, Infos.h
+    +IsSmallJob = true
     getenv = true
     queue {0}
     """.format(len(files),dataDir,filelist,outDir, logDir)

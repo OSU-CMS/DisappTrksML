@@ -9,7 +9,12 @@ from itertools import product
 import numpy as np
 import shutil
 
-def cpuScript():
+def cpuScript(container='false'):
+    if container=='true':
+        containerName='disappTrksCPU.sif'
+    else:
+        containerName=''
+
     f = open('run.sub', 'w')
     submitLines = """
     Universe = vanilla
@@ -20,21 +25,22 @@ def cpuScript():
     request_cpus = 2
     hold = False
     executable              = run_wrapper.sh
-    arguments               = {0} $(PROCESS) {2} {3} {4} {5}
+    arguments               = {0} $(PROCESS) {2} {3} {4} {5} {6} {8}
     log                     = {2}{0}/log_$(PROCESS).log
     output                  = {2}{0}/out_$(PROCESS).txt
     error                   = {2}{0}/error_$(PROCESS).txt
     should_transfer_files   = Yes
     when_to_transfer_output = ON_EXIT
-    transfer_input_files = run_wrapper.sh, fakesNN.py, plotMetrics.py, params.npy, utilities.py, fakeClass.py, validateData.py, {5}
+    +isSmallJob = true
+    transfer_input_files = run_wrapper.sh, fakesNN.py, plotMetrics.py, params.npy, utilities.py, fakeClass.py, validateData.py, singularity_wrapper.sh, {5}, {7}
     getenv = true
     queue {1}
-    """.format(folder, njobs, logDir, repeatSearches, 'false', config)
+    """.format(folder, njobs, logDir, repeatSearches, 'false', config, container, containerName, tune)
 
     f.write(submitLines)
     f.close()
 
-def gpuScript():
+def gpuScript(container='true'):
     f = open('run.sub', 'w')
     submitLines = """
     Universe = vanilla
@@ -45,7 +51,7 @@ def gpuScript():
     request_cpus = 6
     hold = False
     executable              = run_wrapper.sh
-    arguments               = {0} $(PROCESS) {2} {3} {4} {5}
+    arguments               = {0} $(PROCESS) {2} {3} {4} {5} {6} {7}
     log                     = {2}{0}/log_$(PROCESS).log
     output                  = {2}{0}/out_$(PROCESS).txt
     error                   = {2}{0}/error_$(PROCESS).txt
@@ -56,7 +62,7 @@ def gpuScript():
     +IsGPUJob = true
     requirements = ((Target.IsGPUSlot == True))
     queue {1}
-    """.format(folder, njobs, logDir, repeatSearches, 'true', config)
+    """.format(folder, njobs, logDir, repeatSearches, 'true', config, container, tune)
 
     f.write(submitLines)
     f.close()
@@ -65,11 +71,14 @@ if __name__=="__main__":
 
     useGPU = True
     gridSearch = False
+    hpTune = False
     inputDim = 178
-    folder = "fakeTracks_4PlusLayer_DYOnly_v1_Jul21_v1"
+    folder = "fakeTracks_oct18-23-noTune"
     logDir = "/data/users/mcarrigan/log/disappTrks/fakeTrackNN/Run3/"
 
     config = 'test.json'
+
+    container = True
 
     dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets-MC2022_v1/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_v9p3/"]
     #dataDir = ["/store/user/mcarrigan/fakeTracks/converted_DYJets_aMCNLO_v9p3/", "/store/user/mcarrigan/fakeTracks/converted_NeutrinoGun_ext_v9p3/"]
@@ -113,7 +122,19 @@ if __name__=="__main__":
     shutil.copy('params.npy', logDir + str(folder))
     shutil.copy('jobInfo.npy', logDir + str(folder))
 
-    if useGPU: gpuScript()
-    else: cpuScript()
+    tune = 'false'
+    if hpTune: tune = 'true'
+
+    if useGPU: 
+        if not container:
+            print("Training on GPU can only be done in singularity container, please set option container=True")
+            sys.exit()
+        else:
+            gpuScript('true')
+    else: 
+        if not container:
+            cpuScript('false')
+        else:
+            cpuScript('true')
 
     os.system('condor_submit run.sub')
