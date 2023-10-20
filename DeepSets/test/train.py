@@ -24,14 +24,18 @@ if False:
 #######
 
 backup_suffix = datetime.now().strftime("%Y-%m-%d_%H.%M.%S")
-outdir = "train_increase_phi_neurons/"
+outdir = "train_" + backup_suffix + "/"
+if len(sys.argv) > 1:
+    input_params = np.load("params.npy", allow_pickle=True)[int(sys.argv[1])]
+    print(input_params)
+    outdir = str(input_params[-1])
 
 
 info_indices = [4, 8, 9, 12]  # nPV  # eta  # phi  # nValidPixelHits
 model_params = {
     "eta_range": 0.25,
     "phi_range": 0.25,
-    "phi_layers": [128, 128, 512],
+    "phi_layers": [64, 64, 256],
     "f_layers": [64, 64, 64],
     "max_hits": 100,
     "track_info_indices": info_indices,
@@ -55,7 +59,6 @@ if len(sys.argv) > 1:
 
 train_params = {"epochs": 100, "outdir": outdir, "patience_count": 20}
 
-print("output directory", outdir)
 if not os.path.isdir(outdir):
     os.mkdir(outdir)
 
@@ -69,8 +72,9 @@ print(("Found", nFiles, "input files"))
 
 # Use a 70 20 10 split for training, validation, and testing
 file_ids = {
-    "train": inputIndices[: int(0.8 * nFiles)],
-    "validation": inputIndices[int(0.8 * nFiles) :],
+    "train": inputIndices[: nFiles * 0.7],
+    "validation": inputIndices[nFiles * 0.7 : nFiles * 0.9],
+    "test": inputIndices[nFiles * 0.9 :],
 }
 
 train_generator = BalancedGenerator(file_ids["train"], **train_generator_params)
@@ -82,17 +86,16 @@ arch.fit_generator(
 
 arch.saveGraph()
 
-#arch.save_trainingHistory(train_params["outdir"] + "trainingHistory.pkl")
-#arch.plot_trainingHistory(
-#    train_params["outdir"] + "trainingHistory.pkl",
-#    train_params["outdir"] + "trainingHistory.png",
-#    "loss",
-#)
-
+arch.save_trainingHistory(train_params["outdir"] + "trainingHistory.pkl")
+arch.plot_trainingHistory(
+    train_params["outdir"] + "trainingHistory.pkl",
+    train_params["outdir"] + "trainingHistory.png",
+    "loss",
+)
 arch.save_weights(train_params["outdir"] + "model_weights.h5")
 arch.save_model(train_params["outdir"] + "model.h5")
-#arch.save_metrics(
-#    train_params["outdir"] + "trainingHistory.pkl",
-#    train_params["outdir"] + "metrics.pkl",
-#    train_params,
-#)
+arch.save_metrics(
+    train_params["outdir"] + "trainingHistory.pkl",
+    train_params["outdir"] + "metrics.pkl",
+    train_params,
+)
