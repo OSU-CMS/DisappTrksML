@@ -6,12 +6,19 @@ import datetime
 
 if __name__=="__main__":
 
-    logdir = "/data/users/mcarrigan/Logs/train/"
-    datadir = "/data/users/mcarrigan/train/"
+    logdir = "/store/user/rsantos/2022/TrainedModels/Logs/"
+    datadir = "/store/user/rsantos/2022/TrainedModels/Data/"
 
     params = [
-        [[64,64,64,64,64,64,128],[128,64],0.1,30,datadir+"kfold0/"]
-        # [[64,64,64,64,64,64,128],[128,64],0.01,15,"kfold1/"],
+         [[128, 128 , 512],[64, 64, 64], datadir + "increase_phi_neurons/"],
+         [[64, 64, 64, 256],[64, 64, 64], datadir + "four_phi_layers/"],
+         [[64, 64, 64, 64, 256],[64, 64, 64], datadir + "five_phi_layers/"],
+         [[128, 128, 128, 128, 512],[64, 64, 64], datadir + "increase_phi_neurons_and_layers/"],
+         [[64, 64, 256],[128, 128, 128], datadir + "increase_f_neurons/"],
+         [[64, 64, 256],[64, 64, 64, 64], datadir + "four_f_layers/"],
+         [[64, 64, 256],[64, 64, 64, 64, 64], datadir + "five_f_layers/"],
+         [[64, 64, 256],[128, 128, 128, 128, 128], datadir + "increase_f_neurons_and_layers/"],
+
         # [[64,64,128],[128,64,64,64,64,64],0.1,30,"kfold2/"],
         # [[64,64,128],[128,64,64,64,64,64],0.01,15,"kfold3/"],
         # [[64,32],[32,32],0.1,50,"kfold4/"],

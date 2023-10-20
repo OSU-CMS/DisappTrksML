@@ -7,7 +7,7 @@ from DisappTrksML.DeepSets.architecture import (
 )
 import sys
 import numpy as np
-from ROOT import TFile
+from ROOT import TFile, TH2D, TCanvas
 import tensorflow as tf
 from tensorflow.keras.models import Model
 import cmsml
@@ -318,15 +318,37 @@ class ElectronModel(DeepSetsArchitecture):
             return True, 0
         sets = data[obj[0]][:, : self.max_hits]
 
-        x = [sets]
+        self.x = [sets]
 
         if len(obj) > 1:
             info = data[obj[1]][:, self.track_info_indices]
-            x.append(info)
+            self.x.append(info)
 
         return False, self.model.predict(
-            x,
+            self.x,
         )
+
+    def visualizePredictions(self, fname: str, values) -> None:
+        """
+        Create visual representations of the data input into the DeepSets model.
+
+        You should pass in an array of eta and phi values for all of the recHits inside an event
+        """
+        # Fill the histogram with dEta and dPhi for every hit inside an
+
+        output_file = TFile(fname, "RECREATE")
+        for i, event in enumerate(values):
+            canvas = TCanvas("canvas", "Classifier Image", 800, 600)
+            canvas.SetBatch(True)
+            hist = TH2D("hist2d", "image", 100, -5, 5, 100, -5, 5)
+            for hit in event:
+                # Create Canvas to display results
+                # Create 2D histogram
+                hist.Fill(hit[0], hit[1])
+            # Draw and save histogram
+            hist.Draw("COLZ")
+            output_file.WriteTObject(canvas, f"canvas_event_{i}")
+        output_file.Close()
 
     def saveGraph(self):
         cmsml.tensorflow.save_graph("graph.pb", self.model, variables_to_constants=True)

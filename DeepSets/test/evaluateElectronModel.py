@@ -2,46 +2,48 @@ import numpy as np
 import glob, os, sys
 
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from DisappTrksML.DeepSets.architecture import *
 from DisappTrksML.DeepSets.ElectronModel import *
 
-# initialize the model with the weights
-#fileDir = '/data/users/llavezzo/forBrian/kfold19_noBatchNorm_finalTrainV3/'
-fileDir = '/data/users/llavezzo/models/electrons/kfold19_noBatchNorm_finalTrainV3/'
-model_file = 'model.h5'
+
+def indices_matching_criteria_np(arr, criteria):
+    return np.where(criteria(arr))[0]
+
+
+fileDir = "/data/users/rsantos/train/test/test1/"
+model_file = "model.h5"
 model_params = {
-	'phi_layers':[400,256,128], 
-	'f_layers': [128,128,64,32],
-	'track_info_indices' : [4,8,9,12]
+    "phi_layers": [64, 64, 256],
+    "f_layers": [64, 64, 64],
+    "track_info_indices": [4, 8, 9, 12],
 }
 arch = ElectronModel(**model_params)
-arch.load_model(fileDir+model_file)
+arch.load_model(fileDir + model_file)
 
-cm = np.zeros((2,2))
+cm = np.zeros((2, 2))
+input_dir = "/store/user/rsantos/2022/combined_DYJet/test/"
+inputFiles = glob.glob(input_dir + "images_*.root.npz")
+inputIndices = np.array([f.split("images_")[-1][:-9] for f in inputFiles])
+nFiles = len(inputIndices)
+test_files = [
+    f"{input_dir}images_{x}.root.npz" for x in inputIndices[int(0.9 * nFiles) :]
+]
+cm = [[0, 0],
+      [0, 0]]
+# Loop over all of the test_files
+for i, fname in enumerate(test_files):
+    _, signal_preds = arch.evaluate_npy(fname, obj=["signal", "signal_info"])
+    _, background_preds = arch.evaluate_npy(fname, obj=["background", "background_info"])
+    cm[1][1] += np.count_nonzero(signal_preds[:,1] > 0.5)
+    cm[0][1] += np.count_nonzero(background_preds[:,1] > 0.5)
+    cm[1][0] += np.count_nonzero(signal_preds[:,1] <= 0.5)
+    cm[0][0] += np.count_nonzero(background_preds[:,1] <= 0.5)
 
-# evaluate the model
-#dirs = ["/store/user/llavezzo/disappearingTracks/electronsTesting/higgsino_700GeV_10000cm_fullSel_FIXED/"]
-dirs = ["/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt1_FIXED/",
-               "/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt2_FIXED/"]
-#dirs = ["/store/user/mcarrigan/deepSets/validation/higgsino_700_10/"]
-inputFiles = []
-#for d in dirs: inputFiles += glob.glob(d+'*.root.npz') 
-for d in dirs: inputFiles += glob.glob(d+'*.npz')
-
-totPreds = []
-for i,fname in enumerate(inputFiles):
-	print(i)
-
-        skip, preds = arch.evaluate_npy(fname, obj=['tracks', 'infos'])
-	#skip, preds = arch.evaluate_npy(fname, obj=['signal', 'signal_infos'])
-	if not skip:
-		cm[0,1] += np.count_nonzero(preds[:,1] > 0.5)
-		cm[0,0] += np.count_nonzero(preds[:,1] <= 0.5)
-
-	totPreds = np.append(totPreds,preds[:,1])
-
-print(cm)
-np.save("SingleEle_fullSel_preds.npy", totPreds)
+precision, recall, f1 = arch.calc_binary_metrics(cm)
+print("Precision " , precision)
+print("Recall ", recall)
+print("f1 " , f1)
