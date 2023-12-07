@@ -5,12 +5,12 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from DisappTrksML.DeepSets.architecture import *
-from DisappTrksML.DeepSets.ElectronModel import *
+from architecture import *
+from ElectronModel import *
 
 # initialize the model with the weights
 #fileDir = '/data/users/llavezzo/forBrian/kfold19_noBatchNorm_finalTrainV3/'
-fileDir = '/data/users/llavezzo/models/electrons/kfold19_noBatchNorm_finalTrainV3/'
+fileDir = '/home/rsantos/scratch0/CMSSW_12_4_11_patch3/src/DisappTrksML/DeepSets/test/train_2023-08-20_21.31.24/'
 model_file = 'model.h5'
 model_params = {
 	'phi_layers':[400,256,128], 
@@ -23,25 +23,5 @@ arch.load_model(fileDir+model_file)
 cm = np.zeros((2,2))
 
 # evaluate the model
-#dirs = ["/store/user/llavezzo/disappearingTracks/electronsTesting/higgsino_700GeV_10000cm_fullSel_FIXED/"]
-dirs = ["/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt1_FIXED/",
-               "/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt2_FIXED/"]
-#dirs = ["/store/user/mcarrigan/deepSets/validation/higgsino_700_10/"]
-inputFiles = []
-#for d in dirs: inputFiles += glob.glob(d+'*.root.npz') 
-for d in dirs: inputFiles += glob.glob(d+'*.npz')
-
-totPreds = []
-for i,fname in enumerate(inputFiles):
-	print(i)
-
-        skip, preds = arch.evaluate_npy(fname, obj=['tracks', 'infos'])
-	#skip, preds = arch.evaluate_npy(fname, obj=['signal', 'signal_infos'])
-	if not skip:
-		cm[0,1] += np.count_nonzero(preds[:,1] > 0.5)
-		cm[0,0] += np.count_nonzero(preds[:,1] <= 0.5)
-
-	totPreds = np.append(totPreds,preds[:,1])
-
-print(cm)
+arch.evaluate_dir(["/store/user/rsantos/2022/combined_DYJet/test/"])
 np.save("SingleEle_fullSel_preds.npy", totPreds)

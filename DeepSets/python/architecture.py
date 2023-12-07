@@ -252,17 +252,20 @@ class DeepSetsArchitecture:
     def fit_generator(self, train_generator, val_generator=None, 
                       epochs=10, monitor='val_loss',patience_count=10,
                       metrics = ['accuracy', keras.metrics.Precision(), keras.metrics.Recall()],
-                      outdir=""):
+                      outdir="", callbacks=None):
 
         self.model.compile(optimizer=optimizers.Adagrad(), loss='binary_crossentropy', metrics=metrics)
-        
-        training_callbacks = [
-            callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
-            # callbacks.ModelCheckpoint(filepath=outdir + 'model.{epoch}.h5',
-            #                           save_best_only=True,
-            #                           monitor=monitor,
-            #                           mode='auto')
-        ]
+
+        if not callbacks:
+            training_callbacks = [
+                callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
+                # callbacks.ModelCheckpoint(filepath=outdir + 'model.{epoch}.h5',
+                #                           save_best_only=True,
+                #                           monitor=monitor,
+                #                           mode='auto')
+            ]
+        else:
+            training_callbacks = callbacks
 
         if val_generator is None:
             self.training_history = self.model.fit(train_generator,

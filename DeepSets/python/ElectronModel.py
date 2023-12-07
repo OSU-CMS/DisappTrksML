@@ -205,7 +205,7 @@ class ElectronModel(DeepSetsArchitecture):
 		else:
 			print('No events found in file')
 
-	def buildModel(self):
+	def buildModel(self, phi_layers, f_layers, ):
 		#Rewrite
 		inputs = Input(shape = self.input_shape,  name = "input" )
 		inputs_track = Input(shape = (self.track_info_shape,), name = "input_track" )
@@ -255,8 +255,37 @@ class ElectronModel(DeepSetsArchitecture):
 			x.append(info)
 			
 		return False, self.model.predict(x,)
+    def evaluate_dir(self, paths:list[str], obj=['tracks', 'infos']) -> tuple[float, float ,float]:
+        """
+        Return predictions for all npy files in a directory
 
-	def saveGraph(self):
-		cmsml.tensorflow.save_graph("graph.pb", self.model, variables_to_constants=True)
-		cmsml.tensorflow.save_graph("graph.pb.txt", self.model, variables_to_constants=True)
+        obj: The keys used to store data inside npy files usually either ['tracks', 'infos'] or ['signal', 'signal_infos']
+        """
+        inputFiles = []
+        for d in dirs: inputFiles += glob.glob(d+'*.npz')
+        totPreds = []
+        TP, TN, FP, FN = (0, 0, 0, 0)
+        for i, fname in enumerate(test_files):
+            _, signal_preds = arch.evaluate_npy(fname, obj=["signal", "signal_info"])
+            _, background_preds = arch.evaluate_npy(fname, obj=["background", "background_info"])
+            TP += np.count_nonzero(signal_preds[:,1] > 0.5)
+            FP += np.count_nonzero(background_preds[:,1] > 0.5)
+            FN += np.count_nonzero(signal_preds[:,1] <= 0.5)
+            TN += np.count_nonzero(background_preds[:,1] <= 0.5)
 
+        precision = TP / (TP + FP)
+        recall = TP / (TP + FN)
+        f1 = 2 * (precision * recall) / (precision + recall) 
+        return recall, precision, f1 
+    def saveGraph(self):
+        cmsml.tensorflow.save_graph("graph.pb", self.model, variables_to_constants=True)
+        cmsml.tensorflow.save_graph("graph.pb.txt", self.model, variables_to_constants=True)
+
+	def condor(self):
+        parser=argparse.ArgumentParser()
+        parser.add_argument('-o', '--outputDir', type=str, default='', help='Output directory to save output files and plots')
+        parser.add_argument('-d', '--dataDir', type=str, default='', help='Input data directory')
+
+if __name__ == "__main__":
+       model = ElectronModel()
+       args = parse_args()

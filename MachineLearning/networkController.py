@@ -31,7 +31,7 @@ class NetworkController(ABC):
        
     
     @abstractmethod
-    def buildModel():
+    def buildModel(**kwargs):
         """ Build neural network """
         logging.warning("buildModel() should be implemented in your class!")
 
@@ -41,7 +41,7 @@ class NetworkController(ABC):
         logging.warning("evaluateModel() should be implemented in your class!")
 
     @abstractmethod
-    def trainModel():
+    def trainModel(**kwargs):
         """ Train neural network """
         logging.warning("evaluateModel() should be implemented in your class!")
         
