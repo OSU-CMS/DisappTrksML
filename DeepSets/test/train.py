@@ -3,10 +3,8 @@ warnings.filterwarnings('ignore')
 import glob, os
 
 import tensorflow as tf
-import cmsml
-from sklearn.model_selection import KFold
 
-from DisappTrksML.DeepSets.ElectronModel import *
+from DisappTrksML.DeepSets.ElectronModel import ElectronModel
 from DisappTrksML.DeepSets.MuonModel import *
 from DisappTrksML.DeepSets.generator import *
 from DisappTrksML.DeepSets.utilities import *
