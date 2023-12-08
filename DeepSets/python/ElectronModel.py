@@ -1,17 +1,27 @@
 #!/usr/bin/env python
-from DisappTrksML.DeepSets.architecture import *
 import sys
+sys.path.append('/home/rsantos/scratch0/CMSSW_12_4_11_patch3/src/DisappTrksML/MachineLearning/') # Fix this
+from networkController import NetworkController
+from typing import Union
+import keras
+from tensorflow.keras import optimizers, regularizers, callbacks
+import glob
+import numpy as np
+import logging
+from DisappTrksML.DeepSets.generator import Generator, BalancedGenerator
+from tensorflow.keras.models import Model
+from tensorflow import reduce_sum
+from tensorflow.keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization, concatenate
 
-class ElectronModel(DeepSetsArchitecture):
+class ElectronModel(NetworkController):
 
 	def __init__(self,
 				 eta_range=0.25, phi_range=0.25,
 				 max_hits=100,
-				 phi_layers=[64, 64, 256], f_layers =[64, 64, 64],
 				 track_info_indices=[4, 8, 9, 12]):
-		DeepSetsArchitecture.__init__(self, eta_range, phi_range, max_hits, phi_layers, f_layers, track_info_indices)
 		self.track_info_shape = len(track_info_indices)
-
+		self.max_hits = max_hits
+		self.input_shape = (self.max_hits, 4)
 	def eventSelectionTraining(self, event):
 		trackPasses = []
 		for track in event.tracks:
@@ -205,28 +215,26 @@ class ElectronModel(DeepSetsArchitecture):
 		else:
 			print('No events found in file')
 
-	def buildModel(self):
-		#Rewrite
+	def buildModel(self, **kwargs):
 		inputs = Input(shape = self.input_shape,  name = "input" )
 		inputs_track = Input(shape = (self.track_info_shape,), name = "input_track" )
 		print("input shape", self.input_shape, "input track shape", self.track_info_shape)
 		phi_inputs = Input(shape = (self.input_shape[-1],))
 		phi_network = Masking()(phi_inputs)
-		for layerSize in self.phi_layers[:-1]:
+		for layerSize in kwargs['phi_layers'][:-1]:
 			phi_network = Dense(layerSize)(phi_network)
 			phi_network = Activation('relu')(phi_network)
-			#phi_network = BatchNormalization()(phi_network)
-		phi_network = Dense(self.phi_layers[-1])(phi_network)
+		phi_network = Dense(kwargs['phi_layers'][-1])(phi_network)
 		phi_network = Activation('linear')(phi_network)
 		unsummed_model = Model(inputs=phi_inputs, outputs=phi_network)
 		phi_set = TimeDistributed(unsummed_model)(inputs)
-		summed = Lambda(lambda x: tf.reduce_sum(x, axis=1))(phi_set)
+		summed = Lambda(lambda x: reduce_sum(x, axis=1))(phi_set)
 		if (self.track_info_shape == 0):
-			f_network = Dense(self.f_layers[0])(summed)
+			f_network = Dense(kwargs['f_layers'][0])(summed)
 		else:
-			f_network = Dense(self.f_layers[0])(concatenate([summed,inputs_track]))
+			f_network = Dense(kwargs['f_layers'][0])(concatenate([summed,inputs_track]))
 		f_network = Activation('relu')(f_network)
-		for layerSize in self.f_layers[1:]:
+		for layerSize in kwargs['f_layers'][1:]:
 			f_network = Dense(layerSize)(f_network)
 			f_network = Activation('relu')(f_network)
 		f_network = Dense(2)(f_network)
@@ -237,15 +245,11 @@ class ElectronModel(DeepSetsArchitecture):
 
 		self.model = integratedmodel
 
-	def evaluate_model(self, event, track):
-		event_converted = self.convertTrackFromTree(event, track, 1) # class_label doesn't matter
-		prediction = self.model.predict([np.reshape(event_converted['sets'], (1, self.max_hits, 4)), np.reshape(event_converted['infos'], (1,len(event_converted['infos'])))[:, self.track_info_indices]])
-		return prediction[0, 1] # p(is electron)
 
-	def evaluate_npy(self, fname, obj=['sets']):
+	def evaluateModel(self, fname:str, obj=['sets'])->Union[list[float],None]:
 		data = np.load(fname, allow_pickle=True)
 
-		if(data[obj[0]].shape[0] == 0): return True, 0
+		if(data[obj[0]].shape[0] == 0): return None
 		sets = data[obj[0]][:, :self.max_hits]
 
 		x = [sets]
@@ -254,7 +258,32 @@ class ElectronModel(DeepSetsArchitecture):
 			info = data[obj[1]][:, self.track_info_indices]
 			x.append(info)
 			
-		return False, self.model.predict(x,)
+		return self.model.predict(x,)
+
+	def trainModel(self, data_directory:str, epochs:int = 10, monitor='val_loss',
+		       patience_count=10, metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()],
+		       optimizer=optimizers.Adagrad(), outdir="", val_generator_params={},
+		       train_generator_params={})->Model:
+
+		self.model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=metrics)
+		training_callbacks = [
+		callbacks.EarlyStopping(monitor=monitor, patience=patience_count)]
+
+		inputFiles = glob.glob(data_directory + 'images_*.root.npz')
+		inputIndices = np.array([f.split('images_')[-1][:-9] for f in inputFiles])
+		nFiles = len(inputIndices)
+		logging.info(f"Found {nFiles} inputfiles")
+
+		print("Before generators")
+		train_generator = BalancedGenerator(inputIndices[:int(nFiles*0.7)], **train_generator_params)
+		val_generator = Generator(inputIndices[int(nFiles*0.7):], **val_generator_params)
+		print("After generators")
+		self.model.fit(train_generator,
+			  validation_data=val_generator,
+			  callbacks=training_callbacks,
+			  epochs=epochs,
+			  verbose=2)
+
 
 	def saveGraph(self):
 		cmsml.tensorflow.save_graph("graph.pb", self.model, variables_to_constants=True)
