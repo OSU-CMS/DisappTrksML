@@ -5,6 +5,7 @@ from networkController import NetworkController
 from typing import Union
 import keras
 from tensorflow.keras import optimizers, regularizers, callbacks
+from tensorflow.keras.callbacks import TensorBoard
 import glob
 import numpy as np
 import logging
@@ -260,14 +261,15 @@ class ElectronModel(NetworkController):
 			
 		return self.model.predict(x,)
 
-	def trainModel(self, data_directory:str, epochs:int = 10, monitor='val_loss',
-		       patience_count=10, metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()],
+	def train_model(self, data_directory:str, epochs:int = 10, monitor='val_loss',
+		       patience_count:int=10, metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()],
 		       optimizer=optimizers.Adagrad(), outdir="", val_generator_params={},
 		       train_generator_params={})->Model:
 
 		self.model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=metrics)
 		training_callbacks = [
-		callbacks.EarlyStopping(monitor=monitor, patience=patience_count)]
+		        callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
+                ]
 
 		inputFiles = glob.glob(data_directory + 'images_*.root.npz')
 		inputIndices = np.array([f.split('images_')[-1][:-9] for f in inputFiles])

@@ -73,6 +73,7 @@ class NetworkController():
             tf.compat.v1.Session(config=config)
         else:
             os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+            # Limits CPU
             config = tf.compat.v1.ConfigProto(inter_op_parallelism_threads = 4,
                                               intra_op_parallelism_threads = 4,
                                               allow_soft_placement = True,

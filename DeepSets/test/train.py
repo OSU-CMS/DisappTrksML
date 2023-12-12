@@ -3,11 +3,13 @@ warnings.filterwarnings('ignore')
 import glob, os
 
 import tensorflow as tf
-
-from DisappTrksML.DeepSets.ElectronModel import ElectronModel
-from DisappTrksML.DeepSets.MuonModel import *
-from DisappTrksML.DeepSets.generator import *
-from DisappTrksML.DeepSets.utilities import *
+from datetime import datetime
+import numpy as np
+import sys
+sys.path.append('/home/ryan/Documents/Research/DisappearingTracks/')
+from DisappTrksML.DeepSets.python.ElectronModel import ElectronModel
+from DisappTrksML.DeepSets.python.generator import BalancedGenerator, Generator
+#from DisappTrksML.DeepSets.utilities import *
 
 if False:
 	# limit CPU usage
@@ -61,7 +63,7 @@ train_params = {
 if(not os.path.isdir(outdir)): os.mkdir(outdir)
 
 arch = ElectronModel(**model_params)
-arch.buildModel()
+arch.build_model()
 
 inputFiles = glob.glob(train_generator_params['input_dir']+'images_*10.root.npz')
 inputIndices = np.array([f.split('images_')[-1][:-9] for f in inputFiles])
