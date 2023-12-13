@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import sys
 sys.path.append('/home/ryan/Documents/Research/DisappearingTracks/DisappTrksML') # Fix this
+import datetime
+import os
 from MachineLearning.networkController import NetworkBase
 from MachineLearning.networkController import NetworkBase
 from typing import Union
@@ -18,13 +20,15 @@ from tensorflow.keras.layers import Dense, TimeDistributed, Masking, Input, Lamb
 class ElectronModel(NetworkBase):
 
         def __init__(self,
-                                 eta_range=0.25, phi_range=0.25,
-                                 max_hits=100,
-                                 track_info_indices=[4, 8, 9, 12]):
+                                 eta_range:float=0.25, phi_range:float=0.25,
+                                 max_hits:int=100,
+                                 track_info_indices:list[int]=[4, 8, 9, 12],
+                                 log_dir:Union[str,None]=None):
                 self.track_info_shape = len(track_info_indices)
                 self.max_hits = max_hits
                 self.input_shape = (self.max_hits, 4)
                 self.track_info_indices = track_info_indices
+                self.log_dir = log_dir
 
         def eventSelectionTraining(self, event):
                 trackPasses = []
@@ -282,13 +286,28 @@ class ElectronModel(NetworkBase):
         def train_model(self, data_directory:str, epochs:int = 10, monitor='val_loss',
                        patience_count:int=10, metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()],
                        optimizer=optimizers.legacy.Adagrad(), outdir="", val_generator_params={},
-                       train_generator_params={})->Model:
+                        train_generator_params={}, use_tensorboard:bool=False, tensorboard_histogram_freq:int=1)->Model:
 
                 self.model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=metrics)
-                training_callbacks = [
-                        callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
-                ]
 
+                if not use_tensorboard:
+                        training_callbacks = [
+                                callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
+                        ]
+                else:
+                        if self.log_dir:
+                                tensorboard_callback =callbacks.TensorBoard(log_dir=self.log_dir, histogram_freq=tensorboard_histogram_freq)
+                                logging.info(f"TensorBoard logs will be sent to {self.log_dir}")
+                        else:
+                                log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                                tensorboard_callback= callbacks.TensorBoard(log_dir=log_dir, histogram_freq=tensorboard_histogram_freq)
+                                logging.info(f"TensorBoard logs will be sent to {log_dir}")
+                        training_callbacks = [
+                                callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
+                                tensorboard_callback
+                        ]
+
+                                
                 inputFiles = glob.glob(data_directory + 'images_*.root.npz')
                 inputIndices = np.array([f.split('images_')[-1][:-9] for f in inputFiles])
                 nFiles = len(inputIndices)
