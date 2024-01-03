@@ -3,14 +3,17 @@
 from abc import ABC, abstractmethod
 import os
 from typing import Union, Dict
+import logging
+from glob import glob
+
 import numpy as np
 import cmsml
 import tensorflow as tf
 from tensorflow.keras.models import Model, load_model
 import optuna
-import logging
 import keras
-from glob import glob
+
+from condor_script_generator import HTCondorScriptGenerator
 
 
 class NetworkBase(ABC):
@@ -22,8 +25,6 @@ class NetworkBase(ABC):
 
     Your model should also inherit this class
     """
-    def __init__(self):
-        print("awhlkdsajflksajdf")
     @abstractmethod
     def build_model(self, *args, **kwargs):
         """ Return a built nueral network """
@@ -139,8 +140,8 @@ class NetworkController():
                                                Dict[str, tuple[int, int]], Dict[str, list]] = {},
                              train_parameters = {},
                              build_parameters = {},
-                             use_gpu:bool=True, use_condor:bool=False, num_trials:int= 10, timeout:int=600,
-                             input_dir:str="", glob_pattern="*", metric = 2, threshold = 0.5)->None:
+                             use_gpu:bool=True, use_condor:bool=False, condor_params:Union[Dict[str, str], None]=None, condor_setup:Union[str, np.ndarray, None]=None, num_trials:int= 10, timeout:int=600,
+                             input_dir:str="", glob_pattern:str="*", metric:int = 2, threshold:float = 0.5)->None:
         """
         Return output of hyperparameter tuning of your model. Type checking is performed in the objective function, so make sure
         that you properly distinguish floats from integers when inputting the trainable params
@@ -157,14 +158,40 @@ class NetworkController():
                                               allow_soft_placement = True,
                                               device_count={'CPU':4})
             tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
-        self.input_dir = input_dir 
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
-        logging.debug("Setting up Optuna study")
-        study = optuna.create_study(direction="maximize")
 
-        study.optimize(lambda trials: self._objective(trials, train_parameters=train_parameters,
-                                                      build_parameters=build_parameters,
-                                                      trainable_params = trainable_params,
-                                                      glob_pattern=glob_pattern, metric=metric, threshold=threshold),
-                       num_trials, timeout) 
+        if use_condor:
+            if (condor_setup is None) or (condor_params is None):
+                raise Exception("If you want to use condor you must set the condor_setup and condor_params variables")
+            condor_generator = HTCondorScriptGenerator(condor_params["executable"], log_dir=condor_params["log_dir"]) 
+            condor_generator.add_option("Universe", "vanilla")
+            condor_generator.add_option("+IsLocalJob", "true")
+            condor_generator.add_option("Rank", "TARGET.IsLocalSlot")
+            condor_generator.add_option("request_disk", "2000MB")
+            condor_generator.add_option("request_memory", "2GB")
+            condor_generator.add_option("should_transfer_files", "Yes")
+            condor_generator.add_option("when_to_transfer_output", "ON_EXIT")
+            condor_generator.add_option("transfer_input_files", ' '.join(condor_params["input_files"]))
+            if use_gpu:
+                condor_generator.add_option("request_cpus", "6")
+            else:
+                condor_generator.add_option("request_cpus", "2")
+                condor_generator.add_option("+isSmallJob", "true")
+            condor_generator.add_argument(' '.join(condor_params["argument"]))
+            if type(condor_setup) is np.ndarray:
+                condor_generator.add_queue(num_jobs=len(condor_setup))
+            elif type(condor_setup) is str:
+                condor_generator.add_queue(num_jobs=len(np.load(condor_setup, allow_pickle=True)))
+            condor_generator.generate_script("run.sub")
+            #os.system("condor_submit run.sub")
+        else:
+            self.input_dir = input_dir 
+            os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+            logging.debug("Setting up Optuna study")
+            study = optuna.create_study(direction="maximize")
+
+            study.optimize(lambda trials: self._objective(trials, train_parameters=train_parameters,
+                                                        build_parameters=build_parameters,
+                                                        trainable_params = trainable_params,
+                                                        glob_pattern=glob_pattern, metric=metric, threshold=threshold),
+                        num_trials, timeout) 
         

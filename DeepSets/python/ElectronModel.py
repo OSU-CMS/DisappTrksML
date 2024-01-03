@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-sys.path.append('/home/ryan/Documents/Research/DisappearingTracks/DisappTrksML') # Fix this
+sys.path.append('/home/ryan/Documents/Research/DisappTrksML') # Fix this
 import datetime
 import os
 from MachineLearning.networkController import NetworkBase
