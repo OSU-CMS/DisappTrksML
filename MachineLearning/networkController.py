@@ -140,7 +140,7 @@ class NetworkController():
                                                Dict[str, tuple[int, int]], Dict[str, list]] = {},
                              train_parameters = {},
                              build_parameters = {},
-                             use_gpu:bool=True, use_condor:bool=False, condor_params:Union[Dict[str, str], None]=None, condor_setup:Union[str, np.ndarray, None]=None, num_trials:int= 10, timeout:int=600,
+                             use_gpu:bool=True, no_container:bool=False, use_condor:bool=False, condor_params:Union[Dict[str, str], None]=None, condor_setup:Union[str, np.ndarray, None]=None, num_trials:int= 10, timeout:int=600,
                              input_dir:str="", glob_pattern:str="*", metric:int = 2, threshold:float = 0.5)->None:
         """
         Return output of hyperparameter tuning of your model. Type checking is performed in the objective function, so make sure
@@ -162,7 +162,13 @@ class NetworkController():
         if use_condor:
             if (condor_setup is None) or (condor_params is None):
                 raise Exception("If you want to use condor you must set the condor_setup and condor_params variables")
-            condor_generator = HTCondorScriptGenerator(condor_params["executable"], log_dir=condor_params["log_dir"]) 
+            if use_gpu:
+               executable = "run_wrapper_gpu.sh"
+            elif no_container:
+                executable = "run_wrapper_no_container.sh"
+            else:
+                executable = "run_wrapper_cpu.sh"
+            condor_generator = HTCondorScriptGenerator(executable, log_dir=condor_params["log_dir"]) 
             condor_generator.add_option("Universe", "vanilla")
             condor_generator.add_option("+IsLocalJob", "true")
             condor_generator.add_option("Rank", "TARGET.IsLocalSlot")
