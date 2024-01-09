@@ -1,6 +1,7 @@
 #!/usr/bin/bash
 
 source /workspace/root_install/bin/thisroot.sh
+export PYTHONPATH=$PYTHONPATH:/data/users/mcarrigan/home_link/.local/
 
 if $3; then
     if $4; then
