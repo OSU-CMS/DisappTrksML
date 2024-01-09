@@ -48,7 +48,6 @@ labels = ['trackIso', 'eta', 'phi', 'nPV', 'dRMinJet', 'Ecalo', 'Pt', 'd0', 'dZ'
           'Layer16', 'Charge16', 'isPixel16', 'pixelHitSize16', 'pixelHitSizeX16', 'pixelHitSizeY16', 'stripShapeSelection16', 'hitPosX16', 'hitPoxY16']
 
 
-
 def plotCM(truth, predictions, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
     labels = ["real", "fake"]
@@ -99,9 +98,14 @@ def plotCM3(predictions, plotDir, outputfile = 'metricPlots.root'):
     h_cm.Write("h_confusionMatrix")
     out.Close()
 
+def f1Score(precision, recall):
+    f1 = 2 * (precision * recall) / (precision + recall)
+    return f1
+
 def getStats(truth, predictions, plotDir, plot = False, threshold = 0.5, outputfile = 'metricPlots.root'):
 
     TP, FP, TN, FN = 0, 0, 0, 0
+    f1 = 0
     for i in range(len(truth)):
         if(truth[i] == 0 and predictions[i] < threshold): TN += 1
         if(truth[i] == 1 and predictions[i] >= threshold): TP += 1
@@ -110,6 +114,7 @@ def getStats(truth, predictions, plotDir, plot = False, threshold = 0.5, outputf
     if(TP > 0): 
         P = float(TP) / float((TP+FP))
         R = float(TP) / float((TP+FN))
+        f1 = f1Score(P, R)
     else: 
         P = 0
         R = 0
@@ -143,20 +148,21 @@ def getStats(truth, predictions, plotDir, plot = False, threshold = 0.5, outputf
         h_score.Write('h_scoreReference')
         out.Close()
 
-    return [TP, FP, TN, FN, P, R]
+    return [TP, FP, TN, FN, P, R, f1]
 
-def plotHistory(history, variables, plotDir, outputfile = 'metricPlots.root'):
+def plotHistory(history, plotDir, outputfile = 'metricPlots.root'):
     out = r.TFile(plotDir + outputfile, "update")
-    for var in variables:
+    for var in history.keys():
+        if "val" in var: continue
         pltName = "c_" + str(var)
         c_plotHistory = r.TCanvas(pltName, pltName, 800, 800)
-        metric = history.history[var]
+        metric = history[var]
         g1 = r.TGraph(len(metric), np.arange(len(metric)).astype('float64'), np.array(metric).astype('float64'))
         g1.Draw()
         g1.SetTitle(var)
         g1.GetXaxis().SetTitle("Epochs")
         g1.GetYaxis().SetTitle(var)
-        metricVal = history.history["val_" + var]
+        metricVal = history["val_" + var]
         g2 = r.TGraph(len(metric), np.arange(len(metricVal)).astype('float64'), np.array(metricVal).astype('float64'))
         g2.Draw("SAME")
         g2.SetLineColor(2)

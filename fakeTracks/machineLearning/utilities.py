@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, BatchNormalization, Dropout
 from sklearn.model_selection import train_test_split
-from keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
 import json
 import random
 import pickle
@@ -19,6 +18,7 @@ import getopt
 import plotMetrics
 from datetime import date
 from sklearn.preprocessing import MinMaxScaler
+import decimal
 
 class bcolors:
     HEADER = '\033[95m'
@@ -31,8 +31,8 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 #need to rerun convert and then use this updated variables list
-variables = ['eventNumber', 'nPV', 'passesSelection', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
-#variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
+#variables = ['eventNumber', 'nPV', 'passesSelection', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
+variables = ['passesSelection', 'eventNumber', 'nPV', 'trackIso', 'eta', 'phi', 'nValidPixelHits', 'nValidHits', 'missingOuterHits', 'dEdxPixel', 'dEdxStrip', 'numMeasurementsPixel', 'numMeasurementsStrip', 'numSatMeasurementsPixel', 'numSatMeasurementsStrip', 'dRMinJet', 'ecalo', 'pt', 'd0', 'dz', 'totalCharge', 'deltaRToClosestElectron', 'deltaRToClosestMuon', 'deltaRToClosestTauHad', 'normalizedChi2', 
     'sumEnergy', 'diffEnergy', 'encodedLayers', 'dz1', 'dz2', 'dz3', 'd01', 'd02', 'd03',
     'layer1', 'charge1', 'subDet1', 'pixelHitSize1', 'pixelHitSizeX1', 
            'pixelHitSizeY1','stripSelection1', 'hitPosX1', 'hitPosY1', 
@@ -71,6 +71,13 @@ varDict = {}
 for x in range(len(variables)):
     varDict[variables[x]] = x
 
+class validatorArgs:
+
+    def __init__(self, outputDir, dataDir, weightsDir):
+        self.outputDir = outputDir
+        self.dataDir = dataDir
+        self.weightsDir = weightsDir
+
 class Model():
 
     def __init__(self, filters, input_dim, batch_norm, metrics):
@@ -93,6 +100,23 @@ class Model():
         model = buildModel(self.filters, self.input_dim, self.batch_norm)
         return model
 
+def saveConfig(inputDict, filename):
+    out_config = {}
+    for key, value in inputDict.items():
+       if key == 'val_metrics':
+           out_config['val_metrics'] = [str(x) for x in value]
+       else:
+           out_config[key] = value 
+
+    configs = json.dumps(out_config)
+    with open(filename, 'w') as outfile:
+        outfile.write(configs)
+
+def readConfig(configFile):
+    with open(configFile, 'r') as openfile:
+        config = json.load(openfile)
+    return config
+    
 def buildModel(filters = [16, 8], input_dim = 55, batch_norm = False, metrics = [keras.metrics.Precision(), keras.metrics.Recall(), keras.metrics.AUC()]):
     #begin NN model
     model = Sequential()
@@ -118,38 +142,57 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, train
     realTracks = []
     fakeTracks = []
     pileupTracks = []
-    for filename in os.listdir(dataDir):
-        print("Loading...", dataDir + filename)
-        if(DEBUG): 
-            if file_count > 50: break
-        myfile = np.load(dataDir+filename, allow_pickle=True)
-        if(saveCategories['fake'] == True):
-            fakes = np.array(myfile["fake_infos"])
-            if len(fakes) != 0:
-                fakes = selectInputs(fakes, inputs)
-        if(saveCategories['real'] == True):
-            reals = np.array(myfile["real_infos"])
-            if len(reals) != 0: 
-                reals = selectInputs(reals, inputs)
-        if(saveCategories['pileup'] == True):
-            pileup = np.array(myfile["pileup_infos"])
-            if len(pileup) != 0:
-                pileup = selectInputs(pileup, inputs)
-        if(file_count == 0):
-            if(saveCategories['fake'] == True): fakeTracks = fakes
-            if(saveCategories['real'] == True): realTracks = reals
-            if(saveCategories['pileup'] == True): pileupTracks = pileup
-        elif(file_count != 0 and len(fakeTracks) == 0 and saveCategories['fake'] == True): fakeTracks = fakes
-        elif(file_count != 0 and len(realTracks) == 0 and saveCategories['real'] == True): realTracks = reals
-        elif(file_count != 0 and len(pileupTracks) == 0 and saveCategories['pileup'] == True): pileupTracks = pileup
-        else:
+    if dataDir.endswith('.npz'):
+        myfile = np.load(dataDir, allow_pickle=True)
+        trainTracks = np.array(myfile['trainTracks'])
+        testTracks = np.array(myfile['testTracks'])
+        valTracks = np.array(myfile['valTracks'])
+        trainTruth = np.array(myfile['trainTruth'])
+        testTruth = np.array(myfile['testTruth'])
+        valTruth = np.array(myfile['valTruth'])
+        #if(saveCategories['fake'] == True): fakeTracks = np.array(myfile['fake_infos'])
+        #if(saveCategories['real'] == True): realTracks = np.array(myfile['real_infos'])
+        #if(saveCategories['pileup'] == True): pileupTracks = np.array(myfile['pileup_infos'])
+
+        ##fakeTracks = selectInputs(fakeTracks, inputs)
+        #realTracks = selectInputs(realTracks, inputs)
+        #pileupTracks = selectInputs(pileupTracks, inputs)
+
+        return trainTracks, testTracks, valTracks, trainTruth, testTruth, valTruth
+
+    else:
+        for filename in os.listdir(dataDir):
+            print("Loading...", dataDir + filename)
+            if(DEBUG): 
+                if file_count > 50: break
+            myfile = np.load(dataDir+filename, allow_pickle=True)
             if(saveCategories['fake'] == True):
-                if(len(fakes)!=0): fakeTracks = np.concatenate((fakeTracks, fakes))
+                fakes = np.array(myfile["fake_infos"])
+                if len(fakes) != 0:
+                    fakes = selectInputs(fakes, inputs)
             if(saveCategories['real'] == True):
-                if(len(reals)!=0): realTracks = np.concatenate((realTracks, reals))
+                reals = np.array(myfile["real_infos"])
+                if len(reals) != 0: 
+                    reals = selectInputs(reals, inputs)
             if(saveCategories['pileup'] == True):
-                if(len(pileup)!=0): pileupTracks = np.concatenate((pileupTracks, pileup))
-        file_count += 1
+                pileup = np.array(myfile["pileup_infos"])
+                if len(pileup) != 0:
+                    pileup = selectInputs(pileup, inputs)
+            if(file_count == 0):
+                if(saveCategories['fake'] == True): fakeTracks = fakes
+                if(saveCategories['real'] == True): realTracks = reals
+                if(saveCategories['pileup'] == True): pileupTracks = pileup
+            elif(file_count != 0 and len(fakeTracks) == 0 and saveCategories['fake'] == True): fakeTracks = fakes
+            elif(file_count != 0 and len(realTracks) == 0 and saveCategories['real'] == True): realTracks = reals
+            elif(file_count != 0 and len(pileupTracks) == 0 and saveCategories['pileup'] == True): pileupTracks = pileup
+            else:
+                if(saveCategories['fake'] == True):
+                    if(len(fakes)!=0): fakeTracks = np.concatenate((fakeTracks, fakes))
+                if(saveCategories['real'] == True):
+                    if(len(reals)!=0): realTracks = np.concatenate((realTracks, reals))
+                if(saveCategories['pileup'] == True):
+                    if(len(pileup)!=0): pileupTracks = np.concatenate((pileupTracks, pileup))
+            file_count += 1
 
 
     print(bcolors.BLUE + "Number of fake tracks:", len(fakeTracks))
@@ -192,7 +235,7 @@ def loadData(dataDir, undersample, inputs, normalize_data, saveCategories, train
         return pileupTracks, [], [], 2*np.ones(len(pileupTracks)), [], [] 
    
     # if undersampling
-    if(undersample != -1):
+    if(undersample != -1 and saveCategories['real'] == True):
         num_real = len(trainRealTracks)
         num_select = int(undersample * num_real)
         ind = np.arange(num_real)
@@ -291,15 +334,16 @@ def getInputs(input_dim, delete):
     delete_array = []
     for x in varDict:
         for y in delete:
-            if y == 'eventNumber':
-                print("Not deleting event number, need this for test")
-                continue
+            #if y == 'eventNumber':
+            #    print("Not deleting event number, need this for test")
+            #    continue
             if y in x:
                 #print(x, varDict[x])
                 delete_array.append(varDict[x])
     inputs = np.delete(inputs, delete_array)
     input_dim = len(inputs) - 1 #event number is left in array for now
     return inputs, input_dim
+    #return inputs, input_dim+1 #testing with old network
 
 def createDict(variables):
     varDict = {}

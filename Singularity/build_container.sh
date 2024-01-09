@@ -1,11 +1,14 @@
 #!/usr/bin/bash
 
-if [ ! -d "/data1/$USER/tmp" ]
+TMPDIR_LOCAL="/data1/$USER/tmp"
+
+if [ ! -d $TMPDIR_LOCAL ]
 then 
-  mkdir /data1/$USER/tmp
+  mkdir $TMPDIR_LOCAL
 fi
 
-export TMPDIR=/data1/$USER/tmp/
-export SINGULARITY_CACHEDIR=/data1/$USER/tmp/
+export TMPDIR=$TMPDIR_LOCAL
+export SINGULARITY_TMPDIR=$TMPDIR
+export SINGULARITY_CACHEDIR=$TMPDIR_LOCAL
 
-singularity build --fakeroot --sandbox osuML build.def
+singularity pull disapp_trks docker://carriganm95/disapp_trks_v2:edited
