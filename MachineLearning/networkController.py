@@ -13,6 +13,8 @@ from tensorflow.keras.models import Model, load_model
 import optuna
 import keras
 
+from condor_script_generator import HTCondorScriptGenerator
+
 from Scripts.condor_submission_creator import create_submission
 
 class NetworkBase(ABC):
@@ -132,15 +134,39 @@ class NetworkController():
         self.model.train_model(self.input_dir, **train_parameters)
         return self.calculateMetrics(self.model.get_metrics(self.input_dir, threshold, glob_pattern))[metric]
         
+    @staticmethod    
+    def generate_condor_submission(argument:str, number_of_jobs:int,  use_gpu:bool, log_dir:str, input_files, use_container:bool=True):
+        if use_gpu:
+            executable = "run_wrapper_gpu.sh"
+        elif use_container:
+            executable = "run_wrapper_no_container.sh"
+        else:
+            executable = "run_wrapper_cpu.sh"
+        condor_generator = HTCondorScriptGenerator(executable, log_dir=log_dir) 
+        condor_generator.add_option("Universe", "vanilla")
+        condor_generator.add_option("+IsLocalJob", "true")
+        condor_generator.add_option("Rank", "TARGET.IsLocalSlot")
+        condor_generator.add_option("request_disk", "2000MB")
+        condor_generator.add_option("request_memory", "2GB")
+        condor_generator.add_option("should_transfer_files", "Yes")
+        condor_generator.add_option("when_to_transfer_output", "ON_EXIT")
+        condor_generator.add_option("transfer_input_files", ' '.join(input_files))
+        if use_gpu:
+            condor_generator.add_option("request_cpus", "6")
+        else:
+            condor_generator.add_option("request_cpus", "2")
+            condor_generator.add_option("+isSmallJob", "true")
+        condor_generator.add_argument(' '.join(argument))
+        condor_generator.add_queue(number_of_jobs)
+        condor_generator.generate_script("run.sub")
         
-
     def tune_hyperparameters(self,
                              trainable_params: Union[Dict[str, tuple[float,float]],
                                                Dict[str, tuple[int, int]], Dict[str, list]] = {},
                              train_parameters = {},
                              build_parameters = {},
-                             use_gpu:bool=True, use_condor:bool=False, num_trials:int= 10, timeout:int=600,
-                             input_dir:str="", glob_pattern="*", metric = 2, threshold = 0.5)->None:
+                             use_gpu:bool=True, num_trials:int= 10, timeout:int=600,
+                             input_dir:str="", glob_pattern:str="*", metric:int = 2, threshold:float = 0.5)->None:
         """
         Return output of hyperparameter tuning of your model. Type checking is performed in the objective function, so make sure
         that you properly distinguish floats from integers when inputting the trainable params
@@ -165,6 +191,7 @@ class NetworkController():
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
         logging.debug("Setting up Optuna study on GPU")
 
+        logging.debug("Setting up Optuna study")
         study = optuna.create_study(direction="maximize")
 
         study.optimize(lambda trials: self._objective(trials, train_parameters=train_parameters,
