@@ -3,15 +3,17 @@
 from abc import ABC, abstractmethod
 import os
 from typing import Union, Dict
+import logging
+from glob import glob
+
 import numpy as np
 import cmsml
 import tensorflow as tf
 from tensorflow.keras.models import Model, load_model
 import optuna
-import logging
 import keras
-from glob import glob
 
+from Scripts.condor_submission_creator import create_submission
 
 class NetworkBase(ABC):
     """
@@ -22,8 +24,6 @@ class NetworkBase(ABC):
 
     Your model should also inherit this class
     """
-    def __init__(self):
-        print("awhlkdsajflksajdf")
     @abstractmethod
     def build_model(self, *args, **kwargs):
         """ Return a built nueral network """
@@ -146,7 +146,10 @@ class NetworkController():
         that you properly distinguish floats from integers when inputting the trainable params
 
         """
+        self.input_dir = input_dir
         if use_gpu:
+            if use_condor:
+                logging.info("There is only one GPU in the cluster. Cannot use condor while using GPU")
             config = tf.compat.v1.ConfigProto(log_device_placement=True)
             tf.compat.v1.Session(config=config)
         else:
@@ -157,14 +160,15 @@ class NetworkController():
                                               allow_soft_placement = True,
                                               device_count={'CPU':4})
             tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
+
         self.input_dir = input_dir 
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
-        logging.debug("Setting up Optuna study")
+        logging.debug("Setting up Optuna study on GPU")
+
         study = optuna.create_study(direction="maximize")
 
         study.optimize(lambda trials: self._objective(trials, train_parameters=train_parameters,
-                                                      build_parameters=build_parameters,
-                                                      trainable_params = trainable_params,
-                                                      glob_pattern=glob_pattern, metric=metric, threshold=threshold),
-                       num_trials, timeout) 
-        
+                                                    build_parameters=build_parameters,
+                                                    trainable_params = trainable_params,
+                                                    glob_pattern=glob_pattern, metric=metric, threshold=threshold),
+                    num_trials, timeout) 

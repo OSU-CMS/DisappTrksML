@@ -7,7 +7,6 @@ logging.basicConfig(level=logging.DEBUG)
 
 data_directory="/home/ryan/Documents/Research/Data/DeepSetsTraining/TrainDataSample/"
 
-
 controller = NetworkController(ElectronModel())
 # controller.build_model
 controller.tune_hyperparameters(trainable_params={"phi_layers": ["layers", 1, 3, 8, 16]},
