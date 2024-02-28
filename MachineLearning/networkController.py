@@ -17,6 +17,7 @@ import keras
 
 #from condor_script_generator import HTCondorScriptGenerator
 
+from Scripts.condor_submission_creator import create_submission
 
 class NetworkBase(ABC):
     """
@@ -183,7 +184,10 @@ class NetworkController():
         that you properly distinguish floats from integers when inputting the trainable params
 
         """
+        self.input_dir = input_dir
         if use_gpu:
+            if use_condor:
+                logging.info("There is only one GPU in the cluster. Cannot use condor while using GPU")
             config = tf.compat.v1.ConfigProto(log_device_placement=True)
             tf.compat.v1.Session(config=config)
         else:
@@ -195,7 +199,9 @@ class NetworkController():
                                               device_count={'CPU':4})
             tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
-            os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+        self.input_dir = input_dir 
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+        logging.debug("Setting up Optuna study on GPU")
 
         logging.debug("Setting up Optuna study")
         study = optuna.create_study(direction="maximize")
@@ -205,4 +211,3 @@ class NetworkController():
                                                     trainable_params = trainable_params,
                                                     glob_pattern=glob_pattern, metric=metric, threshold=threshold),
                     num_trials, timeout) 
-        
