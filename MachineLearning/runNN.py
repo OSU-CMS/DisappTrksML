@@ -1,4 +1,6 @@
 import sys
+sys.path.append("/data/users/mcarrigan/home_link/.local/")
+import pickle
 
 from networkController import NetworkController
 from DisappTrksML.DeepSets.python.ElectronModel import ElectronModel
@@ -7,10 +9,8 @@ index = sys.argv[1]
 print("Index: ", index)
 controller = NetworkController(ElectronModel)
 
-
-params = [{"trainable_params":{"phi_layers" : ["layers", 1, 3, 8, 16]}},
-          {"trainable_params":{"f_layers" : ["layers", 1, 3, 8, 16]}}]
-
+with open("params.pkl", "rb") as pickle_file:
+    params = pickle.load(pickle_file)
 
 
 data_directory="/home/ryan/Documents/Research/Data/DeepSetsTraining/TrainDataSample/"

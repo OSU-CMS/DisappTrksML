@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 import sys
-sys.path.append('/home/ryan/Documents/Research/DisappTrksML') # Fix this
+sys.path.append('/home/rsantos/scratch0/CMSSW_12_4_11_patch3/src/DisappTrksML') # Fix this
 import datetime
+import pickle
 import os
 from MachineLearning.networkController import NetworkBase
 from MachineLearning.networkController import NetworkBase
 from typing import Union
 import keras
-from tensorflow.keras import optimizers, regularizers, callbacks
+import cmsml
+from tensorflow.keras import optimizers, regularizers, callbacks, models
 from tensorflow.keras.callbacks import TensorBoard
 import glob
 import numpy as np
@@ -22,12 +24,16 @@ class ElectronModel(NetworkBase):
         def __init__(self,
                                  eta_range:float=0.25, phi_range:float=0.25,
                                  max_hits:int=100,
+                                 phi_layers:list[int] = [16, 16],
+                                 f_layers:list[int] = [16, 16],
                                  track_info_indices:list[int]=[4, 8, 9, 12],
                                  log_dir:Union[str,None]=None):
                 self.track_info_shape = len(track_info_indices)
                 self.max_hits = max_hits
                 self.input_shape = (self.max_hits, 4)
                 self.track_info_indices = track_info_indices
+                self.phi_layers = phi_layers
+                self.f_layers = f_layers
                 self.log_dir = log_dir
 
         def eventSelectionTraining(self, event):
@@ -238,26 +244,26 @@ class ElectronModel(NetworkBase):
                 else:
                         print('No events found in file')
 
-        def build_model(self, phi_layers=[16,16], f_layers=[16,16]):
+        def build_model(self):
                 inputs = Input(shape = self.input_shape,  name = "input" )
                 inputs_track = Input(shape = (self.track_info_shape,), name = "input_track" )
                 print("input shape", self.input_shape, "input track shape", self.track_info_shape)
                 phi_inputs = Input(shape = (self.input_shape[-1],))
                 phi_network = Masking()(phi_inputs)
-                for layerSize in phi_layers[:-1]:
+                for layerSize in self.phi_layers[:-1]:
                         phi_network = Dense(layerSize)(phi_network)
                         phi_network = Activation('relu')(phi_network)
-                phi_network = Dense(phi_layers[-1])(phi_network)
+                phi_network = Dense(self.phi_layers[-1])(phi_network)
                 phi_network = Activation('linear')(phi_network)
                 unsummed_model = Model(inputs=phi_inputs, outputs=phi_network)
                 phi_set = TimeDistributed(unsummed_model)(inputs)
                 summed = Lambda(lambda x: reduce_sum(x, axis=1))(phi_set)
                 if (self.track_info_shape == 0):
-                        f_network = Dense(f_layers[0])(summed)
+                        f_network = Dense(self.f_layers[0])(summed)
                 else:
-                        f_network = Dense(f_layers[0])(concatenate([summed,inputs_track]))
+                        f_network = Dense(self.f_layers[0])(concatenate([summed,inputs_track]))
                 f_network = Activation('relu')(f_network)
-                for layerSize in f_layers[1:]:
+                for layerSize in self.f_layers[1:]:
                         f_network = Dense(layerSize)(f_network)
                         f_network = Activation('relu')(f_network)
                 f_network = Dense(2)(f_network)
@@ -285,7 +291,7 @@ class ElectronModel(NetworkBase):
 
         def train_model(self, data_directory:str, epochs:int = 10, monitor='val_loss',
                        patience_count:int=10, metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()],
-                       optimizer=optimizers.legacy.Adagrad(), outdir="", val_generator_params={},
+                       optimizer=optimizers.Adagrad(), outdir="", val_generator_params={},
                         train_generator_params={}, use_tensorboard:bool=False, tensorboard_histogram_freq:int=1)->Model:
 
                 self.model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=metrics)
@@ -317,14 +323,23 @@ class ElectronModel(NetworkBase):
                 train_generator = BalancedGenerator(inputIndices[:int(nFiles*0.7)], **train_generator_params)
                 val_generator = Generator(inputIndices[int(nFiles*0.7):], **val_generator_params)
                 print("After generators")
-                self.model.fit(train_generator,
+                training_history = self.model.fit(train_generator,
                           validation_data=val_generator,
                           callbacks=training_callbacks,
                           epochs=epochs,
                           verbose=2)
+                with open(f"{outdir}trainingHistory.pickle", "wb") as f:
+                        pickle.dump(training_history.history, f)
+                #self.save(f"{outdir}model.h5")
 
+        def saveGraph(self, directory):
+                cmsml.tensorflow.save_graph(f"{directory}graph.pb", self.model, variables_to_constants=True)
+                cmsml.tensorflow.save_graph(f"{directory}graph.pb.txt", self.model, variables_to_constants=True)
 
-        def saveGraph(self):
-                cmsml.tensorflow.save_graph("graph.pb", self.model, variables_to_constants=True)
-                cmsml.tensorflow.save_graph("graph.pb.txt", self.model, variables_to_constants=True)
+        def load_model(self, model_path):
+                try:
+                        self.model = models.load_model(model_path)
+                except Exception as e:
+                        print("Error is: ", e)
+                        self.model = models.load_model(model_path, custom_objects={'tf': tf})
 

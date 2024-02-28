@@ -1,9 +1,10 @@
 import sys
+import os
 import pickle
 import logging
-
-
-sys.path.append('/home/ryan/Documents/Research/')
+sys.path.append("/data/users/mcarrigan/home_link/.local/bin/")
+#sys.path.append('/home/ryan/Documents/Research/')
+import optuna
 from networkController import NetworkController
 
 logging.basicConfig(level=logging.DEBUG)
@@ -15,11 +16,12 @@ with open("params.pkl", "wb") as pickle_file:
     pickle.dump(params, pickle_file)
 
 NetworkController.generate_condor_submission(
-    argument="'python3 runNN.py $(PROCESS)'",
+    argument="$(PROCESS)",
     number_of_jobs=len(params),
     use_gpu=True, log_dir=".",
     input_files=["run_wrapper_gpu.sh", "runNN.py",
                  "ElectronModel.py", "networkController.py",
-                 "generator.py"
+                 "generator.py", "singularity_wrapper.sh"
                  ])
 
+os.system("condor_submit run.sub")

@@ -2,6 +2,7 @@
 """ This module is used to control a general neural network """
 from abc import ABC, abstractmethod
 import os
+import sys
 from typing import Union, Dict
 import logging
 from glob import glob
@@ -10,10 +11,11 @@ import numpy as np
 import cmsml
 import tensorflow as tf
 from tensorflow.keras.models import Model, load_model
-import optuna
+
+#import optuna
 import keras
 
-from condor_script_generator import HTCondorScriptGenerator
+#from condor_script_generator import HTCondorScriptGenerator
 
 
 class NetworkBase(ABC):
@@ -25,6 +27,7 @@ class NetworkBase(ABC):
 
     Your model should also inherit this class
     """
+
     @abstractmethod
     def build_model(self, *args, **kwargs):
         """ Return a built nueral network """
@@ -59,16 +62,22 @@ class NetworkBase(ABC):
         for i, file in enumerate(inputFiles):
             if i % 100 == 0:
                 logging.info(f"On file {i}")
-                eval_output = self.evaluate_model(file, **kwargs)
-                print(eval_output)
-                if eval_output is None:
-                    return None
-                if i == 0:
-                    results = np.array(eval_output)
-                else:
-                    results = np.concatenate((results, np.array(eval_output)))
+            eval_output = self.evaluate_model(file, **kwargs)
+            #print(eval_output)
+            if eval_output is None:
+                return None
+            if i == 0:
+                results = np.array(eval_output)
+            else:
+                results = np.concatenate((results, np.array(eval_output)))
         return results
-                    
+
+    def save_model(self, filename:str = "model.h5"):
+        self.model.save(filename)
+
+    def saveGraph(self):
+            cmsml.tensorflow.save_graph("graph.pb", self.model, variables_to_constants=True)
+            cmsml.tensorflow.save_graph("graph.pb.txt", self.model, variables_to_constants=True)
 
 class NetworkController():
     def __init__(self, model:NetworkBase, config:Union[str,None]=None):
@@ -97,9 +106,9 @@ class NetworkController():
             f1 = 2 * (precision * recall) / (precision + recall)
             return precision, recall, f1
 
-    def save_model(self, model:Model):
-        cmsml.tensorflow.save_graph("graph.pb", model, variables_to_constants=True)
-        cmsml.tensorflow.save_graph("graph.pb.txt", model, variables_to_constants=True)
+    # def save_model(self, model:Model):
+    #     cmsml.tensorflow.save_graph("graph.pb", model, variables_to_constants=True)
+    #     cmsml.tensorflow.save_graph("graph.pb.txt", model, variables_to_constants=True)
 
     def load_model(self, model_path:str)->Model:
         """ Return a pretrained model that was previously stored in a h5 file """
@@ -149,13 +158,16 @@ class NetworkController():
         condor_generator.add_option("request_memory", "2GB")
         condor_generator.add_option("should_transfer_files", "Yes")
         condor_generator.add_option("when_to_transfer_output", "ON_EXIT")
-        condor_generator.add_option("transfer_input_files", ' '.join(input_files))
+        condor_generator.add_option("transfer_input_files", ', '.join(input_files))
+        condor_generator.add_option("getenv", "true")
         if use_gpu:
             condor_generator.add_option("request_cpus", "6")
+            condor_generator.add_option("+IsGPUJob", "true")
+            condor_generator.add_requirements("((Target.IsGPUSlot == True))")
         else:
             condor_generator.add_option("request_cpus", "2")
             condor_generator.add_option("+isSmallJob", "true")
-        condor_generator.add_argument(' '.join(argument))
+        condor_generator.add_argument(argument)
         condor_generator.add_queue(number_of_jobs)
         condor_generator.generate_script("run.sub")
         
