@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
-""" This module is used to control a general neural network """
+"""
+This module is used to control a general neural network
+
+
+The reason a very general subclass was used was to allow
+for the sharing of tools while also not requiring a major
+rewrite of either the DeepSets network or the FakeTracks network.
+"""
 from abc import ABC, abstractmethod
 import os
-import sys
 from typing import Union, Dict
 import logging
 from glob import glob
@@ -12,12 +18,11 @@ import cmsml
 import tensorflow as tf
 from tensorflow.keras.models import Model, load_model
 
-#import optuna
+import optuna
 import keras
 
-#from condor_script_generator import HTCondorScriptGenerator
+from condor_script_generator import HTCondorScriptGenerator
 
-from Scripts.condor_submission_creator import create_submission
 
 class NetworkBase(ABC):
     """
@@ -64,7 +69,6 @@ class NetworkBase(ABC):
             if i % 100 == 0:
                 logging.info(f"On file {i}")
             eval_output = self.evaluate_model(file, **kwargs)
-            #print(eval_output)
             if eval_output is None:
                 return None
             if i == 0:
@@ -84,11 +88,6 @@ class NetworkController():
     def __init__(self, model:NetworkBase, config:Union[str,None]=None):
 
         self.model = model
-        # if not issubclass(type(self.model), NetworkBase):
-        #     print(issubclass(type(self.model), NetworkBase))
-        #     print(type(model))
-        #     raise TypeError("You model needs to subclass the NetworkBase class!")
-        # self.config = config
         self.input_dir = None
 
         
@@ -107,9 +106,6 @@ class NetworkController():
             f1 = 2 * (precision * recall) / (precision + recall)
             return precision, recall, f1
 
-    # def save_model(self, model:Model):
-    #     cmsml.tensorflow.save_graph("graph.pb", model, variables_to_constants=True)
-    #     cmsml.tensorflow.save_graph("graph.pb.txt", model, variables_to_constants=True)
 
     def load_model(self, model_path:str)->Model:
         """ Return a pretrained model that was previously stored in a h5 file """
@@ -145,6 +141,10 @@ class NetworkController():
         
     @staticmethod    
     def generate_condor_submission(argument:str, number_of_jobs:int,  use_gpu:bool, log_dir:str, input_files, use_container:bool=True):
+        """
+        Generate a condor script. This is a static method so can be used without
+        instantiating a NetworkController instance.
+        """
         if use_gpu:
             executable = "run_wrapper_gpu.sh"
         elif use_container:
@@ -183,11 +183,33 @@ class NetworkController():
         Return output of hyperparameter tuning of your model. Type checking is performed in the objective function, so make sure
         that you properly distinguish floats from integers when inputting the trainable params
 
+        trainable_params:
+            list of parameters to be tuned. The first item in the list should be either
+            "int", "float", "category", or "layers" . This will call optuna.suggest_int, optuna.suggest_float respectively.
+            The layers method will output layers with a number of neurons. The second input to the list is the range of options
+            that Optuna should use to make suggestions.
+        train_parameters:
+            Parameters that are needed to train you model as defined in NetworkBase as a dictionary using dictionary unpacking
+        build_parameters:
+            Parameters that are needed to build you model as defined in NetworkBase as a dictionary using dictionary unpacking
+        use_gpu:
+            Whether or not to use gpu, will set correct Tensorflow parameters and send to correct node for condor
+        num_trial:
+            How many trials optuna should run to find optimal values
+        timeout:
+            Timeout of optuna
+        input_dir:
+            Directory that contains input data used for training and validation of model
+        glob_pattern:
+            Pattern used to match files inside input_dir for training
+        metric:
+            Int referring to the index of the output of calculateMetrics defined in network base (precision, recall, f1)
+        threshold:
+            Threshold used to define what is a positive and negative guess from the network 
         """
+
         self.input_dir = input_dir
         if use_gpu:
-            if use_condor:
-                logging.info("There is only one GPU in the cluster. Cannot use condor while using GPU")
             config = tf.compat.v1.ConfigProto(log_device_placement=True)
             tf.compat.v1.Session(config=config)
         else:

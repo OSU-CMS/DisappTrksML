@@ -1,3 +1,8 @@
+"""
+An example of how you would use
+generate_condor_submission to create a condor
+submission script
+"""
 import sys
 import os
 import pickle

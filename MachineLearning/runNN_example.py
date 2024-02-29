@@ -1,3 +1,8 @@
+"""
+An example script of how you would use NetworkController to
+tune hyprparameters
+"""
+
 import sys
 sys.path.append("/data/users/mcarrigan/home_link/.local/")
 import pickle
