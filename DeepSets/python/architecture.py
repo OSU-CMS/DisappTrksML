@@ -239,15 +239,6 @@ class DeepSetsArchitecture:
 
         return (True in trackPasses), trackPasses, trackPassesVeto
 
-    def load_model(self, model_path):
-        try:
-            self.model = keras.models.load_model(model_path)
-        except:
-            self.model = keras.models.load_model(model_path, custom_objects={'tf': tf})
-
-
-    def load_model_weights(self, weights_path):
-        self.model.load_weights(weights_path)
 
     def fit_generator(self, train_generator, val_generator=None, 
                       epochs=10, monitor='val_loss',patience_count=10,
