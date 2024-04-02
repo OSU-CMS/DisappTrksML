@@ -107,7 +107,7 @@ class DataGeneratorV2(keras.utils.Sequence):
 		print '\t', self.num_signal, 'signal events'
 		print '\t', self.num_background, 'background events'
 		print 'shapes: signal_data =', self.signal_data.shape
-		print '        background_data =', self.background_data.shape
+		print '	       background_data =', self.background_data.shape
 
 	def __len__(self):
 		max_signal_batches = np.floor(self.num_signal / self.batch_size)

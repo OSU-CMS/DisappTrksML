@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from DisappTrksML.DeepSets.architecture import *
+from DisappTrksML.DeepSets.python.architecture import *
 import sys
 
 class ElectronModel(DeepSetsArchitecture):

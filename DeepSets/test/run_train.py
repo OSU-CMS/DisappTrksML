@@ -6,40 +6,45 @@ import datetime
 
 if __name__=="__main__":
 
-    logdir = "/data/users/mcarrigan/Logs/train/"
-    datadir = "/data/users/mcarrigan/train/"
+    logdir = "/data/users/rsantos/condor/DeepSets"
+    datadir = "/data/users/rsantos/condor/DeepSets"
 
     params = [
-        [[64,64,64,64,64,64,128],[128,64],0.1,30,datadir+"kfold0/"]
-        # [[64,64,64,64,64,64,128],[128,64],0.01,15,"kfold1/"],
-        # [[64,64,128],[128,64,64,64,64,64],0.1,30,"kfold2/"],
-        # [[64,64,128],[128,64,64,64,64,64],0.01,15,"kfold3/"],
-        # [[64,32],[32,32],0.1,50,"kfold4/"],
-        # [[64,32],[32,32],0.01,50,"kfold5/"],
-        # [[256,128],[128,64,32,32,32],0.1,30,"kfold6/"],
-        # [[256,128],[128,64,32,32,32],0.01,15,"kfold7/"],
-        # [[64,64,256],[64,64,64],0.1,40,"kfold8/"],
-        # [[64,64,256],[64,64,64],0.01,20,"kfold9/"],
-        # [[64,64,256],[64,64,64],0.01,30,"kfold10_noBatchNorm/", False],
-        # [[400,256,128], [128,128,64,32],0.1,30,"kfold11_noBatchNorm/", False],
-        # [[400,256,128], [128,128,64,32],0.01,30,"kfold12_noBatchNorm/", False],
-        # [[400,128],[128,64,32,32,32,32,32],0.01,30,"kfold14_noBatchNorm/", False],
-        # [[256,512,256], [128,64,32],0.01,30,"kfold15_noBatchNorm/", False],
-        # [[64,64,256],[64,64,64],0.5,50,"kfold16_noBatchNorm/", True],
-        # [[64,64,256],[64,64,64],0.1,30,"kfold17_noBatchNorm/", True],
-        # [[64,64,256],[64,64,64],0.01,15,"kfold18_noBatchNorm/", True],
-        # [[400,256,128], [128,128,64,32],0.5,50,"kfold19_noBatchNorm/", True],
-        # [[400,256,128], [128,128,64,32],0.1,30,"kfold20_noBatchNorm/", True],
-        # [[400,256,128], [128,128,64,32],0.01,15,"kfold21_noBatchNorm/", True],
-        # [[400,128],[128,64],0.5,100,"kfold22_noBatchNorm/", True],
-        # [[400,128],[128,64],0.1,40,"kfold23_noBatchNorm/", True],
-        # [[400,128],[128,64],0.01,20,"kfold24_noBatchNorm/", True]
+        [[16,16,16],[16,16,16],datadir+"model0/"],
+        # [[16,16,16],[32,32,32],datadir+"model/"],
+        # [[16,16,16],[64,64,64],datadir+"model2/"],
+        # [[16,16,16],[128,128,128],datadir+"model3/"],
+        # [[16,16,16],[256,256,256],datadir+"model4/"],
+        # [[16,16,16],[16, 32, 16],datadir+"model5/"],
+        # [[16,16,16],[64, 32, 16],datadir+"model6/"],
+        # [[16,16,16],[128, 64, 32],datadir+"model7/"],
+        # [[32,32,32],[16,16,16],datadir+"model8/"],
+        # [[32,32,32],[32,32,32],datadir+"model9/"],
+        # [[32,32,32],[64,64,64],datadir+"model10/"],
+        # [[32,32,32],[128,128,128],datadir+"model11/"],
+        # [[32,32,32],[256,256,256],datadir+"model12/"],
+        # [[32,32,32],[16, 32, 16],datadir+"model13/"],
+        # [[32,32,32],[16, 64, 16],datadir+"model14/"],
+        # [[32,32,32],[16, 128, 16],datadir+"model15/"],
+        # [[32,32,32],[16, 256, 16],datadir+"model16/"],
+        # [[32,32,32],[16, 16, 16],datadir+"model17/"],
+        # [[32,32,32],[64, 32, 16],datadir+"model18/"],
+        # [[32,32,32],[128, 64, 32],datadir+"model19/"],
+        # [[64,32,16],[16,16,16],datadir+"model20/"],
+        # [[64,32,16],[32,32,32],datadir+"model21/"],
+        # [[64,32,16],[64,64,64],datadir+"model22/"],
+        # [[64,32,16],[128,128,128],datadir+"mode23/"],
+        # [[64,32,16],[256,256,256],datadir+"model24/"],
+        # [[64,32,16],[16, 32, 16],datadir+"model25/"],
+        # [[64,32,16],[16, 64, 16],datadir+"model26/"],
+        # [[64,32,16],[16, 128, 16],datadir+"model27/"],
+        # [[64,32,16],[16, 256, 16],datadir+"model28/"],
+        # [[64,32,16],[16, 16, 16],datadir+"model29/"],
+        # [[64,32,16],[64, 32, 16],datadir+"model30/"],
+        # [[64,32,16],[128, 64, 32],datadir+"model31/"],
+        # [[64,32],[128, 64],datadir+"model32/"],
+        # [[32,16],[32, 16],datadir+"model33/"],
 
-        # [[400,128],[128,64,32,32,32,32,32],0.01,25,"kfold14_noBatchNorm_finalTrainV3/", True],
-        # [[400,256,128], [128,128,64,32],0.5,15,"kfold19_noBatchNorm_finalTrainV3/", True],
-        # [[64,64,256],[64,64,64],0.1,20,"kfold17_noBatchNorm_finalTrainV3/", True],
-
-        #["train_output_4/"]
     ]
 
     np.save('params.npy',params)
@@ -53,16 +58,21 @@ if __name__=="__main__":
     Universe = vanilla
     +IsLocalJob = true
     Rank = TARGET.IsLocalSlot
-    request_disk = 500MB
-    request_memory = 2GB
-    request_cpus = 4
+    request_disk = 1GB
+    request_memory = 3GB
+    request_cpus = 6
+    hold = False
+    transfer_input_files = train_wrapper.sh 
     arguments               = $(PROCESS)
     executable              = train_wrapper.sh
     log                     = {0}log_$(PROCESS).log
     output                  = {0}out_$(PROCESS).txt
     error                   = {0}error_$(PROCESS).txt
+    should_transfer_files = Yes
     when_to_transfer_output = ON_EXIT
     getenv = true
+    +IsGPUJob = true
+    requirements = ((Target.IsGPUSlot == True))
     queue {1}
     """.format(logdir,njobs)
 
