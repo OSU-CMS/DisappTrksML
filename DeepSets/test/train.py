@@ -1,15 +1,17 @@
 import warnings
 warnings.filterwarnings('ignore')
-import glob, os
-
+import glob, os, sys
+sys.path.append("/home/ryan/scratch0/CMSSW_12_4_11_patch3/src/")
+print("PATH: ", sys.path)
 import tensorflow as tf
-import cmsml
+#import cmsml
 from sklearn.model_selection import KFold
 
-from DisappTrksML.DeepSets.ElectronModel import *
-from DisappTrksML.DeepSets.MuonModel import *
-from DisappTrksML.DeepSets.generator import *
-from DisappTrksML.DeepSets.utilities import *
+from DisappTrksML.DeepSets.python.ElectronModel import *
+print("Imported")
+# from DisappTrksML.DeepSets.MuonModel import *
+from DisappTrksML.DeepSets.python.generator import *
+from DisappTrksML.DeepSets.python.utilities import *
 
 if False:
 	# limit CPU usage
@@ -21,7 +23,7 @@ if False:
 
 #######
 
-backup_suffix = datetime.now().strftime('%Y-%m-%d_%H.%M.%S')
+backup_suffix = "backup"
 outdir = "train_"+backup_suffix+"/"
 if(len(sys.argv)>1):
 	input_params = np.load("params.npy",allow_pickle=True)[int(sys.argv[1])]
@@ -82,7 +84,7 @@ arch.fit_generator(train_generator=train_generator,
 				   val_generator=val_generator, 	
 					**train_params)
 
-arch.saveGraph()
+#arch.saveGraph()
 
 arch.save_trainingHistory(train_params['outdir']+'trainingHistory.pkl')
 arch.plot_trainingHistory(train_params['outdir']+'trainingHistory.pkl',train_params['outdir']+'trainingHistory.png','loss')
