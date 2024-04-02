@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from DisappTrksML.DeepSets.python.architecture import *
 import sys
 sys.path.append('/home/rsantos/scratch0/CMSSW_12_4_11_patch3/src/DisappTrksML') # Fix this
 import datetime

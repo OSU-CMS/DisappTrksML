@@ -1,7 +1,8 @@
 import warnings
 warnings.filterwarnings('ignore')
-import glob, os
-
+import glob, os, sys
+sys.path.append("/home/ryan/scratch0/CMSSW_12_4_11_patch3/src/")
+print("PATH: ", sys.path)
 import tensorflow as tf
 from datetime import datetime
 import numpy as np
@@ -87,7 +88,6 @@ arch.train_model(data_directory= train_generator_params['input_dir'],
                  val_generator_params = val_generator_params,
                  train_generator_params = train_generator_params)
 
-arch.saveGraph(train_params['outdir'])
-arch.saveWeights
+#arch.saveGraph()
 
 #arch.save_model(train_params['outdir']+'model.h5')

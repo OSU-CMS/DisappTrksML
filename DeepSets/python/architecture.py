@@ -6,11 +6,10 @@ import math
 from datetime import datetime
 import numpy as np
 import pickle
-from ROOT import TFile, TTree
 import sys
 import tensorflow as tf
 from tensorflow import keras
-import cmsml
+# import cmsml
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization, concatenate
@@ -239,6 +238,15 @@ class DeepSetsArchitecture:
 
         return (True in trackPasses), trackPasses, trackPassesVeto
 
+    def load_model(self, model_path, **kwargs):
+        try:
+            self.model = keras.models.load_model(model_path, **kwargs)
+        except:
+            self.model = keras.models.load_model(model_path, custom_objects={'tf': tf})
+
+
+    def load_model_weights(self, weights_path):
+        self.model.load_weights(weights_path)
 
     def fit_generator(self, train_generator, val_generator=None, 
                       epochs=10, monitor='val_loss',patience_count=10,

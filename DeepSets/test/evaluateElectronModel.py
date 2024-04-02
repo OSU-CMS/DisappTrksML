@@ -5,43 +5,45 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from DisappTrksML.DeepSets.architecture import *
+import tensorflow as tf
+#from DisappTrksML.DeepSets.architecture import *
 from DisappTrksML.DeepSets.ElectronModel import *
+DATAPOINTS = 2
+REGEN = True
 
-# initialize the model with the weights
-#fileDir = '/data/users/llavezzo/forBrian/kfold19_noBatchNorm_finalTrainV3/'
-fileDir = '/data/users/llavezzo/models/electrons/kfold19_noBatchNorm_finalTrainV3/'
-model_file = 'model.h5'
-model_params = {
-	'phi_layers':[400,256,128], 
-	'f_layers': [128,128,64,32],
-	'track_info_indices' : [4,8,9,12]
-}
-arch = ElectronModel(**model_params)
-arch.load_model(fileDir+model_file)
+parent_directory = "train_backup/"
+data_directory = "/store/user/rsantos/2022/combined_DYJet/test/"
+model = ElectronModel()
+model.load_model(parent_directory + "model.h5", compile=False)
+print("Loaded model!") 
 
-cm = np.zeros((2,2))
+# with os.scandir(parent_directory) as it:
+#     model = ElectronModel()
+#     for subdirectory in it: 
+#         if os.path.isdir(subdirectory): 
+#             print("Path: " , os.path.join(subdirectory, "model.h5"))
+#             model.load_model(os.path.join(subdirectory, "model.h5"))
 
-# evaluate the model
-#dirs = ["/store/user/llavezzo/disappearingTracks/electronsTesting/higgsino_700GeV_10000cm_fullSel_FIXED/"]
-dirs = ["/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt1_FIXED/",
-               "/store/user/llavezzo/disappearingTracks/electronsTesting/SingleEle_fullSel_pt2_FIXED/"]
-#dirs = ["/store/user/mcarrigan/deepSets/validation/higgsino_700_10/"]
-inputFiles = []
-#for d in dirs: inputFiles += glob.glob(d+'*.root.npz') 
-for d in dirs: inputFiles += glob.glob(d+'*.npz')
+#             cm = np.zeros((2,2))
+#             model_values = np.zeros((DATAPOINTS,4))
 
-totPreds = []
-for i,fname in enumerate(inputFiles):
-	print(i)
+#             if REGEN:
+#                 for i, thresh in enumerate(np.linspace(0, 1, num=DATAPOINTS, endpoint=False)):
+#                     metrics = model.get_metrics(input_dir=data_directory, threshold= thresh, glob_pattern="images_*.root.npz")
+#                     accuracy = (metrics[0] + metrics[1]) / (metrics[0] + metrics[1] + metrics[2] + metrics[3])
+#                     recall = metrics[0]/(metrics[0] + metrics[2])
+#                     precision = metrics[0]/(metrics[0] + metrics[3])
+#                     f1 = 2 * ((precision * recall)/(precision + recall))
+#                     model_values[i] =  [accuracy, recall, precision, f1]
+#                     np.save("metric", model_values)
 
-        skip, preds = arch.evaluate_npy(fname, obj=['tracks', 'infos'])
-	#skip, preds = arch.evaluate_npy(fname, obj=['signal', 'signal_infos'])
-	if not skip:
-		cm[0,1] += np.count_nonzero(preds[:,1] > 0.5)
-		cm[0,0] += np.count_nonzero(preds[:,1] <= 0.5)
+#             else:
+#                 metrics = np.load("metric.npy")
+#                 plt.plot(np.linspace(0, 1, num=DATAPOINTS, endpoint=False), metrics[:, 3])
+#                 plt.xlabel("Classification Threshold")
+#                 plt.ylabel("F1 Score")
+#                 plt.title("F1 Score for Electron Classifier")
 
-	totPreds = np.append(totPreds,preds[:,1])
+#                 plt.savefig("f1.png")
 
-print(cm)
-np.save("SingleEle_fullSel_preds.npy", totPreds)
+
