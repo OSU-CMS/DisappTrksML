@@ -640,7 +640,7 @@ TrackImageProducerMINIAOD::getTracks(const reco::Vertex &pv,
     info.isTagProbeTauToMuon = 0;
 
     if(info.passesProbeSelection) {
-      for(const auto tag : tagElectrons) {
+      for(const auto &tag : tagElectrons) {
         double thisDR = deltaR(tag, track);
         if(info.deltaRToClosestTagElectron < 0 || thisDR < info.deltaRToClosestTagElectron) {
           info.deltaRToClosestTagElectron = thisDR;
@@ -649,7 +649,7 @@ TrackImageProducerMINIAOD::getTracks(const reco::Vertex &pv,
         info.isTagProbeTauToElectron |= isTagProbeTauToElePair(track, tag, met);
       }
 
-      for(const auto tag : tagMuons) {
+      for(const auto &tag : tagMuons) {
         double thisDR = deltaR(tag, track);
         if(info.deltaRToClosestTagMuon < 0 || thisDR < info.deltaRToClosestTagMuon) {
           info.deltaRToClosestTagMuon = thisDR;
