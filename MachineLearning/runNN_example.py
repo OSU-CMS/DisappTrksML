@@ -4,8 +4,9 @@ tune hyprparameters
 """
 
 import sys
-sys.path.append("/data/users/mcarrigan/home_link/.local/")
 import pickle
+
+import numpy
 
 from networkController import NetworkController
 from DisappTrksML.DeepSets.python.ElectronModel import ElectronModel
@@ -14,11 +15,10 @@ index = sys.argv[1]
 print("Index: ", index)
 controller = NetworkController(ElectronModel)
 
-with open("params.pkl", "rb") as pickle_file:
-    params = pickle.load(pickle_file)
-
-
-data_directory="/home/ryan/Documents/Research/Data/DeepSetsTraining/TrainDataSample/"
+params = numpy.load("training_params.npy")
+# You should bind the data directory you want to /data within the corresponding run_wrapper
+# bash script. 
+data_directory="/data"
 
 
 controller.tune_hyperparameters(trainable_params= params[index],

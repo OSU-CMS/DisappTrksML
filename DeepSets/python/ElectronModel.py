@@ -245,26 +245,26 @@ class ElectronModel(NetworkBase):
                 else:
                         print('No events found in file')
 
-        def build_model(self):
+        def build_model(self, phi_layers, f_layers):
                 inputs = Input(shape = self.input_shape,  name = "input" )
                 inputs_track = Input(shape = (self.track_info_shape,), name = "input_track" )
                 print("input shape", self.input_shape, "input track shape", self.track_info_shape)
                 phi_inputs = Input(shape = (self.input_shape[-1],))
                 phi_network = Masking()(phi_inputs)
-                for layerSize in self.phi_layers[:-1]:
+                for layerSize in phi_layers[:-1]:
                         phi_network = Dense(layerSize)(phi_network)
                         phi_network = Activation('relu')(phi_network)
-                phi_network = Dense(self.phi_layers[-1])(phi_network)
+                phi_network = Dense(phi_layers[-1])(phi_network)
                 phi_network = Activation('linear')(phi_network)
                 unsummed_model = Model(inputs=phi_inputs, outputs=phi_network)
                 phi_set = TimeDistributed(unsummed_model)(inputs)
                 summed = Lambda(lambda x: reduce_sum(x, axis=1))(phi_set)
                 if (self.track_info_shape == 0):
-                        f_network = Dense(self.f_layers[0])(summed)
+                        f_network = Dense(f_layers[0])(summed)
                 else:
-                        f_network = Dense(self.f_layers[0])(concatenate([summed,inputs_track]))
+                        f_network = Dense(f_layers[0])(concatenate([summed,inputs_track]))
                 f_network = Activation('relu')(f_network)
-                for layerSize in self.f_layers[1:]:
+                for layerSize in f_layers[1:]:
                         f_network = Dense(layerSize)(f_network)
                         f_network = Activation('relu')(f_network)
                 f_network = Dense(2)(f_network)

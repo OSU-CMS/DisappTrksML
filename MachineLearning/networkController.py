@@ -122,6 +122,8 @@ class NetworkController():
                            The input_directory for NetworkController needs to be set""")
             return
         output_values = {} 
+
+        # Use optuna to suggest optimal parameters
         for key, value in trainable_params.items():
             if value[0] == "int":
                 output_values[key] = trial.suggest_int(str(key), value[1], value[2])
@@ -131,9 +133,10 @@ class NetworkController():
                 output_values[key] = trial.suggest_categorical(str(key), value)
             elif value[0] == "layers":
                 number_of_layers = trial.suggest_int("num_layers", value[1], value[2])
-                output_values[key] = [trial.suggest_int(f"nodes_{i}", value[3], value[4], log=True) for i in
+                output_values[key] = [trial.suggest_categorical(f"nodes_{i}",value[1]) for i in
                                       range(number_of_layers)]
 
+        # Use optimal parameters to build model
         self.model.build_model(**build_parameters, **output_values)
         logging.debug(f"train_model parameters {train_parameters}")
         self.model.train_model(self.input_dir, **train_parameters)

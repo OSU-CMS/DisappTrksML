@@ -1,10 +1,14 @@
 #!/usr/bin/bash
 localMachine=$(hostname)
 
-echo "Running on computer $localMachine"
-echo "Running on GPU"
+# Copy over singularity image 
 cp /mnt/driveB/Singularity/disapp_trks.sif .
-execute_in_container=$@ # Command that should be executed in container
-echo "Running $execute_in_container"
-singularity exec -B $PWD,/store,/data disapp_trks.sif bash $PWD/singularity_wrapper.sh $1 
+
+echo "Running on $localMachine" 
+
+# Execute singularity image
+# Change the bind path if you want to run over different data
+singularity exec -B /store/user/rsantos/2022/combined_DYJet:/data disapp_trks.sif bash $PWD/ $1 
+
+# Remove singularity image
 rm *.sif
