@@ -5,8 +5,8 @@ sys.path.append('/home/rsantos/scratch0/CMSSW_12_4_11_patch3/src/DisappTrksML') 
 import datetime
 import pickle
 import os
-from MachineLearning.networkController import NetworkBase
-from MachineLearning.networkController import NetworkBase
+from DisappTrksML.MachineLearning.networkController import NetworkBase
+from DisappTrksML.MachineLearning.networkController import NetworkBase
 from typing import Union
 import keras
 import cmsml
@@ -15,7 +15,7 @@ from tensorflow.keras.callbacks import TensorBoard
 import glob
 import numpy as np
 import logging
-from DeepSets.python.generator import Generator, BalancedGenerator
+from DisappTrksML.DeepSets.python.generator import Generator, BalancedGenerator
 from tensorflow.keras.models import Model
 from tensorflow import reduce_sum
 from tensorflow.keras.layers import Dense, TimeDistributed, Masking, Input, Lambda, Activation, BatchNormalization, concatenate

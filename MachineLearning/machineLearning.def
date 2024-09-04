@@ -1,0 +1,14 @@
+Bootstrap: docker
+From: tensorflow/tensorflow:latest-gpu-jupyter
+
+%environment
+    PATH=/usr/local/bin:$PATH
+    export PYTHONPATH=$PYTHONPATH:/home/ryan/Documents/Research
+
+%post
+    pip install cmsml numpy optuna 
+
+%runscript
+    python runNN.py $1
+    
+
