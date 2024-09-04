@@ -17,6 +17,7 @@ import numpy as np
 import cmsml
 import tensorflow as tf
 from tensorflow.keras.models import Model, load_model
+from tensorflow.python.keras import backend as K
 
 import optuna
 import keras
@@ -130,13 +131,15 @@ class NetworkController():
             elif value[0] == "float":
                 output_values[key] = trial.suggest_float(str(key), value[1], value[2])
             elif value[0] == "category":
-                output_values[key] = trial.suggest_categorical(str(key), value)
+                output_values[key] = trial.suggest_categorical(str(key), value[1])
             elif value[0] == "layers":
+                print("WTF")
                 number_of_layers = trial.suggest_int("num_layers", value[1], value[2])
-                output_values[key] = [trial.suggest_categorical(f"nodes_{i}",value[1]) for i in
+                output_values[key] = [trial.suggest_categorical(f"nodes_{i}",value[-1]) for i in
                                       range(number_of_layers)]
-
+        print("aslkfjsaldkfjsadlfkj")
         # Use optimal parameters to build model
+        print(f"OUTPUT VALUES: {output_values}")
         self.model.build_model(**build_parameters, **output_values)
         logging.debug(f"train_model parameters {train_parameters}")
         self.model.train_model(self.input_dir, **train_parameters)
@@ -222,7 +225,7 @@ class NetworkController():
                                               intra_op_parallelism_threads = 4,
                                               allow_soft_placement = True,
                                               device_count={'CPU':4})
-            tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
+            K.set_session(tf.compat.v1.Session(config=config))
 
         self.input_dir = input_dir 
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'

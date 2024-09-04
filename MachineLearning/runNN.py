@@ -9,11 +9,14 @@ import pickle
 import numpy
 
 from networkController import NetworkController
-from DisappTrksML.DeepSets.python.ElectronModel import ElectronModel
+sys.path.append("../DisappTrksML/")
+print(sys.path)
+from ElectronModel import ElectronModel
 
 index = int(sys.argv[1])
 print("Index: ", index)
-controller = NetworkController(ElectronModel)
+electron_model = ElectronModel()
+controller = NetworkController(electron_model)
 
 params = numpy.load("training_params.npy", allow_pickle=True)
 
