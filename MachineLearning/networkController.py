@@ -17,6 +17,7 @@ import numpy as np
 import cmsml
 import tensorflow as tf
 from tensorflow.keras.models import Model, load_model
+from tensorflow.python.keras import backend as K
 
 import optuna
 import keras
@@ -133,13 +134,15 @@ class NetworkController():
             elif value[0] == "float":
                 output_values[key] = trial.suggest_float(str(key), value[1], value[2])
             elif value[0] == "category":
-                output_values[key] = trial.suggest_categorical(str(key), value)
+                output_values[key] = trial.suggest_categorical(str(key), value[1])
             elif value[0] == "layers":
+                print("WTF")
                 number_of_layers = trial.suggest_int("num_layers", value[1], value[2])
                 output_values[key] = [trial.suggest_categorical(f"nodes_{i}",value[3]) for i in
                                       range(number_of_layers)]
-
+        print("aslkfjsaldkfjsadlfkj")
         # Use optimal parameters to build model
+        print(f"OUTPUT VALUES: {output_values}")
         self.model.build_model(**build_parameters, **output_values)
         logging.info(f"train_model parameters {train_parameters}")
         print(f"training_dir: { self.training_dir }")

@@ -30,7 +30,6 @@ class ElectronModel(NetworkBase):
                                  log_dir:Union[str,None]=None):
                 self.track_info_shape = len(track_info_indices)
                 self.max_hits = max_hits
-                print(f"max_hits: {self.max_hits}") 
                 self.input_shape = (self.max_hits, 4)
                 self.track_info_indices = track_info_indices
                 self.phi_layers = phi_layers

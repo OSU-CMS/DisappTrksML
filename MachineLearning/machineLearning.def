@@ -3,7 +3,6 @@ From: tensorflow/tensorflow:2.6.1-gpu-jupyter
 
 %environment
     PATH=/usr/local/bin:$PATH
-    # Needed to use legacy optimizers
 
 %post
     pip install cmsml numpy optuna
