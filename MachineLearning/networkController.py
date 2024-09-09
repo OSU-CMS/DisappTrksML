@@ -20,9 +20,11 @@ from tensorflow.keras.models import Model, load_model
 
 import optuna
 import keras
+from keras import backend as K
 
 from condor_script_generator import HTCondorScriptGenerator
 
+logging.basicConfig(level=logging.DEBUG)
 
 class NetworkBase(ABC):
     """
@@ -40,7 +42,7 @@ class NetworkBase(ABC):
         pass
 
     @abstractmethod
-    def evaluate_model(self, fileName:str, *args, **kwargs)->Union[list[float],None]:
+    def evaluate_model(self, fileName:str, *args, **kwargs):
         """ Return prediction of neural network on input data """
         pass
 
@@ -50,7 +52,7 @@ class NetworkBase(ABC):
         pass
 
     @abstractmethod
-    def get_metrics(self, input_directory:str, threshold:float = 0.5, glob_patterns="*", **kwargs)->list[int]:
+    def get_metrics(self, input_directory:str, threshold:float = 0.5, glob_patterns="*", **kwargs):
         """ Return list of TP, TN, FP, FN"""
         pass
 
@@ -64,7 +66,7 @@ class NetworkBase(ABC):
             inputFiles = glob(directory_path+"*")
 
         results = np.empty(1) # To avoid unbound variable
-
+        logging.debug(f"Input files: {inputFiles}")
         for i, file in enumerate(inputFiles):
             if i % 100 == 0:
                 logging.info(f"On file {i}")
@@ -77,7 +79,8 @@ class NetworkBase(ABC):
                 results = np.concatenate((results, np.array(eval_output)))
         return results
 
-    def save_model(self, filename:str = "model.h5"):
+    def save_model(self, filename:str = "model.keras"):
+        " Save model as SavedModel format"
         self.model.save(filename)
 
     def saveGraph(self):
@@ -91,7 +94,7 @@ class NetworkController():
         self.input_dir = None
 
         
-    def calculateMetrics(self, metrics:list[int])->tuple[float, float, float]:
+    def calculateMetrics(self, metrics):
         """
         Return precision, recall, and f1 score
 
@@ -111,15 +114,15 @@ class NetworkController():
         """ Return a pretrained model that was previously stored in a h5 file """
         return load_model(model_path)
 
-    def _objective(self, trial, trainable_params, train_parameters, build_parameters, glob_pattern, metric, threshold = 0.5):
+    def _objective(self, trial, trainable_params, train_parameters, build_parameters, glob_pattern, metric, threshold = 0.5, log_dir="/abyss/users/rsantos/DeepSets/"):
         """
         This method should not be used externally. This function is used by optuna
         to optimize the model.
         """
 
-        if not self.input_dir:
-            logging.debug("""You should not be calling this function outside of tune_hyprparameters.
-                           The input_directory for NetworkController needs to be set""")
+        if not self.training_dir:
+            logging.warning("""You should not be calling this function outside of tune_hyprparameters.
+                           The training_directory for NetworkController needs to be set""")
             return
         output_values = {} 
 
@@ -133,14 +136,16 @@ class NetworkController():
                 output_values[key] = trial.suggest_categorical(str(key), value)
             elif value[0] == "layers":
                 number_of_layers = trial.suggest_int("num_layers", value[1], value[2])
-                output_values[key] = [trial.suggest_categorical(f"nodes_{i}",value[1]) for i in
+                output_values[key] = [trial.suggest_categorical(f"nodes_{i}",value[3]) for i in
                                       range(number_of_layers)]
 
         # Use optimal parameters to build model
         self.model.build_model(**build_parameters, **output_values)
-        logging.debug(f"train_model parameters {train_parameters}")
-        self.model.train_model(self.input_dir, **train_parameters)
-        return self.calculateMetrics(self.model.get_metrics(self.input_dir, threshold, glob_pattern))[metric]
+        logging.info(f"train_model parameters {train_parameters}")
+        print(f"training_dir: { self.training_dir }")
+        self.model.train_model(self.training_dir, **train_parameters)
+        self.model.save_model(f"{log_dir}model_{trial.number}.h5") # By not passing an extension this should be saved as a SavedModel
+        return self.calculateMetrics(self.model.get_metrics(self.testing_dir, threshold, glob_pattern))[metric]
         
     @staticmethod    
     def generate_condor_submission(argument:str, number_of_jobs:int,  use_gpu:bool, log_dir:str, input_files, use_container:bool=True):
@@ -176,12 +181,12 @@ class NetworkController():
         condor_generator.generate_script("run.sub")
         
     def tune_hyperparameters(self,
-                             trainable_params: Union[Dict[str, tuple[float,float]],
-                                               Dict[str, tuple[int, int]], Dict[str, list]] = {},
+                             trainable_params = {},
                              train_parameters = {},
                              build_parameters = {},
                              use_gpu:bool=True, num_trials:int= 10, timeout:int=600,
-                             input_dir:str="", glob_pattern:str="*", metric:int = 2, threshold:float = 0.5)->None:
+                             input_dir:str="", testing_dir:str="", glob_pattern:str="*", metric:int = 2, threshold:float = 0.5,
+                             log_dir = "/abyss/users/rsantos/DeepSets/")->None:
         """
         Return output of hyperparameter tuning of your model. Type checking is performed in the objective function, so make sure
         that you properly distinguish floats from integers when inputting the trainable params
@@ -203,6 +208,9 @@ class NetworkController():
             Timeout of optuna
         input_dir:
             Directory that contains input data used for training and validation of model
+        testing_dir:
+            Directory that contains data used for testing of the model (should
+            be sepererate from the input data directory)
         glob_pattern:
             Pattern used to match files inside input_dir for training
         metric:
@@ -210,8 +218,15 @@ class NetworkController():
         threshold:
             Threshold used to define what is a positive and negative guess from the network 
         """
+        if input_dir == "":  
+            raise Exception("You must provide an input directory") 
+        if testing_dir == "":
+            raise Exception("You must provide a path to a directory that"
+                            "contains data files to validate model")
 
-        self.input_dir = input_dir
+        self.training_dir = input_dir
+        self.testing_dir = testing_dir
+
         if use_gpu:
             config = tf.compat.v1.ConfigProto(log_device_placement=True)
             tf.compat.v1.Session(config=config)
@@ -222,17 +237,18 @@ class NetworkController():
                                               intra_op_parallelism_threads = 4,
                                               allow_soft_placement = True,
                                               device_count={'CPU':4})
-            tf.compat.v1.keras.backend.set_session(tf.compat.v1.Session(config=config))
 
         self.input_dir = input_dir 
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
-        logging.debug("Setting up Optuna study on GPU")
-
-        logging.debug("Setting up Optuna study")
+        logging.info("Setting up Optuna study on GPU")
+        logging.info(f"List of GPUs: {tf.config.list_physical_devices('GPU')}")
+        print(f"List of GPUs: {tf.config.list_physical_devices('GPU')}")
         study = optuna.create_study(direction="maximize")
 
         study.optimize(lambda trials: self._objective(trials, train_parameters=train_parameters,
                                                     build_parameters=build_parameters,
                                                     trainable_params = trainable_params,
-                                                    glob_pattern=glob_pattern, metric=metric, threshold=threshold),
+                                                      glob_pattern=glob_pattern, metric=metric, threshold=threshold,
+                                                      log_dir=log_dir),
                     num_trials, timeout) 
+        print(f"Best Parameters: {study.best_params}")
