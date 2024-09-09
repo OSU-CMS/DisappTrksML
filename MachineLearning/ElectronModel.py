@@ -24,12 +24,13 @@ class ElectronModel(NetworkBase):
         def __init__(self,
                                  eta_range:float=0.25, phi_range:float=0.25,
                                  max_hits:int=100,
-                                 phi_layers:list[int] = [16, 16],
-                                 f_layers:list[int] = [16, 16],
-                                 track_info_indices:list[int]=[4, 8, 9, 12],
+                                 phi_layers:list = [16, 16],
+                                 f_layers:list = [16, 16],
+                                 track_info_indices:list=[4, 8, 9, 12],
                                  log_dir:Union[str,None]=None):
                 self.track_info_shape = len(track_info_indices)
                 self.max_hits = max_hits
+                print(f"max_hits: {self.max_hits}") 
                 self.input_shape = (self.max_hits, 4)
                 self.track_info_indices = track_info_indices
                 self.phi_layers = phi_layers
@@ -159,7 +160,7 @@ class ElectronModel(NetworkBase):
 
                 inputFile.Close()
 
-        def get_metrics(self, input_dir:str, threshold:float = 0.5, glob_pattern="*")->list[int]:
+        def get_metrics(self, input_dir:str, threshold:float = 0.5, glob_pattern="*"):
                 """
                 Return TP TN FP FN
                 """
@@ -275,7 +276,7 @@ class ElectronModel(NetworkBase):
                 self.model = integratedmodel
 
 
-        def evaluate_model(self, fname:str, obj=['sets'])->Union[list[float],None]:
+        def evaluate_model(self, fname:str, obj=['sets']):
                 data = np.load(fname, allow_pickle=True)
 
                 if(data[obj[0]].shape[0] == 0): return None
@@ -291,11 +292,11 @@ class ElectronModel(NetworkBase):
 
         def train_model(self, data_directory:str, epochs:int = 10, monitor='val_loss',
                        patience_count:int=10, metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()],
-                       optimizer=optimizers.Adagrad(), outdir="", val_generator_params={},
+                       outdir="", val_generator_params={},
                         train_generator_params={}, use_tensorboard:bool=False, tensorboard_histogram_freq:int=1)->Model:
                 print(f"train_model data_directory: {data_directory}")
-                self.model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=metrics)
-
+                self.model.compile(optimizer=optimizers.Adagrad(), loss='binary_crossentropy', metrics=metrics)
+                training_callbacks = []
                 if not use_tensorboard:
                         training_callbacks = [
                                 callbacks.EarlyStopping(monitor=monitor, patience=patience_count),
@@ -334,7 +335,6 @@ class ElectronModel(NetworkBase):
                           verbose=2)
                 with open(f"{outdir}trainingHistory.pickle", "wb") as f:
                         pickle.dump(training_history.history, f)
-                self.save(f"{outdir}model.h5")
 
         def saveGraph(self, directory):
                 cmsml.tensorflow.save_graph(f"{directory}graph.pb", self.model, variables_to_constants=True)
