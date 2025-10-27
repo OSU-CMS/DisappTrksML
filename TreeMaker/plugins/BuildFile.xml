@@ -26,7 +26,6 @@
 <use  name="Geometry/RPCGeometry"/>
 <use  name="MagneticField/Engine"/>
 <use  name="MagneticField/Records"/>
-<use  name="RecoTauTag/TauTagTools"/>
 <use  name="SimDataFormats/GeneratorProducts"/>
 <use  name="SimDataFormats/Track"/>
 <use  name="SimDataFormats/Vertex"/>
