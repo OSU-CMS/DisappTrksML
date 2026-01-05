@@ -6,7 +6,7 @@
 #include <map>
 
 #include "DisappTrksML/TreeMaker/interface/Infos.h"
-
+#include "FWCore/Framework/interface/Frameworkfwd.h"
 // MINIAOD
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
@@ -58,7 +58,7 @@
 #include "Geometry/RPCGeometry/interface/RPCGeometry.h"
 #include "Geometry/RPCGeometry/interface/RPCChamber.h"
 
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -85,7 +85,7 @@ using namespace std;
 
 enum DetType { None, EB, EE, ES, HCAL, CSC, DT, RPC };
 
-class TrackImageProducerMINIAOD : public edm::EDAnalyzer {
+class TrackImageProducerMINIAOD : public edm::one::EDAnalyzer<> {
    public:
       explicit TrackImageProducerMINIAOD(const edm::ParameterSet &);
       ~TrackImageProducerMINIAOD();
