@@ -1,0 +1,22 @@
+import os
+
+def create_submission(executable:str,  file_name:str="run.sub", disk_space:int=200, memory:int=2, cpus:int=2):
+    with open(file_name, 'w') as file:
+        submit_lines = f"""
+        Universe = vanilla
+        +IsLocalJob = true
+        request_disk = {disk_space}MB
+        request_memory = {memory}GB
+        request_cpus = {cpus}
+        hold = False
+        executable              = run_wrapper.sh
+        arguments               = {0} $(PROCESS) {2} {3} {4} {5} {6} {8}
+        log                     = {2}{0}/log_$(PROCESS).log
+        output                  = {2}{0}/out_$(PROCESS).txt
+        error                   = {2}{0}/error_$(PROCESS).txt
+        should_transfer_files   = Yes
+        when_to_transfer_output = ON_EXIT
+        +isSmallJob = true
+        transfer_input_files = run_wrapper.sh, fakesNN.py, plotMetrics.py, params.npy, utilities.py, fakeClass.py, validateData.py, singularity_wrapper.sh, {5}, {7}
+        getenv = true
+        queue {1}
